@@ -1,0 +1,10 @@
+{
+  "venvPath": ".",
+  "venv": "venv",
+  "extraPaths": [
+    "venv/Lib/site-packages"
+  ],
+  "reportMissingImports": false,
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true
+}
