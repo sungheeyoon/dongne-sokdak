@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* 모바일 터치 최적화 */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* 모바일에서 버튼 크기 최적화 */
+@media (max-width: 768px) {
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* 작은 버튼들은 예외 */
+  button.text-xs {
+    min-height: auto;
+    min-width: auto;
+  }
+  
+  /* 인풋 필드 모바일 최적화 */
+  input[type="text"], 
+  input[type="email"], 
+  input[type="password"], 
+  textarea {
+    font-size: 16px; /* iOS 줌 방지 */
+  }
+}
+
+/* 터치 장치에서 hover 효과 제거 */
+@media (hover: none) {
+  .hover\:shadow-lg:hover {
+    box-shadow: none;
+  }
+  
+  .hover\:-translate-y-1:hover {
+    transform: none;
+  }
+  
+  .hover\:bg-gray-50:hover {
+    background-color: inherit;
+  }
+  
+  .hover\:bg-blue-200:hover {
+    background-color: inherit;
+  }
+}
+
+/* 활성 상태 스타일 추가 */
+.active\:scale-95:active {
+  transform: scale(0.95);
+}
+
+/* 라인 클램프 유틸리티 */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
