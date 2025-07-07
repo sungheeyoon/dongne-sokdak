@@ -47,27 +47,45 @@ export default function ReportModal() {
   const [isMapMode, setIsMapMode] = useState(false)
   const [location, setLocation] = useState<LocationData | null>(null)
 
+  // 모달이 열릴 때 로그
+  useEffect(() => {
+    if (isReportModalOpen) {
+      console.log('📝 ReportModal 열림')
+      console.log('🗺️ selectedLocation:', selectedLocation)
+    }
+  }, [isReportModalOpen, selectedLocation])
+
   // 선택된 위치가 있으면 사용
   useEffect(() => {
     if (selectedLocation) {
-      setLocation({
+      const locationData = {
         lat: selectedLocation.lat,
         lng: selectedLocation.lng,
-        address: '선택된 위치',
+        address: selectedLocation.address || '지도에서 선택한 위치',
         placeName: '지도에서 선택'
-      })
+      }
+      
+      setLocation(locationData)
       setFormData(prev => ({
         ...prev,
         lat: selectedLocation.lat,
-        lng: selectedLocation.lng
+        lng: selectedLocation.lng,
+        address: locationData.address
       }))
+      
+      console.log('✅ 지도에서 선택된 위치 적용:', locationData)
+      console.log('🔄 다음 버튼 활성화 상태:', !!locationData)
     }
   }, [selectedLocation])
 
   const createReportMutation = useMutation({
     mutationFn: (data: CreateReportData) => createReport(data),
     onSuccess: () => {
+      // 모든 제보 관련 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ['reports'] })
+      queryClient.invalidateQueries({ queryKey: ['my-reports'] })
+      queryClient.invalidateQueries({ queryKey: ['mapBoundsReports'] })
+      
       closeReportModal()
       resetForm()
       toast.success('제보가 성공적으로 등록되었습니다!')
@@ -99,6 +117,8 @@ export default function ReportModal() {
 
   // 위치 선택 핸들러 (LocationPicker 및 LocationSearch용)
   const handleLocationSelect = (selectedLocation: { lat: number; lng: number; address: string; placeName?: string }) => {
+    console.log('📍 handleLocationSelect 호출됨:', selectedLocation)
+    
     const locationData: LocationData = {
       lat: selectedLocation.lat,
       lng: selectedLocation.lng,
@@ -106,14 +126,23 @@ export default function ReportModal() {
       placeName: selectedLocation.placeName
     }
     
+    // location state 업데이트
     setLocation(locationData)
+    
+    // formData도 함께 업데이트
     setFormData(prev => ({
       ...prev,
       lat: selectedLocation.lat,
       lng: selectedLocation.lng,
       address: selectedLocation.address
     }))
-    console.log('📍 제보 위치 선택됨:', locationData)
+    
+    console.log('✅ 제보 위치 설정 완료:', locationData)
+    console.log('🔄 location state:', locationData)
+    console.log('🔄 다음 버튼 활성화 여부:', !!locationData)
+    
+    // 성공 피드백
+    toast.success('위치가 선택되었습니다!')
   }
 
   // 주소 검색 결과 선택
@@ -200,8 +229,29 @@ export default function ReportModal() {
       },
       (error) => {
         toast.dismiss(loadingToast)
-        toast.error('위치 정보를 가져올 수 없습니다.')
-        console.error('Geolocation error:', error)
+        let errorMessage = '위치 정보를 가져올 수 없습니다.'
+        
+        // 구체적인 에러 메시지 제공
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = '위치 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.'
+            break
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = '위치 정보를 사용할 수 없습니다.'
+            break
+          case error.TIMEOUT:
+            errorMessage = '위치 정보 요청 시간이 초과되었습니다.'
+            break
+          default:
+            errorMessage = '알 수 없는 오류가 발생했습니다.'
+        }
+        
+        toast.error(errorMessage)
+        console.error('Geolocation error:', {
+          code: error.code,
+          message: error.message,
+          errorType: ['PERMISSION_DENIED', 'POSITION_UNAVAILABLE', 'TIMEOUT'][error.code - 1] || 'UNKNOWN'
+        })
       },
       { enableHighAccuracy: true, timeout: 10000 }
     )
@@ -220,15 +270,28 @@ export default function ReportModal() {
       return
     }
 
+    console.log('🚀 제보 제출 시작')
+    console.log('📍 선택된 location 객체:', location)
+    console.log('📝 현재 formData:', formData)
+    console.log('🎯 실제 사용할 좌표 (formData):', { lat: formData.lat, lng: formData.lng })
+    console.log('🎯 location 객체의 좌표:', { lat: location.lat, lng: location.lng })
+
+    // location 객체의 좌표를 사용하도록 수정 (더 안전함)
+    // placeName이 있으면 더 구체적인 위치 정보로 사용
+    const finalAddress = location.placeName && location.placeName !== '현재 위치' && location.placeName !== '지도에서 선택'
+      ? location.placeName  // "부평역 지하철역" 같은 구체적인 정보 우선
+      : location.address || formData.address || undefined
+
     const reportData: CreateReportData = {
       title: formData.title,
       description: formData.description,
       category: formData.category,
-      location: { lat: formData.lat, lng: formData.lng },
-      address: formData.address || undefined,
+      location: { lat: location.lat, lng: location.lng },
+      address: finalAddress,
       imageUrl: formData.imageUrl || undefined
     }
 
+    console.log('📤 서버로 전송할 데이터:', reportData)
     createReportMutation.mutate(reportData)
   }
 
@@ -241,7 +304,7 @@ export default function ReportModal() {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">
@@ -279,7 +342,7 @@ export default function ReportModal() {
         </div>
 
         {/* 컨텐츠 */}
-        <div className="p-6 overflow-y-auto max-h-96">
+        <div className="p-6 overflow-y-auto max-h-[60vh]">
           {step === 'location' ? (
             /* 1단계: 위치 선택 */
             <div className="space-y-6">
@@ -448,11 +511,14 @@ export default function ReportModal() {
                 취소
               </button>
               <button
-                onClick={() => setStep('details')}
+                onClick={() => {
+                  console.log('🔄 다음 버튼 클릭, location state:', location)
+                  setStep('details')
+                }}
                 disabled={!location}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                다음
+                다음 {location ? '✓' : '(위치 선택 필요)'}
               </button>
             </>
           ) : (

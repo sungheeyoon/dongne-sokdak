@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
 import { createApiUrl, authenticatedRequest } from '../lib/api/config';
 
@@ -53,19 +54,52 @@ export interface AdminInfo {
 }
 
 export function useAdmin() {
-  const { user, getToken } = useAuth();
+  const { user } = useAuth();
   const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<UserManagement[]>([]);
   const [activities, setActivities] = useState<AdminActivity[]>([]);
-  const [adminInfo, setAdminInfo] = useState<AdminInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // React Query로 관리자 정보 캐싱 (전역 캐시)
+  const { 
+    data: adminInfo, 
+    isLoading: isAdminLoading,
+    error: adminError 
+  } = useQuery<AdminInfo | null>({
+    queryKey: ['adminInfo', user?.id],
+    queryFn: async (): Promise<AdminInfo | null> => {
+      if (!user) return null;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Admin Info Query 실행');
+      }
+      
+      const response = await authenticatedRequest(createApiUrl('/admin/my-info')) as AdminInfo;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Admin Info Query 성공:', response.role);
+      }
+      
+      return response;
+    },
+    enabled: !!user, // 사용자가 있을 때만 실행
+    staleTime: 10 * 60 * 1000, // 10분간 신선함 유지
+    gcTime: 30 * 60 * 1000, // 30분간 캐시 보관
+    refetchOnWindowFocus: false,
+    refetchOnMount: false, // 마운트 시 캐시 우선 사용
+    retry: 1
+  });
+
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     try {
-      console.log('🔄 Admin API Request:', endpoint);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Admin API Request:', endpoint);
+      }
       const response = await authenticatedRequest(createApiUrl(endpoint), options);
-      console.log('✅ Admin API Success:', endpoint);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Admin API Success:', endpoint);
+      }
       return response;
     } catch (error) {
       console.error('❌ Admin API Error:', endpoint, error);
@@ -73,17 +107,7 @@ export function useAdmin() {
     }
   };
 
-  // 관리자 정보 확인
-  const checkAdminAccess = async (): Promise<boolean> => {
-    try {
-      const info = await apiRequest('/admin/my-info');
-      setAdminInfo(info);
-      return info.role === 'admin' || info.role === 'moderator';
-    } catch (error) {
-      console.error('관리자 접근 확인 실패:', error);
-      return false;
-    }
-  };
+  // 관리자 정보 확인 (React Query로 대체됨)
 
   // 대시보드 통계 조회
   const fetchAdminStats = async () => {
@@ -228,12 +252,7 @@ export function useAdmin() {
     return adminInfo?.role === 'admin';
   };
 
-  // 컴포넌트 마운트 시 관리자 정보 확인
-  useEffect(() => {
-    if (user) {
-      checkAdminAccess();
-    }
-  }, [user]);
+  // React Query로 자동 관리되므로 useEffect 제거
 
   return {
     adminStats,
@@ -248,7 +267,6 @@ export function useAdmin() {
     toggleUserActive,
     bulkUserAction,
     fetchAdminActivities,
-    checkAdminAccess,
     isAdmin,
     isSuperAdmin,
   };

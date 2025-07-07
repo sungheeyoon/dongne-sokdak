@@ -90,3 +90,26 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* 카카오맵 로고 및 브랜딩 숨기기 */
+.kakao-map-container .MapTypeId,
+.kakao-map-container .overlaybox,
+.kakao-map-container .overlay_info,
+.kakao-map-container .kakao-map-attribution,
+.kakao-map-container [class*="mapTypeId"],
+.kakao-map-container [class*="attribution"] {
+  display: none !important;
+}
+
+/* 카카오맵 하단 링크 숨기기 */
+.kakao-map-container a[href*="kakao"],
+.kakao-map-container a[title*="kakao"],
+.kakao-map-container a[title*="Kakao"] {
+  display: none !important;
+}
+
+/* 카카오맵 컨트롤 버튼 투명도 조정 */
+.kakao-map-container .MapTypeControl,
+.kakao-map-container .ZoomControl {
+  opacity: 0.8;
+}

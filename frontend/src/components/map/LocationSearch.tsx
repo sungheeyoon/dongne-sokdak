@@ -36,6 +36,8 @@ export default function LocationSearch({
   const [results, setResults] = useState<PlaceResult[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
+  const [isPlaceSelected, setIsPlaceSelected] = useState(false) // 장소 선택 플래그
+  const [selectedPlaceName, setSelectedPlaceName] = useState('') // 선택된 장소명 저장
   const searchInputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
 
@@ -52,16 +54,29 @@ export default function LocationSearch({
       const places = new window.kakao.maps.services.Places()
       
       places.keywordSearch(searchQuery, (data: PlaceResult[], status: any) => {
+        // 장소 선택 후라면 검색 결과 무시
+        if (isPlaceSelected) {
+          console.log('🚫 장소 선택 후 검색 결과 무시:', searchQuery)
+          setIsLoading(false)
+          return
+        }
+        
         setIsLoading(false)
         
         if (status === window.kakao.maps.services.Status.OK) {
           console.log('🔍 검색 결과:', data.slice(0, 5)) // 상위 5개만
           setResults(data.slice(0, 5))
-          setShowResults(true)
+          // 장소 선택 후 또는 이미 선택한 장소와 같은 검색어일 때는 드롭다운을 절대 열지 않음
+          if (!isPlaceSelected && searchQuery !== selectedPlaceName) {
+            setShowResults(true)
+          }
         } else if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
           console.log('🔍 검색 결과 없음')
           setResults([])
-          setShowResults(true)
+          // 장소 선택 후 또는 이미 선택한 장소와 같은 검색어일 때는 드롭다운을 절대 열지 않음
+          if (!isPlaceSelected && searchQuery !== selectedPlaceName) {
+            setShowResults(true)
+          }
         } else {
           console.error('🔍 검색 오류:', status)
           setResults([])
@@ -77,47 +92,60 @@ export default function LocationSearch({
 
   // 디바운스 검색
   useEffect(() => {
+    // 장소 선택으로 인한 query 변경이면 검색하지 않음
+    if (isPlaceSelected) {
+      console.log('🚫 장소 선택 후 query 변경 감지, 검색 스킵')
+      return // 아무것도 하지 않고 리턴
+    }
+    
     const timeoutId = setTimeout(() => {
       if (query.length >= 2) {
+        console.log('🔍 검색 실행:', query)
         searchPlaces(query)
       } else {
         setResults([])
-        setShowResults(false)
+        // 장소 선택 후가 아닐 때만 드롭다운 닫기
+        if (!isPlaceSelected) {
+          setShowResults(false)
+        }
       }
     }, 300) // 300ms 디바운스
 
     return () => clearTimeout(timeoutId)
-  }, [query])
+  }, [query, isPlaceSelected])
+
 
   // 검색 결과 선택
   const handlePlaceSelect = (place: PlaceResult) => {
+    console.log('📍 드롭다운에서 장소 선택:', place.place_name)
+    
     // 행정동 기반 주소로 변환
     const adminAddress = convertPlaceToAdministrativeAddress(place)
-    
-    // 실제 동네 이름 추출 (기존 로직 유지)
-    const displayName = getDisplayNeighborhoodName(
-      place.place_name,
-      place.address_name,
-      place.road_address_name
-    )
     
     const location = {
       lat: parseFloat(place.y),
       lng: parseFloat(place.x),
-      address: adminAddress, // 행정동 주소 사용
-      placeName: displayName // 추출된 동네 이름 사용
+      address: adminAddress,
+      placeName: place.place_name
     }
     
-    console.log('📍 선택된 장소:', {
-      원본: place.place_name,
-      동네이름: displayName,
-      행정동주소: adminAddress,
-      원본주소: place.road_address_name || place.address_name
-    })
+    // ⭐ 완전한 드롭다운 상태 리셋 및 고정
+    setIsPlaceSelected(true) // 플래그를 먼저 설정하여 모든 후속 동작 차단
+    setSelectedPlaceName(place.place_name) // 선택된 장소명 저장
+    setShowResults(false) // 드롭다운 완전 닫기
+    setResults([]) // 검색 결과 완전 삭제
+    setIsLoading(false) // 로딩 해제
     
+    // 검색어를 선택된 장소명으로 업데이트
     setQuery(place.place_name)
-    setShowResults(false)
+    
+    // 입력창 포커스 해제하여 재포커스 방지
+    searchInputRef.current?.blur()
+    
+    // 부모 컴포넌트에 위치 전달
     onLocationSelect(location)
+    
+    console.log('✅ 장소 선택 완료, 드롭다운 완전 닫힘')
   }
 
   // 검색창 클리어
@@ -125,6 +153,8 @@ export default function LocationSearch({
     setQuery('')
     setResults([])
     setShowResults(false)
+    setIsPlaceSelected(false) // 플래그도 리셋하여 새로운 검색 가능하게 함
+    setSelectedPlaceName('') // 선택된 장소명도 리셋
     searchInputRef.current?.focus()
   }
 
@@ -151,9 +181,20 @@ export default function LocationSearch({
           ref={searchInputRef}
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            const newValue = e.target.value
+            // 사용자가 직접 입력을 변경하는 경우에만 플래그 리셋
+            if (isPlaceSelected && newValue !== query) {
+              console.log('🔄 사용자 입력 변경으로 플래그 리셋')
+              setIsPlaceSelected(false)
+            }
+            setQuery(newValue)
+          }}
           onFocus={() => {
-            if (results.length > 0) setShowResults(true)
+            // 장소 선택 후에는 포커스 시에도 드롭다운을 열지 않음
+            if (results.length > 0 && !isPlaceSelected) {
+              setShowResults(true)
+            }
           }}
           className="w-full pl-10 pr-12 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-900 placeholder-gray-500"
           placeholder={placeholder}

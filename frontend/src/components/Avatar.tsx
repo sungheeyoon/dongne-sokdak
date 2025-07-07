@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import Image from 'next/image'
-import { User, Camera, Upload } from 'lucide-react'
+import { User, Camera } from 'lucide-react'
 
 interface AvatarProps {
   src?: string

@@ -15,7 +15,7 @@ interface SystemInfo {
 
 function AdminSettingsPage() {
   const router = useRouter();
-  const { isAdmin, loading } = useAdmin();
+  const { isAdmin } = useAdmin();
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [systemLoading, setSystemLoading] = useState(false);
   const [systemError, setSystemError] = useState<string | null>(null);
@@ -25,7 +25,7 @@ function AdminSettingsPage() {
       setSystemLoading(true);
       setSystemError(null);
       
-      const response = await fetch('http://localhost:8000/health');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/health`);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -241,7 +241,7 @@ function AdminSettingsPage() {
               <div className="p-4 bg-gray-50 rounded-lg">
                 <h3 className="font-medium text-gray-700 mb-2">서버 정보</h3>
                 <div className="space-y-1 text-sm text-gray-600">
-                  <div>호스트: localhost:8000</div>
+                  <div>호스트: {process.env.NEXT_PUBLIC_API_URL || 'localhost:8000'}</div>
                   <div>프로토콜: HTTP</div>
                   <div>리로드 모드: 활성화</div>
                 </div>
@@ -345,25 +345,17 @@ function AdminSettingsPage() {
 
 export default function AdminSettingsPageWrapper() {
   const router = useRouter();
-  const { isAdmin, checkAdminAccess, loading } = useAdmin();
+  const { isAdmin, adminInfo } = useAdmin();
 
   useEffect(() => {
-    const verifyAccess = async () => {
-      try {
-        const hasAccess = await checkAdminAccess();
-        if (!hasAccess) {
-          router.push('/');
-        }
-      } catch (error) {
-        console.error('Admin access check failed:', error);
-        router.push('/');
-      }
-    };
+    // adminInfo가 로드되었는데 관리자가 아니면 홈으로 리다이렉트
+    if (adminInfo && !isAdmin()) {
+      router.push('/');
+    }
+  }, [adminInfo, isAdmin, router]);
 
-    verifyAccess();
-  }, [checkAdminAccess, router]);
-
-  if (loading) {
+  // adminInfo 로딩 중이거나 없으면 로딩 표시
+  if (!adminInfo) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-gray-50">
         <div className="text-center">

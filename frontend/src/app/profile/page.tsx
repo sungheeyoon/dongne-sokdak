@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useMyProfile } from '@/hooks/useProfile'
 import Avatar from '@/components/Avatar'
 import ProfileEditModal from '@/components/ProfileEditModal'
-import { Edit, MapPin, Calendar, MessageCircle, Heart, FileText, Loader2 } from 'lucide-react'
+import { Edit, Calendar, MessageCircle, Heart, FileText, Loader2 } from 'lucide-react'
 
 export default function ProfilePage() {
   const { data: profile, isLoading, error } = useMyProfile()

@@ -67,31 +67,35 @@ def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
 def log_api_request(request_id: str, method: str, path: str, user_id: str = None):
-    """API 요청 로깅"""
-    logger = get_logger("api.request")
-    logger.info(
-        "API 요청",
-        extra={
-            "request_id": request_id,
-            "method": method,
-            "path": path,
-            "user_id": user_id,
-            "event_type": "api_request"
-        }
-    )
+    """API 요청 로깅 (개발 환경에서만 상세 로그)"""
+    import os
+    if os.getenv("ENVIRONMENT", "development") == "development":
+        logger = get_logger("api.request")
+        logger.info(
+            "API 요청",
+            extra={
+                "request_id": request_id,
+                "method": method,
+                "path": path,
+                "user_id": user_id,
+                "event_type": "api_request"
+            }
+        )
 
 def log_api_response(request_id: str, status_code: int, response_time: float):
-    """API 응답 로깅"""
-    logger = get_logger("api.response")
-    logger.info(
-        "API 응답",
-        extra={
-            "request_id": request_id,
-            "status_code": status_code,
-            "response_time": response_time,
-            "event_type": "api_response"
-        }
-    )
+    """API 응답 로깅 (개발 환경에서만 상세 로그)"""
+    import os
+    if os.getenv("ENVIRONMENT", "development") == "development":
+        logger = get_logger("api.response")
+        logger.info(
+            "API 응답",
+            extra={
+                "request_id": request_id,
+                "status_code": status_code,
+                "response_time": response_time,
+                "event_type": "api_response"
+            }
+        )
 
 def log_error(error: Exception, context: Dict[str, Any] = None):
     """에러 로깅"""

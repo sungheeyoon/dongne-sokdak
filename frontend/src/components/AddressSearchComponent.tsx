@@ -106,17 +106,31 @@ export default function AddressSearchComponent({
 
   // 주소 선택 핸들러
   const handleAddressSelect = (result: AddressResult) => {
+    // 정확한 장소명 우선 사용, 카테고리 정보가 있으면 포함
+    let displayTitle = result.place_name
+    
+    // 지하철역이나 특정 카테고리인 경우 더 상세한 정보 포함
+    if (result.category_group_name) {
+      displayTitle = `${result.place_name} ${result.category_group_name}`
+    }
+
     const selectedAddress = {
       lat: parseFloat(result.y),
       lng: parseFloat(result.x),
       address: result.road_address_name || result.address_name,
-      placeName: result.place_name
+      placeName: displayTitle // 개선된 장소명 사용
     }
 
+    // 상태 완전 정리
+    setQuery(displayTitle) // 입력창에도 상세한 정보 표시
+    setResults([]) // 검색 결과 완전 초기화
+    setIsOpen(false) // 드롭다운 닫기
+    inputRef.current?.blur() // 포커스 해제
+    
+    // 콜백 호출
     onAddressSelect(selectedAddress)
-    setQuery(result.place_name)
-    setIsOpen(false)
-    inputRef.current?.blur()
+    
+    console.log('✅ 주소 선택 완료 및 검색 결과 정리됨')
   }
 
   // 검색창 초기화

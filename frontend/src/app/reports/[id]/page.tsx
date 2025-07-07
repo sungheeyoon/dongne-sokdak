@@ -192,7 +192,12 @@ export default function ReportDetailPage() {
           {/* 지도 섹션 */}
           <div className="mb-6">
             <h2 className="text-lg font-bold text-gray-900 mb-3">위치</h2>
-            <MapComponent reports={[report]} height="300px" />
+            <MapComponent 
+              reports={[report]} 
+              center={report.location}
+              zoom={2}
+              height="300px" 
+            />
           </div>
 
           {/* 액션 섹션 */}

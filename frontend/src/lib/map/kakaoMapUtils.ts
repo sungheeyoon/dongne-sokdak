@@ -27,51 +27,173 @@ export const waitForKakaoMaps = (): Promise<boolean> => {
       return
     }
 
-    let attempts = 0
-    const maxAttempts = 150 // 15초 (100ms * 150)
+    // 스크립트 로드 상태를 먼저 확인
+    let scriptLoadAttempts = 0
+    const maxScriptAttempts = 100 // 10초
     
-    const checkKakaoScript = () => {
-      attempts++
+    const waitForScript = () => {
+      scriptLoadAttempts++
       
-      // autoload=true이므로 kakao.maps가 바로 로드되어야 함
-      if (typeof window !== 'undefined' && 
-          window.kakao && 
-          window.kakao.maps && 
-          window.kakao.maps.LatLng) {
-        console.log('✅ 카카오맵 API 준비 완료 (시도:', attempts, ')')
-        resolve(true)
+      const scriptExists = document.querySelector('script[src*="dapi.kakao.com"]')
+      if (!scriptExists) {
+        if (scriptLoadAttempts >= maxScriptAttempts) {
+          console.error('❌ 카카오맵 스크립트 로드 실패')
+          resolve(false)
+          return
+        }
+        setTimeout(waitForScript, 100)
         return
       }
       
-      if (attempts >= maxAttempts) {
-        console.error('❌ 카카오맵 API 로드 타임아웃 (시도:', attempts, ')')
-        console.error('📊 최종 상태:', {
-          windowExists: typeof window !== 'undefined',
-          scriptExists: typeof window !== 'undefined' && !!document.querySelector('script[src*="dapi.kakao.com"]'),
-          kakaoExists: typeof window !== 'undefined' && !!window.kakao,
-          mapsExists: typeof window !== 'undefined' && !!window.kakao?.maps,
-          latLngExists: typeof window !== 'undefined' && !!window.kakao?.maps?.LatLng,
-          apiKey: process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY?.substring(0, 8) + '...'
-        })
-        resolve(false)
-        return
+      // 스크립트가 있으면 카카오 객체 로딩 대기
+      waitForKakaoObjects()
+    }
+
+    const waitForKakaoObjects = () => {
+      let attempts = 0
+      const maxAttempts = 200 // 20초 (100ms * 200)
+      
+      const checkKakaoScript = () => {
+        attempts++
+        
+        try {
+          // 더 상세한 체크로 변경
+          if (typeof window !== 'undefined') {
+            // window.kakao 존재 확인
+            if (!window.kakao) {
+              if (attempts % 50 === 0) {
+                console.log('⏳ window.kakao 객체 대기 중... (시도:', attempts, ')')
+              }
+              if (attempts >= maxAttempts) {
+                console.error('❌ window.kakao 로드 타임아웃')
+                resolve(false)
+                return
+              }
+              setTimeout(checkKakaoScript, 100)
+              return
+            }
+
+            // window.kakao.maps 존재 확인
+            if (!window.kakao.maps) {
+              // autoload=false인 경우 수동으로 load 호출
+              if (typeof window.kakao.maps?.load === 'function') {
+                console.log('🔄 카카오맵 수동 로드 시도...')
+                try {
+                  window.kakao.maps.load(() => {
+                    console.log('✅ 카카오맵 수동 로드 완료')
+                    setTimeout(checkKakaoScript, 100)
+                  })
+                } catch (loadError) {
+                  console.error('❌ 카카오맵 로드 함수 호출 실패:', loadError)
+                  setTimeout(checkKakaoScript, 100)
+                }
+                return
+              }
+              
+              // window.kakao가 있지만 maps가 없는 경우, load 함수 체크
+              if (window.kakao && !window.kakao.maps) {
+                // kakao 객체는 있지만 maps가 아직 로드되지 않은 경우
+                if (window.kakao.maps?.load) {
+                  console.log('🔄 카카오맵 수동 로드 재시도...')
+                  try {
+                    window.kakao.maps.load(() => {
+                      console.log('✅ 카카오맵 수동 로드 완료 (재시도)')
+                      setTimeout(checkKakaoScript, 100)
+                    })
+                  } catch (loadError) {
+                    console.error('❌ 카카오맵 로드 함수 호출 실패 (재시도):', loadError)
+                    setTimeout(checkKakaoScript, 100)
+                  }
+                  return
+                }
+                
+                // maps 객체가 완전히 없는 경우, 강제로 로드 시도
+                try {
+                  console.log('🔄 카카오맵 강제 로드 시도...')
+                  if ((window as any).kakao?.maps?.load) {
+                    (window as any).kakao.maps.load(() => {
+                      console.log('✅ 카카오맵 강제 로드 완료')
+                      setTimeout(checkKakaoScript, 100)
+                    })
+                    return
+                  }
+                } catch (forceLoadError) {
+                  console.error('❌ 카카오맵 강제 로드 실패:', forceLoadError)
+                }
+              }
+              
+              if (attempts % 50 === 0) {
+                console.log('⏳ window.kakao.maps 객체 대기 중... (시도:', attempts, ')')
+                console.log('📊 kakao 객체 상태:', {
+                  kakao: !!window.kakao,
+                  maps: !!window.kakao.maps,
+                  loadFunction: typeof window.kakao.maps?.load,
+                  kakaoType: typeof window.kakao
+                })
+              }
+              if (attempts >= maxAttempts) {
+                console.error('❌ window.kakao.maps 로드 타임아웃')
+                resolve(false)
+                return
+              }
+              setTimeout(checkKakaoScript, 100)
+              return
+            }
+
+            // 핵심 API들 존재 확인
+            const hasRequiredAPIs = !!(
+              window.kakao.maps.LatLng &&
+              window.kakao.maps.Map &&
+              window.kakao.maps.Marker &&
+              window.kakao.maps.InfoWindow &&
+              window.kakao.maps.services &&
+              window.kakao.maps.services.Geocoder
+            )
+
+            if (hasRequiredAPIs) {
+              console.log('✅ 카카오맵 API 준비 완료 (시도:', attempts, ')')
+              resolve(true)
+              return
+            } else {
+              if (attempts % 50 === 0) {
+                console.log('⏳ 카카오맵 필수 API 로딩 중... (시도:', attempts, ')')
+                console.log('📊 API 상태:', {
+                  LatLng: !!window.kakao.maps.LatLng,
+                  Map: !!window.kakao.maps.Map,
+                  Marker: !!window.kakao.maps.Marker,
+                  InfoWindow: !!window.kakao.maps.InfoWindow,
+                  services: !!window.kakao.maps.services,
+                  Geocoder: !!window.kakao.maps.services?.Geocoder
+                })
+              }
+            }
+          }
+        } catch (error) {
+          console.error('❌ 카카오맵 체크 중 오류:', error)
+        }
+        
+        if (attempts >= maxAttempts) {
+          console.error('❌ 카카오맵 API 로드 타임아웃 (시도:', attempts, ')')
+          console.error('📊 최종 상태:', {
+            windowExists: typeof window !== 'undefined',
+            scriptExists: typeof window !== 'undefined' && !!document.querySelector('script[src*="dapi.kakao.com"]'),
+            kakaoExists: typeof window !== 'undefined' && !!window.kakao,
+            mapsExists: typeof window !== 'undefined' && !!window.kakao?.maps,
+            latLngExists: typeof window !== 'undefined' && !!window.kakao?.maps?.LatLng,
+            apiKey: process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY?.substring(0, 8) + '...',
+            currentURL: window.location.href
+          })
+          resolve(false)
+          return
+        }
+        
+        setTimeout(checkKakaoScript, 100)
       }
       
-      // 진행 상황 로그 (3초마다)
-      if (attempts % 30 === 0) {
-        console.log('⏳ 카카오맵 로딩 중... (시도:', attempts, '/150)')
-        console.log('📊 현재 상태:', {
-          scriptExists: typeof window !== 'undefined' && !!document.querySelector('script[src*="dapi.kakao.com"]'),
-          kakaoExists: typeof window !== 'undefined' && !!window.kakao,
-          mapsExists: typeof window !== 'undefined' && !!window.kakao?.maps,
-          latLngExists: typeof window !== 'undefined' && !!window.kakao?.maps?.LatLng
-        })
-      }
-      
-      setTimeout(checkKakaoScript, 100)
+      checkKakaoScript()
     }
     
-    checkKakaoScript()
+    waitForScript()
   })
 }
 

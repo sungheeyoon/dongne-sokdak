@@ -3,6 +3,7 @@
 import { Report, ReportCategory, ReportStatus } from '@/types'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import MarkerIcon from '@/components/ui/MarkerIcon'
 
 interface ReportCardProps {
   report: Report
@@ -110,13 +111,15 @@ export default function ReportCard({ report }: ReportCardProps) {
           <span className="text-gray-500 font-medium text-xs md:text-sm">{formatDate(report.createdAt)}</span>
         </div>
 
-        {/* 주소 (있을 경우) */}
-        {report.address && (
+        {/* 주소 및 위치 (있을 경우) */}
+        {(report.address || report.location) && (
           <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t border-gray-100">
-            <span className="text-gray-600 text-xs md:text-sm flex items-center">
-              <span className="mr-1">📍</span>
-              <span className="truncate">{report.address}</span>
-            </span>
+            <div className="flex items-center">
+              <MarkerIcon category={report.category} className="w-4 h-5 mr-2" />
+              <span className="text-gray-600 text-xs md:text-sm truncate">
+                {report.address || `위도 ${report.location.lat.toFixed(4)}, 경도 ${report.location.lng.toFixed(4)}`}
+              </span>
+            </div>
           </div>
         )}
       </div>

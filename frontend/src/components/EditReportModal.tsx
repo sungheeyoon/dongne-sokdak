@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUIStore } from '@/stores/useUIStore'
 import { ReportCategory, ReportStatus, Report } from '@/types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateReport, UpdateReportData } from '@/lib/api/reports'

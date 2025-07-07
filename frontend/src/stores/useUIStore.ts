@@ -9,7 +9,7 @@ interface UIState {
   // 지도 상태
   mapCenter: { lat: number; lng: number }
   mapZoom: number
-  selectedLocation: { lat: number; lng: number } | null
+  selectedLocation: { lat: number; lng: number; address?: string } | null
   
   // 필터 상태
   activeCategory: string | null
@@ -22,7 +22,7 @@ interface UIState {
   closeAuthModal: () => void
   setMapCenter: (center: { lat: number; lng: number }) => void
   setMapZoom: (zoom: number) => void
-  setSelectedLocation: (location: { lat: number; lng: number } | null) => void
+  setSelectedLocation: (location: { lat: number; lng: number; address?: string } | null) => void
   setActiveCategory: (category: string | null) => void
   setActiveStatus: (status: string | null) => void
 }

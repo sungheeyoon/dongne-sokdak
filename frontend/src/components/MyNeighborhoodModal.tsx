@@ -6,6 +6,7 @@ import LocationSearch from '@/components/map/LocationSearch'
 import { MapPin, X, Home, Trash2 } from 'lucide-react'
 import { NeighborhoodInfo } from '@/types'
 import { extractNeighborhoodFromAddress } from '@/lib/utils/neighborhoodUtils'
+import MarkerIcon from '@/components/ui/MarkerIcon'
 
 interface MyNeighborhoodModalProps {
   isOpen: boolean
@@ -88,7 +89,10 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
                       const neighborhoodInfo = extractNeighborhoodFromAddress(profile.neighborhood.address)
                       return (
                         <div className="text-sm space-y-1">
-                          <p className="text-blue-700">📍 {profile.neighborhood.address}</p>
+                          <p className="text-blue-700 flex items-center">
+                            <MarkerIcon className="w-3 h-4 mr-1" />
+                            {profile.neighborhood.address}
+                          </p>
                           {neighborhoodInfo.full !== profile.neighborhood.place_name && (
                             <p className="text-blue-600 bg-blue-100 px-2 py-1 rounded text-xs">
                               🏘️ 행정구역: {neighborhoodInfo.full}

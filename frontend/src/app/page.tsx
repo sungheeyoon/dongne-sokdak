@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import ReportCard from '@/components/ReportCard'
 import AuthModal from '@/components/AuthModal'
@@ -11,11 +12,11 @@ import { useQuery } from '@tanstack/react-query'
 import { getReports, getReportsInBounds } from '@/lib/api/reports'
 import { useMyProfile } from '@/hooks/useProfile'
 import { useAuth } from '@/hooks/useAuth'
-import { MapPin, Users, Navigation } from 'lucide-react'
 import LocationSearch from '@/components/map/LocationSearch'
 import LoadingSpinner, { CardSkeleton } from '@/components/ui/LoadingSpinner'
 import ErrorDisplay from '@/components/ui/ErrorDisplay'
 import LocalhostGuide from '@/components/ui/LocalhostGuide'
+import MarkerIcon from '@/components/ui/MarkerIcon'
 import { extractNeighborhoodFromAddress } from '@/lib/utils/neighborhoodUtils'
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), {
@@ -37,6 +38,8 @@ const categories = [
 ]
 
 export default function Home() {
+  const router = useRouter()
+
   // 행정동 기반 동네 표시명 계산 함수
   const getNeighborhoodDisplayName = (profile: any) => {
     if (!profile?.neighborhood) return '내 동네'
@@ -61,8 +64,10 @@ export default function Home() {
   const [userCurrentLocation, setUserCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationPermissionStatus, setLocationPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'loading'>('unknown')
   const [currentMapBounds, setCurrentMapBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null)
-  const [useMapBoundsFilter, setUseMapBoundsFilter] = useState(false)
-  const [isMapSearching, setIsMapSearching] = useState(false)
+  const [triggerMapSearch, setTriggerMapSearch] = useState(0) // 수동 검색 트리거
+  const [useMapBoundsFilter, setUseMapBoundsFilter] = useState(false) // 맵 영역 필터 (내부 사용)
+  const [selectedMapMarker, setSelectedMapMarker] = useState<any>(null) // 선택된 마커 정보
+  const [selectedLocation, setSelectedLocation] = useState<string>('') // 선택된 위치명
 
   // 사용자 정보 및 프로필 가져오기
   const { user } = useAuth()
@@ -74,7 +79,7 @@ export default function Home() {
     lng: profile.neighborhood.lng
   } : null
 
-  // 전체 제보 데이터 가져오기 (기본 방식)
+  // 내 동네 제보 데이터 가져오기 (기본 방식)
   const { 
     data: allReports = [], 
     isLoading: isLoadingAllReports, 
@@ -87,12 +92,16 @@ export default function Home() {
       search: searchQuery || undefined,
       limit: 100
     }),
-    refetchInterval: 30000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false, // 윈도우 포커스 시 리페치 비활성화
+    refetchOnMount: false, // 마운트 시 리페치 비활성화 (캐시 우선)
     retry: 1,
-    enabled: !useMapBoundsFilter // 맵 영역 필터가 비활성화된 경우에만 실행
+    enabled: !useMapBoundsFilter,
+    staleTime: 5 * 60 * 1000, // 5분간 신선함 유지
+    gcTime: 10 * 60 * 1000 // 10분간 캐시 보관
   })
 
-  // 맵 영역 기준 제보 데이터 가져오기 (새로운 방식)
+  // 현재 맵 영역 기준 제보 데이터 가져오기 (수동 트리거 방식)
   const { 
     data: mapBoundsReports = [], 
     isLoading: isLoadingMapReports, 
@@ -100,9 +109,9 @@ export default function Home() {
     refetch: refetchMapReports,
     isFetching: isFetchingMapReports
   } = useQuery<Report[], Error>({
-    queryKey: ['mapBoundsReports', currentMapBounds, selectedCategory],
+    queryKey: ['mapBoundsReports', triggerMapSearch, selectedCategory],
     queryFn: async (): Promise<Report[]> => {
-      if (!currentMapBounds) return []
+      if (!currentMapBounds || !useMapBoundsFilter) return []
       return getReportsInBounds({
         north: currentMapBounds.north,
         south: currentMapBounds.south,
@@ -112,20 +121,25 @@ export default function Home() {
         limit: 200
       })
     },
-    refetchInterval: 30000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false, // 윈도우 포커스 시 리페치 비활성화
+    refetchOnMount: false, // 마운트 시 리페치 비활성화
     retry: 1,
-    enabled: useMapBoundsFilter && !!currentMapBounds, // 맵 영역 필터가 활성화되고 bounds가 있는 경우에만 실행
+    enabled: useMapBoundsFilter && !!currentMapBounds && triggerMapSearch > 0,
+    staleTime: 3 * 60 * 1000, // 3분간 신선함 유지
+    gcTime: 10 * 60 * 1000 // 10분간 캐시 보관
   })
 
-  // useEffect로 검색 상태 관리
-  useEffect(() => {
-    if (!isFetchingMapReports && isMapSearching) {
-      setIsMapSearching(false)
-    }
-  }, [isFetchingMapReports, isMapSearching])
 
-  // 현재 사용 중인 위치 (우선순위: 검색된 위치 > 내 동네 > 사용자 설정 위치)
-  const activeLocation: { lat: number; lng: number } | null = mapCenter ?? myNeighborhoodLocation ?? userCurrentLocation ?? null
+  // 현재 사용 중인 위치 (우선순위: 지역검색 위치 > 내 동네 > 사용자 현재 위치)
+  const activeLocation = useMemo(() => {
+    // 지역 검색으로 설정된 위치가 있으면 그것을 우선 사용
+    if (mapCenter) {
+      return mapCenter
+    }
+    // 그 다음은 내 동네, 사용자 현재 위치 순
+    return myNeighborhoodLocation ?? userCurrentLocation ?? null
+  }, [mapCenter, myNeighborhoodLocation, userCurrentLocation])
 
   // 표시할 제보 결정 (타입 안전하게)
   const displayReports: Report[] = useMapBoundsFilter 
@@ -166,7 +180,9 @@ export default function Home() {
       setMapCenter(null) // 검색된 위치 초기화
       setSearchedLocation(null)
 
-      console.log('📍 현재 위치 설정:', location)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📍 현재 위치 설정:', location)
+      }
       
     } catch (error: any) {
       console.error('위치 가져오기 실패:', error)
@@ -190,40 +206,129 @@ export default function Home() {
     }
   }
 
-  // 위치 검색 핸들러
+  // 위치 검색 핸들러 
   const handleLocationSearch = (location: { lat: number; lng: number; address: string; placeName: string }) => {
-    console.log('🗺️ 검색된 위치:', location)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🗺️ 위치 선택됨:', location.placeName)
+      console.log('📍 좌표:', location.lat, location.lng)
+    }
+    
+    // 1. 지도 중심을 선택된 위치로 설정
     setMapCenter({ lat: location.lat, lng: location.lng })
     setSearchedLocation({ placeName: location.placeName, address: location.address })
-    setUserCurrentLocation(null) // 현재 위치 초기화
+    setUserCurrentLocation(null)
+    
+    // 2. 맵 영역 필터 모드로 변경 (선택된 위치 기준)
+    setUseMapBoundsFilter(true)
+    
+    // 3. 지도 이동 후 해당 위치에서 제보 검색 (즉시 실행)
+    setTimeout(() => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄', location.placeName, '지역에서 제보 검색 시작')
+      }
+      setTriggerMapSearch(prev => prev + 1)
+    }, 800) // 지도 이동 시간 단축
   }
 
-  // 위치 검색 초기화 (내 동네로 돌아가기)
-  const resetLocationSearch = () => {
+  // 내 동네로 돌아가기 (맵 검색 상태 초기화)
+  const resetToMyNeighborhood = () => {
     setMapCenter(null)
     setSearchedLocation(null)
     setUserCurrentLocation(null)
-    setUseMapBoundsFilter(false)
-    setIsMapSearching(false)
-  }
-
-  // 맵 영역 변경 핸들러
-  const handleMapBoundsChange = (bounds: { north: number; south: number; east: number; west: number }) => {
-    setCurrentMapBounds(bounds)
-    if (useMapBoundsFilter) {
-      console.log('🗺️ 맵 영역 변경:', bounds)
+    setUseMapBoundsFilter(false) // 맵 영역 필터 비활성화하여 기본 제보 표시
+    setSelectedMapMarker(null) // 선택된 마커도 초기화
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🏠 내 동네로 돌아가기')
     }
   }
 
-  // 이 지역 재검색 핸들러 (개선된 버전)
+  // 맵 영역 변경 핸들러
+  const handleMapBoundsChange = useCallback((bounds: { north: number; south: number; east: number; west: number }) => {
+    setCurrentMapBounds(bounds)
+    
+    // 맵 영역 필터가 활성화된 상태에서만 로그 출력 (개발 환경에서만)
+    if (useMapBoundsFilter && process.env.NODE_ENV === 'development') {
+      console.log('🗺️ 맵 영역 변경:', bounds)
+    }
+  }, [useMapBoundsFilter])
+
+  // 이 지역 재검색 핸들러 (현재 맵 영역 기준)
   const handleRegionSearch = () => {
-    if (currentMapBounds) {
-      setIsMapSearching(true) // 검색 시작 상태로 설정
-      setUseMapBoundsFilter(true)
-      console.log('🔄 이 지역 재검색 활성화')
+    if (!currentMapBounds) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('❌ 맵 bounds가 아직 준비되지 않음')
+      }
+      alert('지도가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.')
+      return
+    }
+    
+    // 현재 맵 중심 좌표 계산
+    const currentCenter = {
+      lat: (currentMapBounds.north + currentMapBounds.south) / 2,
+      lng: (currentMapBounds.east + currentMapBounds.west) / 2
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 이 지역 재검색 시작')
+      console.log('📍 현재 맵 중심:', currentCenter)
+      console.log('🗺️ 맵 영역:', currentMapBounds)
+    }
+    
+    // 현재 맵 중심을 mapCenter로 설정하여 해당 위치를 고정
+    setMapCenter(currentCenter)
+    
+    // 맵 영역 필터 활성화하여 현재 지역의 제보만 검색
+    setUseMapBoundsFilter(true) // 맵 영역 필터 활성화
+    setTriggerMapSearch(prev => prev + 1) // 검색 트리거 증가
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ 이 지역 재검색 설정 완료 - 맵 영역 기준 제보 검색 시작')
+    }
+  }
+
+  // 마커 클릭 핸들러
+  const handleMarkerClick = (group: any) => {
+    setSelectedMapMarker(group)
+    
+    // 역지오코딩으로 건물명/도로명 가져오기
+    if (typeof window !== 'undefined' && window.kakao && window.kakao.maps) {
+      const geocoder = new window.kakao.maps.services.Geocoder()
       
-      // React Query가 자동으로 refetch하므로 별도 호출 불필요
-      // refetchMapReports()는 onSettled에서 로딩 상태를 해제함
+      geocoder.coord2Address(group.location.lng, group.location.lat, (result: any, status: any) => {
+        if (status === window.kakao.maps.services.Status.OK) {
+          const addr = result[0]
+          let locationName = ''
+          
+          // 우선순위: 도로명 주소 > 건물명 > 행정동
+          if (addr.road_address) {
+            // 도로명 주소에서 건물명이나 도로명 추출
+            const roadName = addr.road_address.road_name
+            const buildingName = addr.road_address.building_name
+            
+            if (buildingName) {
+              locationName = buildingName
+            } else if (roadName) {
+              locationName = `${roadName} 일대`
+            } else {
+              locationName = addr.road_address.address_name.split(' ').slice(-2).join(' ')
+            }
+          } else if (addr.address) {
+            // 지번 주소에서 동네명 추출
+            const addressParts = addr.address.address_name.split(' ')
+            locationName = addressParts.slice(-2).join(' ')
+          }
+          
+          setSelectedLocation(locationName || '선택한 위치')
+        } else {
+          setSelectedLocation('선택한 위치')
+        }
+      })
+    } else {
+      setSelectedLocation('선택한 위치')
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎯 마커 클릭:', group)
     }
   }
 
@@ -237,9 +342,19 @@ export default function Home() {
     setSearchQuery('')
   }
 
-  console.log('📊 Current reports:', displayReports.length)
-  console.log('📊 Map bounds filter:', useMapBoundsFilter)
-  console.log('📊 Map searching:', isMapSearching)
+  // 카테고리 한글 변환 함수
+  const getCategoryLabel = (category: string) => {
+    const categoryLabels = {
+      NOISE: '소음',
+      TRASH: '쓰레기',
+      FACILITY: '시설물',
+      TRAFFIC: '교통',
+      OTHER: '기타'
+    }
+    return categoryLabels[category as keyof typeof categoryLabels] || category
+  }
+
+  // 개발용 디버깅 제거 (성능 최적화)
 
   if (error) {
     return (
@@ -266,135 +381,6 @@ export default function Home() {
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* 위치 설정 영역 */}
-        <div className="mb-8 p-4 md:p-6 bg-white rounded-xl shadow-sm border">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-3">
-            <h2 className="text-lg md:text-xl font-semibold text-gray-900 flex items-center">
-              <MapPin className="h-5 w-5 text-blue-600 mr-2" />
-              지역 설정
-            </h2>
-            
-            {/* 위치 상태 표시 및 현재 위치 버튼 */}
-            <div className="flex flex-col md:flex-row items-start md:items-center space-y-2 md:space-y-0 md:space-x-3 w-full md:w-auto">
-              {/* 위치 상태 */}
-              <div className="text-sm">
-                {searchedLocation ? (
-                  <span className="text-blue-600">📍 {searchedLocation.placeName}</span>
-                ) : myNeighborhoodLocation ? (
-                  <span className="text-green-600">🏠 {getNeighborhoodDisplayName(profile)}</span>
-                ) : userCurrentLocation ? (
-                  <span className="text-green-600">📍 내 위치 설정됨</span>
-                ) : (
-                  <span className="text-gray-500">📍 위치 없음</span>
-                )}
-              </div>
-              
-              {/* 현재 위치 버튼 */}
-              <button
-                onClick={getCurrentLocation}
-                disabled={locationPermissionStatus === 'loading'}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
-                  userCurrentLocation
-                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                    : locationPermissionStatus === 'denied'
-                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                } ${locationPermissionStatus === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {locationPermissionStatus === 'loading' ? (
-                  <span className="flex items-center space-x-1">
-                    <div className="animate-spin rounded-full h-3 w-3 border-b border-current"></div>
-                    <span>확인중...</span>
-                  </span>
-                ) : userCurrentLocation ? (
-                  '🎯 내 위치 사용중'
-                ) : locationPermissionStatus === 'denied' ? (
-                  '❌ 위치 권한 없음'
-                ) : (
-                  '📍 현재 위치로'
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* 필터 방식 선택 */}
-          <div className="mb-4">
-            <div className="flex items-center space-x-4">
-              <label className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  name="filterMode"
-                  checked={!useMapBoundsFilter}
-                  onChange={() => {
-                    setUseMapBoundsFilter(false)
-                    setIsMapSearching(false)
-                  }}
-                  className="form-radio"
-                />
-                <span className="text-sm">전체 제보 보기</span>
-              </label>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  name="filterMode"
-                  checked={useMapBoundsFilter}
-                  onChange={() => setUseMapBoundsFilter(true)}
-                  className="form-radio"
-                />
-                <span className="text-sm">지도 영역 제보만 보기 (카카오맵 방식)</span>
-              </label>
-            </div>
-          </div>
-
-          {/* 통계 정보 */}
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center space-x-4 text-sm text-gray-600">
-              <div className="flex items-center">
-                <Users className="h-4 w-4 mr-1" />
-                <span>현재 표시: {displayReports.length}개</span>
-              </div>
-              <div>필터 방식: {useMapBoundsFilter ? '지도 영역' : '전체'}</div>
-              {currentMapBounds && useMapBoundsFilter && (
-                <div className="text-blue-600">
-                  {isMapSearching || isFetchingMapReports ? (
-                    <span className="flex items-center">
-                      <div className="animate-spin rounded-full h-3 w-3 border-b border-current mr-1"></div>
-                      검색 중...
-                    </span>
-                  ) : (
-                    '🗺️ 영역 기반 조회 중'
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 위치 권한 안내 */}
-          {locationPermissionStatus === 'denied' && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm mt-4">
-              <div className="flex items-start space-x-2">
-                <span className="text-red-600">🚫</span>
-                <div className="flex-1">
-                  <p className="text-red-800 font-medium mb-1">위치 접근 권한이 필요합니다</p>
-                  <p className="text-red-700 mb-3">현재 위치 기반 서비스를 이용하려면 위치 권한을 허용해주세요.</p>
-                  
-                  <div className="bg-white p-3 rounded border border-red-300">
-                    <p className="text-red-800 font-medium mb-2">🔧 위치 권한 허용 방법:</p>
-                    <ol className="text-red-700 text-xs space-y-1">
-                      <li>1. 주소창 왼쪽의 🔒 자물쇠 아이콘을 클릭</li>
-                      <li>2. "위치" 항목을 "허용"으로 변경</li>
-                      <li>3. 페이지를 새로고침하거나 다시 "📍 현재 위치로" 버튼 클릭</li>
-                    </ol>
-                  </div>
-                  
-                  <p className="text-red-600 mt-2">
-                    💡 또는 위의 검색창에서 지역명을 검색하여 해당 동네의 제보를 확인할 수 있습니다.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* 지도 섹션 */}
         <div className="mb-8">
@@ -403,11 +389,11 @@ export default function Home() {
               {searchedLocation ? `${searchedLocation.placeName} 근처 제보` : 
                myNeighborhoodLocation ? `${getNeighborhoodDisplayName(profile)} 근처 제보` :
                userCurrentLocation ? '내 위치 근처 제보' :
-               useMapBoundsFilter ? '지도 영역 제보' : '제보 지도'}
+               useMapBoundsFilter ? '현재 지도 영역 제보' : '제보 지도'}
             </h2>
-            {(searchedLocation || userCurrentLocation) && (
+            {(searchedLocation || userCurrentLocation || useMapBoundsFilter) && (
               <button
-                onClick={resetLocationSearch}
+                onClick={resetToMyNeighborhood}
                 className="text-sm text-gray-600 hover:text-gray-800 px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
               >
                 {myNeighborhoodLocation ? '내 동네로 돌아가기' : '검색 초기화'}
@@ -417,34 +403,148 @@ export default function Home() {
 
           {/* 지역 검색창 */}
           <div className="mb-4">
-            <LocationSearch
-              onLocationSelect={handleLocationSearch}
-              placeholder="동네, 건물명, 지번을 검색하여 해당 지역 제보를 확인하세요"
-              className="max-w-lg"
-            />
+            <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
+              <LocationSearch
+                onLocationSelect={handleLocationSearch}
+                placeholder="동네, 건물명, 지번을 검색하여 해당 지역 제보를 확인하세요"
+                className="max-w-lg flex-1"
+              />
+              
+              {/* 이 지역 재검색 버튼 - 제보 검색창 옆에 위치 */}
+              {currentMapBounds && (
+                <button
+                  onClick={handleRegionSearch}
+                  disabled={isFetchingMapReports}
+                  className={`px-3 md:px-4 py-2 rounded-lg font-medium shadow-md transition-all flex items-center space-x-1 md:space-x-2 text-sm touch-manipulation whitespace-nowrap ${
+                    isFetchingMapReports
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg active:scale-95'
+                  }`}
+                >
+                  {isFetchingMapReports ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 md:h-4 w-3 md:w-4 border-b-2 border-white"></div>
+                      <span className="hidden md:inline">검색 중...</span>
+                      <span className="md:hidden">검색중</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 md:w-4 h-3 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span className="hidden md:inline">이 지역 재검색</span>
+                      <span className="md:hidden">재검색</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+            
             {searchedLocation && (
-              <div className="mt-2 text-sm text-gray-600">
-                📍 {searchedLocation.address}
+              <div className="mt-2 text-sm text-gray-600 flex items-center">
+                <MarkerIcon className="w-3 h-4 mr-1" />
+                {searchedLocation.address}
               </div>
             )}
           </div>
           
-          {isLoading ? (
-            <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
-              <LoadingSpinner size="lg" message="제보 데이터를 불러오는 중..." />
-            </div>
-          ) : (
-            <MapComponent 
-              reports={displayReports} 
-              height="400px"
-              center={activeLocation ?? undefined}
-              onBoundsChange={handleMapBoundsChange}
-              showRegionSearchButton={true}
-              onRegionSearch={handleRegionSearch}
-              isSearching={isMapSearching || isFetchingMapReports}
-            />
-          )}
+          <MapComponent 
+            reports={displayReports} 
+            height="400px"
+            center={activeLocation ?? undefined}
+            onBoundsChange={handleMapBoundsChange}
+            onMarkerClick={handleMarkerClick}
+            selectedMarkerId={selectedMapMarker?.id}
+          />
         </div>
+
+        {/* 선택된 마커 정보 영역 */}
+        {selectedMapMarker && (
+          <div className="mb-8 p-4 bg-white rounded-xl shadow-sm border">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <MarkerIcon className="w-4 h-5 mr-1" />
+                {selectedLocation || '선택한 위치'} 제보
+                {selectedMapMarker.count > 1 && (
+                  <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                    {selectedMapMarker.count}개
+                  </span>
+                )}
+              </h3>
+              <button
+                onClick={() => setSelectedMapMarker(null)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {selectedMapMarker.reports.map((report: Report, index: number) => (
+                <div 
+                  key={report.id} 
+                  onClick={() => router.push(`/reports/${report.id}`)}
+                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300"
+                >
+                  <div className="flex items-start space-x-4">
+                    {/* 카테고리 아이콘 */}
+                    <div className="flex-shrink-0">
+                      <div 
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: 
+                          report.category === 'NOISE' ? '#FF6B6B' :
+                          report.category === 'TRASH' ? '#4ECDC4' :
+                          report.category === 'FACILITY' ? '#45B7D1' :
+                          report.category === 'TRAFFIC' ? '#96CEB4' :
+                          '#FECA57'
+                        }}
+                      ></div>
+                    </div>
+                    
+                    {/* 제보 내용 */}
+                    <div className="flex-1">
+                      <div className="flex items-center mb-2">
+                        <span className="text-xs text-gray-500 font-medium mr-3">
+                          {getCategoryLabel(report.category)}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {new Date(report.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      
+                      <h4 className="font-semibold text-gray-900 mb-2">
+                        {report.title}
+                      </h4>
+                      
+                      <p className="text-gray-600 text-sm mb-3">
+                        {report.description}
+                      </p>
+                      
+                      {/* 주소 및 통계 */}
+                      <div className="flex flex-col md:flex-row md:items-center justify-between text-sm text-gray-500 gap-2">
+                        <div className="flex items-center">
+                          <MarkerIcon category={report.category} className="w-3 h-4 mr-1" />
+                          <span className="truncate">{report.address}</span>
+                        </div>
+                        
+                        <div className="flex items-center space-x-4">
+                          <span className="flex items-center">
+                            <span className="mr-1">👍</span>
+                            {report.voteCount || 0}
+                          </span>
+                          <span className="flex items-center">
+                            <span className="mr-1">💬</span>
+                            {report.commentCount || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 검색 및 필터 영역 */}
         <div className="mb-6">
@@ -483,11 +583,11 @@ export default function Home() {
 
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-lg md:text-xl font-semibold text-gray-900">
-              {searchQuery ? '검색 결과' : (useMapBoundsFilter ? '지도 영역 제보' : '전체 제보')}
+              {searchQuery ? '검색 결과' : (useMapBoundsFilter ? '현재 지도 영역 제보' : '내 동네 제보')}
               <span className="text-sm font-normal text-gray-500 ml-2">
                 ({displayReports.length}개)
               </span>
-              {(isMapSearching || isFetchingMapReports) && useMapBoundsFilter && (
+              {isFetchingMapReports && useMapBoundsFilter && (
                 <span className="text-sm font-normal text-blue-600 ml-2">
                   🔄 업데이트 중...
                 </span>
@@ -499,7 +599,13 @@ export default function Home() {
               {categories.map((category) => (
                 <button
                   key={category.value}
-                  onClick={() => setSelectedCategory(category.value)}
+                  onClick={() => {
+                    setSelectedCategory(category.value)
+                    // 맵 영역 필터가 활성화된 상태에서 카테고리 변경 시 재검색
+                    if (useMapBoundsFilter) {
+                      setTriggerMapSearch(prev => prev + 1)
+                    }
+                  }}
                   className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all border touch-manipulation ${
                     selectedCategory === category.value
                       ? 'bg-blue-600 text-white border-blue-600 shadow-md'
@@ -540,7 +646,7 @@ export default function Home() {
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">
               {useMapBoundsFilter 
-                ? '이 지역에 제보가 없습니다. 지도를 이동하거나 전체 제보를 확인해보세요!' 
+                ? '현재 지도 영역에 제보가 없습니다. 지도를 이동하거나 다른 지역을 검색해보세요!' 
                 : '해당 조건의 제보가 없습니다.'
               }
             </p>

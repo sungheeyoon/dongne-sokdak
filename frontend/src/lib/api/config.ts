@@ -11,8 +11,11 @@ export const createApiUrl = (endpoint: string) => {
 export const apiRequest = async (
   url: string, 
   options: RequestInit = {}
-): Promise<any> => {
-  console.log('🔗 API Request:', url, options)
+): Promise<unknown> => {
+  // 개발 환경에서만 로그 출력
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔗 API Request:', url)
+  }
   
   try {
     const response = await fetch(url, {
@@ -23,7 +26,9 @@ export const apiRequest = async (
       ...options,
     })
 
-    console.log('📡 API Response:', response.status, response.statusText)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📡 API Response:', response.status, response.statusText)
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
@@ -31,7 +36,6 @@ export const apiRequest = async (
       
       // 401 오류는 인증 문제이므로 특별히 처리
       if (response.status === 401) {
-        console.warn('⚠️ 인증이 필요한 요청입니다.')
         throw new Error('로그인이 필요합니다')
       }
       
@@ -43,12 +47,18 @@ export const apiRequest = async (
     }
 
     const data = await response.json()
-    console.log('✅ API Data:', data)
     return data
   } catch (error) {
     // 네트워크 오류나 기타 예외 처리
     if (error instanceof Error) {
       console.error('❌ API Request Failed:', error.message)
+      
+      // 연결 실패 에러 처리
+      if (error.message.includes('fetch') || error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+        console.error('🔌 서버 연결 실패 - 백엔드 서버가 실행되고 있는지 확인하세요')
+        throw new Error('서버에 연결할 수 없습니다. 백엔드 서버가 실행되고 있는지 확인해주세요.')
+      }
+      
       throw error
     }
     console.error('❌ Unknown API Error:', error)
@@ -66,15 +76,13 @@ export const authenticatedRequest = async (
     const { supabase } = await import('../supabase')
     const { data: { session }, error } = await supabase.auth.getSession()
     
-    console.log('🔐 Auth Session:', session ? 'Found' : 'Not found')
-    
-    if (error) {
-      console.log('🔐 Session Error:', error)
-      throw new Error('인증 세션을 가져올 수 없습니다')
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔐 Auth Session:', session ? 'Found' : 'Not found')
     }
     
-    if (session?.access_token) {
-      console.log('🎫 Access Token (first 50 chars):', session.access_token.substring(0, 50) + '...')
+    if (error) {
+      console.error('🔐 Session Error:', error)
+      throw new Error('인증 세션을 가져올 수 없습니다')
     }
 
     const headers: Record<string, string> = {
@@ -84,7 +92,6 @@ export const authenticatedRequest = async (
 
     if (session?.access_token) {
       headers['Authorization'] = `Bearer ${session.access_token}`
-      console.log('🔑 Authorization Header Added')
     } else {
       console.warn('⚠️ No access token found!')
       throw new Error('로그인이 필요합니다')

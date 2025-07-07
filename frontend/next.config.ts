@@ -42,6 +42,9 @@ const nextConfig: NextConfig = {
   // 성능 최적화
   poweredByHeader: false,
   compress: true,
+  
+  // React Strict Mode 개발 환경에서 비활성화 (중복 API 호출 방지)
+  reactStrictMode: process.env.NODE_ENV !== 'development',
 
   // 번들 최적화
   webpack: (config, { dev, isServer }) => {

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getMyProfile, updateMyProfile, getUserProfile, updateAvatar, updateMyNeighborhood, deleteMyNeighborhood } from '@/lib/api/profiles'
-import { Profile, ProfileUpdate, NeighborhoodInfo } from '@/types'
+import { Profile } from '@/types'
 import { useAuth } from './useAuth'
 
 // 내 프로필 조회 훅

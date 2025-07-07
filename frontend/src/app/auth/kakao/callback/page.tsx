@@ -43,9 +43,9 @@ export default function KakaoCallbackPage() {
         // 메인 페이지로 리다이렉트
         router.push('/')
         
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('카카오 로그인 콜백 처리 실패:', error)
-        setError(error.message || '카카오 로그인 처리 중 오류가 발생했습니다.')
+        setError(error instanceof Error ? error.message : '카카오 로그인 처리 중 오류가 발생했습니다.')
         setTimeout(() => router.push('/'), 3000)
       }
     }

@@ -7,25 +7,17 @@ import ReportManagement from '@/components/admin/ReportManagement';
 
 export default function AdminReportsPage() {
   const router = useRouter();
-  const { isAdmin, checkAdminAccess, loading } = useAdmin();
+  const { isAdmin, adminInfo } = useAdmin();
 
   useEffect(() => {
-    const verifyAccess = async () => {
-      try {
-        const hasAccess = await checkAdminAccess();
-        if (!hasAccess) {
-          router.push('/');
-        }
-      } catch (error) {
-        console.error('Admin access check failed:', error);
-        router.push('/');
-      }
-    };
+    // adminInfo가 로드되었는데 관리자가 아니면 홈으로 리다이렉트
+    if (adminInfo && !isAdmin()) {
+      router.push('/');
+    }
+  }, [adminInfo, isAdmin, router]);
 
-    verifyAccess();
-  }, [checkAdminAccess, router]);
-
-  if (loading) {
+  // adminInfo 로딩 중이거나 없으면 로딩 표시
+  if (!adminInfo) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-gray-50">
         <div className="text-center">

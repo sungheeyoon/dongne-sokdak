@@ -1,21 +1,52 @@
 'use client'
 
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import { Map, MapMarker, MapInfoWindow, MarkerClusterer } from 'react-kakao-maps-sdk'
 import { Report } from '@/types'
-import { checkKakaoMapStatus, waitForKakaoMaps, analyzeKakaoMapError } from '@/lib/map/kakaoMapUtils'
 import { formatToAdministrativeAddress, isSameAdministrativeArea } from '@/lib/utils/addressUtils'
-import dynamic from 'next/dynamic'
+import { createGroupMarkerImage } from '@/lib/utils/mapMarkerUtils'
 
-// Fallback 컴포넌트를 동적으로 로드
-const KakaoMapFallback = dynamic(() => import('@/lib/map/kakaoMapFallback'), {
-  ssr: false
-})
-
-// 카카오맵 로딩 확인
+// 카카오맵 로딩 확인 - 기존 타입 정의와 충돌하지 않도록 수정
 declare global {
   interface Window {
-    kakao: any;
+    kakao: {
+      maps: {
+        Map: new (container: HTMLElement, options: any) => any;
+        LatLng: new (lat: number, lng: number) => any;
+        Size: new (width: number, height: number) => any;
+        Point: new (x: number, y: number) => any;
+        MarkerImage: new (src: string, size: any, options?: any) => any;
+        Marker: new (options: any) => any;
+        InfoWindow: new (options: any) => any;
+        Circle: new (options: any) => any;
+        services: {
+          Status: {
+            OK: string;
+            ZERO_RESULT: string;
+            ERROR: string;
+          };
+          SortBy: {
+            ACCURACY: string;
+            DISTANCE: string;
+          };
+          Places: new () => any;
+          Geocoder: new () => any;
+        };
+        event: {
+          addListener: (target: any, type: string, handler: Function) => void;
+          removeListener: (target: any, type: string, handler: Function) => void;
+        };
+        drawing: {
+          OverlayType: {
+            MARKER: string;
+            POLYLINE: string;
+            RECTANGLE: string;
+            CIRCLE: string;
+            POLYGON: string;
+          };
+        };
+      };
+    };
   }
 }
 
@@ -35,9 +66,8 @@ interface MapComponentProps {
   height?: string
   onLocationSelect?: (location: { lat: number; lng: number; address?: string }) => void
   onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void
-  showRegionSearchButton?: boolean
-  onRegionSearch?: () => void
-  isSearching?: boolean
+  onMarkerClick?: (group: GroupedReport) => void // 마커 클릭 이벤트 추가
+  selectedMarkerId?: string // 선택된 마커 ID
 }
 
 export default function MapComponent({ 
@@ -47,19 +77,16 @@ export default function MapComponent({
   height = '400px',
   onLocationSelect,
   onBoundsChange,
-  showRegionSearchButton = true,
-  onRegionSearch,
-  isSearching = false
+  onMarkerClick,
+  selectedMarkerId
 }: MapComponentProps) {
   // center prop이 null인 경우 기본값 사용
   const safeCenter = center && center.lat && center.lng ? center : { lat: 37.5665, lng: 126.9780 }
   const [map, setMap] = useState<any>(null)
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null)
-  const [selectedGroup, setSelectedGroup] = useState<GroupedReport | null>(null)
   const [kakaoLoaded, setKakaoLoaded] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
   const [currentBounds, setCurrentBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null)
-  const [useKakaoFallback, setUseKakaoFallback] = useState(false)
+  const [lastSetCenter, setLastSetCenter] = useState<{lat: number, lng: number} | null>(null)
 
   // 행정동 기준으로 제보들을 그룹핑
   const groupedReports = useMemo(() => {
@@ -96,19 +123,6 @@ export default function MapComponent({
   useEffect(() => {
     console.log('🗺️ MapComponent 마운트됨')
     
-    // IP 주소로 접근하는지 확인
-    const isIPAccess = typeof window !== 'undefined' && 
-      (window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/) || 
-       window.location.hostname === '172.24.19.106')
-    
-    if (isIPAccess) {
-      console.log('🔄 IP 주소 접근 감지, fallback 지도 사용')
-      setUseKakaoFallback(true)
-      return
-    }
-    
-    checkKakaoMapStatus()
-    
     const initializeKakaoMap = async () => {
       try {
         console.log('🔄 카카오맵 API 로딩 시작...')
@@ -116,33 +130,146 @@ export default function MapComponent({
         // API 키 확인
         const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY
         if (!apiKey) {
-          console.log('🔄 API 키 없음, fallback 사용')
-          setUseKakaoFallback(true)
+          console.error('❌ API 키가 없습니다')
+          setMapError('카카오맵 API 키가 설정되지 않았습니다')
           return
         }
 
-        const isLoaded = await waitForKakaoMaps()
-        if (isLoaded) {
-          console.log('🎉 카카오맵 초기화 완료!')
-          setKakaoLoaded(true)
-        } else {
-          console.error('❌ 카카오맵 로드 실패, fallback 사용')
-          const issues = analyzeKakaoMapError()
-          console.error('🔧 문제점들:', issues)
+        // 간단한 대기 로직 - autoload=true이므로 바로 확인
+        let attempts = 0
+        const maxAttempts = 150 // 15초
+        
+        const checkKakaoReady = () => {
+          attempts++
           
-          // 일정 시간 후 fallback으로 전환
-          setTimeout(() => {
-            setUseKakaoFallback(true)
-          }, 2000)
+          // 브라우저 환경 확인
+          if (typeof window === 'undefined') {
+            console.error('❌ 브라우저 환경이 아닙니다')
+            setMapError('브라우저 환경이 아닙니다')
+            return
+          }
+          
+          // window.kakao 존재 확인
+          if (!window.kakao) {
+            if (attempts >= maxAttempts) {
+              console.error('❌ window.kakao 로딩 타임아웃')
+              setMapError('카카오 SDK 로딩 실패')
+              return
+            }
+            setTimeout(checkKakaoReady, 100)
+            return
+          }
+          
+          // window.kakao.maps 존재 확인
+          if (!window.kakao.maps) {
+            if (attempts >= maxAttempts) {
+              console.error('❌ window.kakao.maps 로딩 타임아웃')
+              setMapError('카카오맵 Maps 객체 로딩 실패')
+              return
+            }
+            setTimeout(checkKakaoReady, 100)
+            return
+          }
+          
+          // autoload=true임에도 불구하고 LatLng가 없다면 수동 로드
+          if (!window.kakao.maps.LatLng) {
+            console.log('🔄 LatLng 없음, 수동 로드 시도...')
+            
+            if (typeof window.kakao.maps.load === 'function') {
+              try {
+                window.kakao.maps.load(() => {
+                  console.log('🔄 수동 로드 완료, 다시 확인...')
+                  // 수동 로드 후 다시 확인
+                  setTimeout(() => {
+                    if (window.kakao.maps.LatLng) {
+                      console.log('✅ 수동 로드 후 LatLng 확인됨')
+                      try {
+                        const testLatLng = new window.kakao.maps.LatLng(37.5665, 126.9780)
+                        console.log('✅ LatLng 생성자 테스트 성공:', testLatLng)
+                        setKakaoLoaded(true)
+                      } catch (latLngError) {
+                        console.error('❌ LatLng 생성자 테스트 실패:', latLngError)
+                        setMapError('카카오맵 LatLng 생성자 오류')
+                      }
+                    } else {
+                      console.error('❌ 수동 로드 후에도 LatLng 없음')
+                      setMapError('카카오맵 LatLng 로딩 실패')
+                    }
+                  }, 500)
+                })
+                return
+              } catch (loadError) {
+                console.error('❌ 수동 로드 함수 호출 실패:', loadError)
+              }
+            }
+            
+            if (attempts >= maxAttempts) {
+              console.error('❌ LatLng 로딩 타임아웃')
+              setMapError('카카오맵 LatLng 로딩 실패')
+              return
+            }
+            setTimeout(checkKakaoReady, 100)
+            return
+          }
+          
+          // 모든 필수 API 확인
+          const requiredAPIs = [
+            'LatLng', 'Map', 'Marker', 'InfoWindow', 'services'
+          ]
+          
+          const missingAPIs = requiredAPIs.filter((api) => {
+              return !(api in window.kakao.maps)
+            })
+          if (missingAPIs.length > 0) {
+            if (attempts >= maxAttempts) {
+              console.error('❌ 필수 API 로딩 타임아웃, 누락:', missingAPIs)
+              setMapError(`카카오맵 API 로딩 실패: ${missingAPIs.join(', ')}`)
+              return
+            }
+            if (attempts % 20 === 0) {
+              console.log(`⏳ 필수 API 로딩 중... 누락: ${missingAPIs.join(', ')}`)
+            }
+            setTimeout(checkKakaoReady, 100)
+            return
+          }
+          
+          // services.Geocoder 확인
+          if (!window.kakao.maps.services || !window.kakao.maps.services.Geocoder) {
+            if (attempts >= maxAttempts) {
+              console.error('❌ Geocoder 로딩 타임아웃')
+              setMapError('카카오맵 Geocoder 로딩 실패')
+              return
+            }
+            if (attempts % 20 === 0) {
+              console.log('⏳ Geocoder 로딩 중...')
+            }
+            setTimeout(checkKakaoReady, 100)
+            return
+          }
+          
+          // 최종 테스트
+          console.log('✅ 모든 카카오맵 API 준비 완료!')
+          
+          try {
+            const testLatLng = new window.kakao.maps.LatLng(37.5665, 126.9780)
+            console.log('✅ LatLng 생성자 테스트 성공:', testLatLng)
+            setKakaoLoaded(true)
+          } catch (latLngError) {
+            console.error('❌ LatLng 생성자 테스트 실패:', latLngError)
+            setMapError('카카오맵 LatLng 생성자 오류')
+          }
         }
+        
+        checkKakaoReady()
+        
       } catch (error) {
-        console.error('❌ 카카오맵 초기화 중 예외 발생, fallback 사용:', error)
-        setUseKakaoFallback(true)
+        console.error('❌ 카카오맵 초기화 중 예외 발생:', error)
+        setMapError('카카오맵 초기화 오류')
       }
     }
     
     // 페이지 로드 후 약간의 지연을 두고 초기화
-    const timer = setTimeout(initializeKakaoMap, 500)
+    const timer = setTimeout(initializeKakaoMap, 1000)
     
     return () => clearTimeout(timer)
   }, [])
@@ -166,7 +293,7 @@ export default function MapComponent({
   }, [])
 
   // 맵 bounds 변경 핸들러
-  const handleMapBoundsChange = () => {
+  const handleMapBoundsChange = useCallback(() => {
     if (!map) return
 
     try {
@@ -181,6 +308,11 @@ export default function MapComponent({
         east: neLatLng.getLng()
       }
       
+      // 개발 환경에서만 디버깅
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🗺️ MapComponent: bounds 변경됨')
+      }
+      
       setCurrentBounds(newBounds)
       
       // 부모 컴포넌트에 bounds 변경 알림
@@ -190,7 +322,30 @@ export default function MapComponent({
     } catch (error) {
       console.error('맵 bounds 계산 오류:', error)
     }
-  }
+  }, [map, onBoundsChange])
+
+  // center prop 변경 시 맵 이동 (검색 시에만)
+  useEffect(() => {
+    if (!map || !center) return
+
+    // 새로운 center가 마지막으로 설정한 center와 다른 경우에만 이동 (외부에서 의도적으로 변경한 경우)
+    if (lastSetCenter && 
+        Math.abs(lastSetCenter.lat - center.lat) < 0.0001 && 
+        Math.abs(lastSetCenter.lng - center.lng) < 0.0001) {
+      return
+    }
+
+    console.log('🗺️ 지도 중심 이동:', center)
+    
+    // 지도 중심 이동
+    const moveToCenter = new window.kakao.maps.LatLng(center.lat, center.lng)
+    map.setCenter(moveToCenter)
+    
+    // 마지막 설정된 center 저장
+    setLastSetCenter(center)
+
+    console.log('✅ 지도 이동 완료')
+  }, [center, map])
 
   // 맵 이동 완료 이벤트 등록
   useEffect(() => {
@@ -205,9 +360,14 @@ export default function MapComponent({
       handleMapBoundsChange()
     }
 
+    const handleCenterChanged = () => {
+      handleMapBoundsChange()
+    }
+
     // 카카오맵 이벤트 등록
     window.kakao.maps.event.addListener(map, 'dragend', handleDragEnd)
     window.kakao.maps.event.addListener(map, 'zoom_changed', handleZoomChanged)
+    window.kakao.maps.event.addListener(map, 'center_changed', handleCenterChanged)
 
     // 초기 bounds 설정
     setTimeout(handleMapBoundsChange, 500)
@@ -216,8 +376,9 @@ export default function MapComponent({
       // 이벤트 제거
       window.kakao.maps.event.removeListener(map, 'dragend', handleDragEnd)
       window.kakao.maps.event.removeListener(map, 'zoom_changed', handleZoomChanged)
+      window.kakao.maps.event.removeListener(map, 'center_changed', handleCenterChanged)
     }
-  }, [map, onBoundsChange])
+  }, [map, handleMapBoundsChange])
 
   // 지도 클릭 이벤트 (제보 위치 선택용)
   const handleMapClick = async (event: any) => {
@@ -226,10 +387,6 @@ export default function MapComponent({
     const { latLng } = event
     const lat = latLng.getLat()
     const lng = latLng.getLng()
-
-    // 선택된 마커/인포윈도우 닫기
-    setSelectedReport(null)
-    setSelectedGroup(null)
 
     // 역지오코딩으로 행정동 주소 가져오기
     const geocoder = new window.kakao.maps.services.Geocoder()
@@ -257,103 +414,33 @@ export default function MapComponent({
     })
   }
 
-  // 마커 카테고리별 색상
-  const getMarkerColor = (category: string) => {
-    const colors = {
-      NOISE: '#FF6B6B',
-      TRASH: '#4ECDC4', 
-      FACILITY: '#45B7D1',
-      TRAFFIC: '#96CEB4',
-      OTHER: '#FECA57'
-    }
-    return colors[category as keyof typeof colors] || colors.OTHER
-  }
+  // 마커 관련 함수들은 공통 유틸리티로 이동됨
 
-  // 개선된 마커 이미지 생성 (숫자 포함)
-  const createGroupMarkerImage = (group: GroupedReport) => {
-    const color = getMarkerColor(group.primaryCategory)
-    const canvas = document.createElement('canvas')
-    canvas.width = group.count > 1 ? 40 : 30
-    canvas.height = group.count > 1 ? 40 : 35
-    const ctx = canvas.getContext('2d')!
-    
-    if (group.count > 1) {
-      // 여러 제보가 있는 경우 - 원형 마커에 숫자 표시
-      const centerX = 20
-      const centerY = 20
-      const radius = 18
-      
-      // 외곽 테두리
-      ctx.strokeStyle = '#FFFFFF'
-      ctx.lineWidth = 3
-      ctx.beginPath()
-      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)
-      ctx.stroke()
-      
-      // 배경 원
-      ctx.fillStyle = color
-      ctx.beginPath()
-      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)
-      ctx.fill()
-      
-      // 숫자 텍스트
-      ctx.fillStyle = 'white'
-      ctx.font = 'bold 14px Arial'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(group.count.toString(), centerX, centerY)
-    } else {
-      // 단일 제보인 경우 - 기본 마커 모양
-      const centerX = 15
-      const markerY = 15
-      
-      // 마커 핀 모양
-      ctx.fillStyle = color
-      ctx.beginPath()
-      ctx.arc(centerX, markerY, 12, 0, 2 * Math.PI)
-      ctx.fill()
-      
-      // 하단 뾰족한 부분
-      ctx.beginPath()
-      ctx.moveTo(centerX, markerY + 8)
-      ctx.lineTo(centerX - 5, markerY + 18)
-      ctx.lineTo(centerX + 5, markerY + 18)
-      ctx.closePath()
-      ctx.fill()
-      
-      // 내부 점
-      ctx.fillStyle = 'white'
-      ctx.beginPath()
-      ctx.arc(centerX, markerY, 4, 0, 2 * Math.PI)
-      ctx.fill()
-    }
-    
-    return {
-      src: canvas.toDataURL(),
-      size: { width: group.count > 1 ? 40 : 30, height: group.count > 1 ? 40 : 35 },
-      options: { offset: { x: group.count > 1 ? 20 : 15, y: group.count > 1 ? 20 : 35 } }
-    }
-  }
-
-  // 행정동 기반 주소 변환
-  const getAdministrativeAddress = (report: Report): string => {
-    return formatToAdministrativeAddress(report.address || '')
-  }
-
-  // 인포윈도우 닫기 핸들러
-  const closeInfoWindow = () => {
-    setSelectedReport(null)
-    setSelectedGroup(null)
-  }
 
   // 그룹 마커 클릭 핸들러
   const handleGroupMarkerClick = (group: GroupedReport) => {
-    if (group.count === 1) {
-      setSelectedReport(group.reports[0])
-      setSelectedGroup(null)
-    } else {
-      setSelectedGroup(group)
-      setSelectedReport(null)
+    // 마커를 클릭하면 해당 위치로 맵 중심 부드럽게 이동하고 적당히 줌인
+    if (map) {
+      const moveLatLng = new window.kakao.maps.LatLng(group.location.lat, group.location.lng)
+      
+      // 부드러운 이동
+      map.panTo(moveLatLng)
+      
+      // 적당한 줌 레벨로 설정 (너무 과도하지 않게)
+      const currentLevel = map.getLevel()
+      const targetLevel = Math.max(2, 3) // 레벨 2-3 정도로 적당히 (30-50m 거리)
+      
+      if (currentLevel > targetLevel) {
+        // 부드러운 줌인 (카카오맵 네이티브 기능 사용)
+        setTimeout(() => {
+          map.setLevel(targetLevel, {animate: {duration: 500}}) // 500ms 애니메이션
+        }, 200) // 이동 후 약간 딜레이
+      }
+    }
+    
+    // 부모 컴포넌트에 마커 클릭 이벤트 전달
+    if (onMarkerClick) {
+      onMarkerClick(group)
     }
   }
 
@@ -398,31 +485,17 @@ export default function MapComponent({
     )
   }
 
-  // Fallback 지도 사용
-  if (useKakaoFallback) {
-    return (
-      <KakaoMapFallback 
-        reports={reports}
-        height={height}
-        center={safeCenter}
-        onLocationSelect={onLocationSelect}
-        onBoundsChange={onBoundsChange}
-        showRegionSearchButton={showRegionSearchButton}
-        onRegionSearch={onRegionSearch}
-        isSearching={isSearching}
-      />
-    )
-  }
+  // Fallback 제거 - 카카오맵만 사용
 
   if (!kakaoLoaded) {
     return (
       <div style={{ height }} className="rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
-          <p className="text-gray-700 text-base font-medium mb-1">🗺️ 지도를 불러오는 중...</p>
-          <p className="text-gray-500 text-sm">카카오맵 API 로딩 중</p>
+          <p className="text-gray-700 text-base font-medium mb-1">🗺️ 동네속닥 지도 로딩 중...</p>
+          <p className="text-gray-500 text-sm">우리 동네 제보 지도를 준비하고 있어요</p>
           <div className="mt-3 text-xs text-gray-400">
-            최대 15초 소요 | 문제 발생 시 대체 지도로 전환
+            잠시만 기다려주세요
           </div>
         </div>
       </div>
@@ -431,7 +504,7 @@ export default function MapComponent({
 
   return (
     <div className="relative" style={{ height }}>
-      <div style={{ height }} className="rounded-lg overflow-hidden border-2 border-gray-200 touch-manipulation">
+      <div style={{ height }} className="rounded-lg overflow-hidden border-2 border-gray-200 touch-manipulation kakao-map-container">
         <Map
           center={safeCenter}
           style={{ width: '100%', height: '100%' }}
@@ -445,165 +518,12 @@ export default function MapComponent({
               key={group.id}
               position={{ lat: group.location.lat, lng: group.location.lng }}
               onClick={() => handleGroupMarkerClick(group)}
-              image={createGroupMarkerImage(group)}
+              image={createGroupMarkerImage(group.primaryCategory, group.count, selectedMarkerId === group.id)}
             />
           ))}
-
-          {/* 선택된 단일 제보 정보창 */}
-          {selectedReport && (
-            <MapInfoWindow
-              position={{ 
-                lat: selectedReport.location.lat, 
-                lng: selectedReport.location.lng 
-              }}
-              onClose={closeInfoWindow}
-            >
-              <div className="p-3 md:p-4 max-w-xs md:max-w-sm bg-white rounded-lg shadow-sm border">
-                <div className="flex items-center justify-between mb-2 md:mb-3">
-                  <div className="flex items-center">
-                    <span className="inline-block w-3 h-3 rounded-full mr-2" 
-                          style={{ backgroundColor: getMarkerColor(selectedReport.category) }}></span>
-                    <span className="text-xs text-gray-500 font-medium uppercase">
-                      {selectedReport.category}
-                    </span>
-                  </div>
-                  <button 
-                    onClick={closeInfoWindow}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 touch-manipulation"
-                  >
-                    ✕
-                  </button>
-                </div>
-                
-                <h4 className="font-semibold text-sm mb-2 line-clamp-2 text-gray-900">
-                  {selectedReport.title}
-                </h4>
-                
-                <p className="text-xs text-gray-600 mb-2 md:mb-3 line-clamp-3">
-                  {selectedReport.description}
-                </p>
-                
-                <div className="border-t pt-2">
-                  <p className="text-xs text-gray-500 mb-2 flex items-center">
-                    <span className="mr-1">📍</span>
-                    <span className="truncate">{getAdministrativeAddress(selectedReport)}</span>
-                  </p>
-                  
-                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between text-xs text-gray-500 gap-1 md:gap-0">
-                    <div className="flex items-center space-x-3">
-                      <span className="flex items-center touch-manipulation">
-                        <span className="mr-1">👍</span>
-                        {selectedReport.voteCount || 0}
-                      </span>
-                      <span className="flex items-center touch-manipulation">
-                        <span className="mr-1">💬</span>
-                        {selectedReport.commentCount || 0}
-                      </span>
-                    </div>
-                    <span>{new Date(selectedReport.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              </div>
-            </MapInfoWindow>
-          )}
-
-          {/* 선택된 그룹 제보 리스트 */}
-          {selectedGroup && (
-            <MapInfoWindow
-              position={{ 
-                lat: selectedGroup.location.lat, 
-                lng: selectedGroup.location.lng 
-              }}
-              onClose={closeInfoWindow}
-            >
-              <div className="p-3 md:p-4 max-w-sm md:max-w-md bg-white rounded-lg shadow-sm border">
-                <div className="flex items-center justify-between mb-2 md:mb-3">
-                  <div className="flex items-center">
-                    <span className="inline-block w-3 h-3 rounded-full mr-2" 
-                          style={{ backgroundColor: getMarkerColor(selectedGroup.primaryCategory) }}></span>
-                    <h4 className="font-semibold text-sm text-gray-900">
-                      이 지역 제보 {selectedGroup.count}개
-                    </h4>
-                  </div>
-                  <button 
-                    onClick={closeInfoWindow}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 touch-manipulation"
-                  >
-                    ✕
-                  </button>
-                </div>
-                
-                <p className="text-xs text-gray-500 mb-2 md:mb-3 flex items-center">
-                  <span className="mr-1">📍</span>
-                  <span className="truncate">{getAdministrativeAddress(selectedGroup.reports[0])}</span>
-                </p>
-                
-                <div className="border-t pt-2 md:pt-3">
-                  <div className="space-y-2 md:space-y-3 max-h-48 md:max-h-60 overflow-y-auto">
-                    {selectedGroup.reports.map((report, index) => (
-                      <div key={report.id} className={`pb-2 md:pb-3 ${index < selectedGroup.reports.length - 1 ? 'border-b border-gray-100' : ''}`}>
-                        <div className="flex items-start space-x-2 md:space-x-3">
-                          <span className="inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0" 
-                                style={{ backgroundColor: getMarkerColor(report.category) }}></span>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center mb-1">
-                              <span className="text-xs text-gray-500 uppercase mr-2">{report.category}</span>
-                            </div>
-                            <h5 className="text-xs font-medium line-clamp-2 mb-1 md:mb-2 text-gray-900">
-                              {report.title}
-                            </h5>
-                            <p className="text-xs text-gray-600 line-clamp-2 mb-1 md:mb-2">
-                              {report.description}
-                            </p>
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between text-xs text-gray-400 gap-1 md:gap-0">
-                              <div className="flex items-center space-x-2">
-                                <span className="touch-manipulation">👍 {report.voteCount || 0}</span>
-                                <span className="touch-manipulation">💬 {report.commentCount || 0}</span>
-                              </div>
-                              <span>{new Date(report.createdAt).toLocaleDateString()}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </MapInfoWindow>
-          )}
         </Map>
       </div>
 
-      {/* 개선된 이 지역 재검색 버튼 - 모바일 최적화 */}
-      {showRegionSearchButton && currentBounds && (
-        <div className="absolute top-2 md:top-4 left-1/2 transform -translate-x-1/2 z-10">
-          <button
-            onClick={onRegionSearch}
-            disabled={isSearching}
-            className={`px-3 md:px-4 py-2 rounded-lg font-medium shadow-lg transition-all flex items-center space-x-1 md:space-x-2 text-sm touch-manipulation ${
-              isSearching 
-                ? 'bg-gray-400 text-white cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl active:scale-95'
-            }`}
-          >
-            {isSearching ? (
-              <>
-                <div className="animate-spin rounded-full h-3 md:h-4 w-3 md:w-4 border-b-2 border-white"></div>
-                <span className="hidden md:inline">검색 중...</span>
-                <span className="md:hidden">검색중</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-3 md:w-4 h-3 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span className="hidden md:inline">이 지역 재검색</span>
-                <span className="md:hidden">재검색</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
 
       {/* 범례 - 모바일 최적화 */}
       <div className="absolute bottom-2 md:bottom-4 right-2 md:right-4 bg-white rounded-lg shadow-lg p-2 md:p-3 text-xs">

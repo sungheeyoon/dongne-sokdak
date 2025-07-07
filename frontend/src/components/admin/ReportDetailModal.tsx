@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useReportManagement, ReportDetail } from '../../hooks/useReportManagement';
+import MarkerIcon from '@/components/ui/MarkerIcon';
 
 interface ReportDetailModalProps {
   reportId: string;
@@ -159,7 +160,10 @@ export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportD
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">위치 정보</h3>
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-gray-700 mb-2">📍 {reportDetail.address}</p>
+                    <p className="text-gray-700 mb-2 flex items-center">
+                      <MarkerIcon category={reportDetail.category} className="w-4 h-5 mr-2" />
+                      {reportDetail.address}
+                    </p>
                     {reportDetail.location && (
                       <div className="h-48 bg-gray-200 rounded-lg flex items-center justify-center">
                         <div className="text-center text-gray-600">

@@ -4,7 +4,6 @@ import "./globals.css";
 import QueryProvider from "@/lib/providers/QueryProvider";
 import AuthProvider from "@/lib/providers/AuthProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,17 +20,11 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        {/* 카카오맵 스크립트 프리로드 */}
-        <link 
-          rel="preload" 
-          href={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY}&libraries=services,clusterer&autoload=true`} 
-          as="script" 
-        />
-        
-        <Script
-          strategy="beforeInteractive"
+        {/* 카카오맵 스크립트 */}
+        <script
+          type="text/javascript"
           src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY}&libraries=services,clusterer&autoload=true`}
-        />
+        ></script>
       </head>
       <body className={`${inter.className} antialiased`}>
         <ErrorBoundary>

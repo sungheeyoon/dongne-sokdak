@@ -8,14 +8,14 @@ import { useAdmin } from '@/hooks/useAdmin'
 import { useRouter } from 'next/navigation'
 import Avatar from './Avatar'
 import MyNeighborhoodModal from './MyNeighborhoodModal'
-import { User, Home, Settings } from 'lucide-react'
+import { Home, Settings } from 'lucide-react'
 import { extractNeighborhoodFromAddress } from '@/lib/utils/neighborhoodUtils'
 
 export default function Header() {
   const { openAuthModal, openReportModal } = useUIStore()
   const { user, signOut } = useAuth()
   const { data: profile } = useMyProfile()
-  const { isAdmin } = useAdmin()
+  const { isAdmin, adminInfo } = useAdmin()
   const router = useRouter()
   const [isNeighborhoodModalOpen, setIsNeighborhoodModalOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -88,7 +88,7 @@ export default function Header() {
                 >
                   📋 내 제보
                 </button>
-                {isAdmin() && (
+                {adminInfo && isAdmin() && (
                   <>
                     <button
                       onClick={() => router.push('/admin')}
@@ -206,7 +206,7 @@ export default function Header() {
                   >
                     📋 내 제보
                   </button>
-                  {isAdmin() && (
+                  {adminInfo && isAdmin() && (
                     <>
                       <button
                         onClick={() => {
