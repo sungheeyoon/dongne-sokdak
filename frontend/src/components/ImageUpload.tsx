@@ -112,13 +112,13 @@ export default function ImageUpload({ onImageSelect, currentImage }: ImageUpload
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <label className="block text-sm font-semibold text-gray-900">
-          이미지 첨부 (선택사항)
+          📷 이미지 첨부 (선택사항)
         </label>
         {preview && (
           <button
             type="button"
             onClick={handleRemoveImage}
-            className="text-red-600 hover:text-red-800 text-sm font-medium"
+            className="text-red-600 hover:text-red-800 text-sm font-semibold px-3 py-1 rounded-lg hover:bg-red-50 transition-colors"
           >
             이미지 제거
           </button>
@@ -130,7 +130,7 @@ export default function ImageUpload({ onImageSelect, currentImage }: ImageUpload
           <img
             src={preview}
             alt="업로드된 이미지"
-            className="w-full max-h-64 object-cover rounded-lg border-2 border-gray-200"
+            className="w-full max-h-64 object-cover rounded-lg border-2 border-gray-300"
           />
           <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center">
             <button
@@ -145,13 +145,13 @@ export default function ImageUpload({ onImageSelect, currentImage }: ImageUpload
       ) : (
         <div
           onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all"
+          className="border-2 border-dashed border-gray-400 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
         >
           <div className="space-y-2">
-            <div className="text-4xl text-gray-400">📷</div>
+            <div className="text-5xl text-gray-400 mb-3">📷</div>
             <div>
-              <p className="text-gray-600 font-medium">클릭하여 이미지 업로드</p>
-              <p className="text-sm text-gray-500">PNG, JPG, GIF (최대 5MB)</p>
+              <p className="text-gray-700 font-semibold mb-1">클릭하여 이미지 업로드</p>
+              <p className="text-sm text-gray-600 font-medium">PNG, JPG, GIF (최대 10MB)</p>
             </div>
           </div>
         </div>

@@ -41,18 +41,19 @@ export const lightenColor = (color: string, amount: number) => {
   return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`
 }
 
-// 단일 제보용 마커 이미지 생성 (제보 카드용)
+// 단일 제보용 마커 이미지 생성 (제보 카드용) - MapPin 스타일
 export const createSingleReportMarkerImage = (category: string, size: 'small' | 'medium' | 'large' = 'medium') => {
   const color = getMarkerColor(category)
   
-  // 크기별 설정
+  // 크기별 설정 - MapPin 비율로 조정
   const sizes = {
-    small: { width: 20, height: 25, radius: 8, pointHeight: 12 },
-    medium: { width: 30, height: 35, radius: 12, pointHeight: 18 },
-    large: { width: 40, height: 45, radius: 16, pointHeight: 24 }
+    small: { width: 16, height: 24 },
+    medium: { width: 20, height: 30 },
+    large: { width: 24, height: 36 }
   }
   
-  const { width, height, radius, pointHeight } = sizes[size]
+  const { width, height } = sizes[size]
+  const scale = width / 24  // 기준 크기 대비 스케일
   
   const canvas = document.createElement('canvas')
   canvas.width = width
@@ -60,53 +61,68 @@ export const createSingleReportMarkerImage = (category: string, size: 'small' | 
   const ctx = canvas.getContext('2d')!
   
   const centerX = width / 2
-  const markerY = radius
+  const centerY = 12 * scale  // 원의 중심
   
-  // 마커 핀 모양
+  // MapPin 모양 (물방울 형태)
   ctx.fillStyle = color
   ctx.beginPath()
-  ctx.arc(centerX, markerY, radius, 0, 2 * Math.PI)
+  // 상단 원형 부분
+  ctx.arc(centerX, centerY, 12 * scale, 0, 2 * Math.PI)
   ctx.fill()
   
-  // 하단 뾰족한 부분
+  // 하단 뾰족한 부분 (물방울 꼬리)
   ctx.beginPath()
-  ctx.moveTo(centerX, markerY + radius * 0.6)
-  ctx.lineTo(centerX - radius * 0.4, markerY + pointHeight)
-  ctx.lineTo(centerX + radius * 0.4, markerY + pointHeight)
+  ctx.moveTo(centerX, centerY + 12 * scale)
+  ctx.lineTo(centerX, height - 3 * scale)
+  ctx.lineTo(centerX - 2 * scale, centerY + 16 * scale)
+  ctx.closePath()
+  ctx.fill()
+  
+  ctx.beginPath()
+  ctx.moveTo(centerX, centerY + 12 * scale)
+  ctx.lineTo(centerX, height - 3 * scale)
+  ctx.lineTo(centerX + 2 * scale, centerY + 16 * scale)
   ctx.closePath()
   ctx.fill()
   
   // 내부 점
   ctx.fillStyle = 'white'
   ctx.beginPath()
-  ctx.arc(centerX, markerY, radius * 0.35, 0, 2 * Math.PI)
+  ctx.arc(centerX, centerY, 5 * scale, 0, 2 * Math.PI)
+  ctx.fill()
+  
+  // 더 작은 내부 점
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, 3 * scale, 0, 2 * Math.PI)
   ctx.fill()
   
   return {
     src: canvas.toDataURL(),
     size: { width, height },
-    options: { offset: { x: centerX, y: height - 5 } }
+    options: { offset: { x: centerX, y: height - 3 * scale } }
   }
 }
 
-// 그룹 마커 이미지 생성 (메인 지도용)
+// 그룹 마커 이미지 생성 (메인 지도용) - MapPin 스타일
 export const createGroupMarkerImage = (category: string, count: number, isSelected: boolean = false) => {
   const color = getMarkerColor(category)
   
-  // 선택된 마커는 살짝만 강조 (카카오맵 스타일)
+  // 선택된 마커는 살짝만 강조
   const scale = isSelected ? 1.1 : 1
   const canvas = document.createElement('canvas')
-  canvas.width = Math.ceil((count > 1 ? 40 : 30) * scale)
-  canvas.height = Math.ceil((count > 1 ? 40 : 35) * scale)
-  const ctx = canvas.getContext('2d')!
   
   if (count > 1) {
     // 여러 제보가 있는 경우 - 원형 마커에 숫자 표시
+    canvas.width = Math.ceil(40 * scale)
+    canvas.height = Math.ceil(40 * scale)
+    const ctx = canvas.getContext('2d')!
+    
     const centerX = canvas.width / 2
     const centerY = canvas.height / 2
     const radius = 18 * scale
     
-    // 선택된 마커에 살짝 그림자 (카카오맵 스타일)
+    // 선택된 마커에 그림자
     if (isSelected) {
       ctx.shadowColor = 'rgba(0, 0, 0, 0.2)'
       ctx.shadowBlur = 4
@@ -114,7 +130,7 @@ export const createGroupMarkerImage = (category: string, count: number, isSelect
       ctx.shadowOffsetY = 2
     }
     
-    // 외곽 테두리 (선택된 경우 살짝 굵게)
+    // 외곽 테두리
     ctx.strokeStyle = '#FFFFFF'
     ctx.lineWidth = (isSelected ? 4 : 3) * scale
     ctx.beginPath()
@@ -124,7 +140,7 @@ export const createGroupMarkerImage = (category: string, count: number, isSelect
     // 그림자 초기화
     ctx.shadowColor = 'transparent'
     
-    // 배경 원 (선택된 경우 색상을 살짝 밝게)
+    // 배경 원
     ctx.fillStyle = isSelected ? lightenColor(color, 0.2) : color
     ctx.beginPath()
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)
@@ -137,11 +153,15 @@ export const createGroupMarkerImage = (category: string, count: number, isSelect
     ctx.textBaseline = 'middle'
     ctx.fillText(count.toString(), centerX, centerY)
   } else {
-    // 단일 제보인 경우 - 기본 마커 모양
-    const centerX = canvas.width / 2
-    const markerY = 15 * scale
+    // 단일 제보인 경우 - MapPin 스타일
+    canvas.width = Math.ceil(24 * scale)
+    canvas.height = Math.ceil(36 * scale)
+    const ctx = canvas.getContext('2d')!
     
-    // 선택된 마커에 살짝 그림자 (카카오맵 스타일)
+    const centerX = canvas.width / 2
+    const centerY = 12 * scale  // 원의 중심
+    
+    // 선택된 마커에 그림자
     if (isSelected) {
       ctx.shadowColor = 'rgba(0, 0, 0, 0.2)'
       ctx.shadowBlur = 4
@@ -149,17 +169,25 @@ export const createGroupMarkerImage = (category: string, count: number, isSelect
       ctx.shadowOffsetY = 2
     }
     
-    // 마커 핀 모양 (선택된 경우 색상을 살짝 밝게)
+    // MapPin 모양 (물방울 형태)
     ctx.fillStyle = isSelected ? lightenColor(color, 0.2) : color
     ctx.beginPath()
-    ctx.arc(centerX, markerY, 12 * scale, 0, 2 * Math.PI)
+    // 상단 원형 부분
+    ctx.arc(centerX, centerY, 12 * scale, 0, 2 * Math.PI)
     ctx.fill()
     
-    // 하단 뾰족한 부분
+    // 하단 뾰족한 부분 (물방울 꼬리)
     ctx.beginPath()
-    ctx.moveTo(centerX, markerY + 8 * scale)
-    ctx.lineTo(centerX - 5 * scale, markerY + 18 * scale)
-    ctx.lineTo(centerX + 5 * scale, markerY + 18 * scale)
+    ctx.moveTo(centerX, centerY + 12 * scale)
+    ctx.lineTo(centerX, canvas.height - 3 * scale)
+    ctx.lineTo(centerX - 2 * scale, centerY + 16 * scale)
+    ctx.closePath()
+    ctx.fill()
+    
+    ctx.beginPath()
+    ctx.moveTo(centerX, centerY + 12 * scale)
+    ctx.lineTo(centerX, canvas.height - 3 * scale)
+    ctx.lineTo(centerX + 2 * scale, centerY + 16 * scale)
     ctx.closePath()
     ctx.fill()
     
@@ -169,17 +197,14 @@ export const createGroupMarkerImage = (category: string, count: number, isSelect
     // 내부 점
     ctx.fillStyle = 'white'
     ctx.beginPath()
-    ctx.arc(centerX, markerY, 4 * scale, 0, 2 * Math.PI)
+    ctx.arc(centerX, centerY, 5 * scale, 0, 2 * Math.PI)
     ctx.fill()
     
-    // 선택된 마커에 외곽 테두리 추가 (살짝만)
-    if (isSelected) {
-      ctx.strokeStyle = '#FFFFFF'
-      ctx.lineWidth = 2 * scale
-      ctx.beginPath()
-      ctx.arc(centerX, markerY, 12 * scale, 0, 2 * Math.PI)
-      ctx.stroke()
-    }
+    // 더 작은 내부 점
+    ctx.fillStyle = isSelected ? lightenColor(color, 0.2) : color
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, 3 * scale, 0, 2 * Math.PI)
+    ctx.fill()
   }
   
   return {

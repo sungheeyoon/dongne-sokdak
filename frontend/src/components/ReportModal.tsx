@@ -21,11 +21,11 @@ interface LocationData {
 }
 
 const categoryOptions = [
-  { value: ReportCategory.NOISE, label: '소음', emoji: '🔊', color: 'bg-red-100 text-red-700' },
-  { value: ReportCategory.TRASH, label: '쓰레기', emoji: '🗑️', color: 'bg-green-100 text-green-700' },
-  { value: ReportCategory.FACILITY, label: '시설물', emoji: '🏗️', color: 'bg-blue-100 text-blue-700' },
-  { value: ReportCategory.TRAFFIC, label: '교통', emoji: '🚗', color: 'bg-yellow-100 text-yellow-700' },
-  { value: ReportCategory.OTHER, label: '기타', emoji: '📝', color: 'bg-gray-100 text-gray-700' }
+  { value: ReportCategory.NOISE, label: '소음', emoji: '🔊', color: 'bg-blue-50 text-blue-700 border-blue-300' },
+  { value: ReportCategory.TRASH, label: '쓰레기', emoji: '🗑️', color: 'bg-blue-50 text-blue-700 border-blue-300' },
+  { value: ReportCategory.FACILITY, label: '시설물', emoji: '🏗️', color: 'bg-blue-50 text-blue-700 border-blue-300' },
+  { value: ReportCategory.TRAFFIC, label: '교통', emoji: '🚙', color: 'bg-blue-50 text-blue-700 border-blue-300' },
+  { value: ReportCategory.OTHER, label: '기타', emoji: '📋', color: 'bg-blue-50 text-blue-700 border-blue-300' }
 ]
 
 export default function ReportModal() {
@@ -276,11 +276,22 @@ export default function ReportModal() {
     console.log('🎯 실제 사용할 좌표 (formData):', { lat: formData.lat, lng: formData.lng })
     console.log('🎯 location 객체의 좌표:', { lat: location.lat, lng: location.lng })
 
-    // location 객체의 좌표를 사용하도록 수정 (더 안전함)
-    // placeName이 있으면 더 구체적인 위치 정보로 사용
-    const finalAddress = location.placeName && location.placeName !== '현재 위치' && location.placeName !== '지도에서 선택'
-      ? location.placeName  // "부평역 지하철역" 같은 구체적인 정보 우선
-      : location.address || formData.address || undefined
+    // 장소명과 주소를 조합하여 저장
+    let finalAddress = location.address || formData.address || undefined
+    
+    // placeName이 있고 의미있는 장소명인 경우 조합해서 저장
+    if (location.placeName && 
+        location.placeName !== '현재 위치' && 
+        location.placeName !== '지도에서 선택' &&
+        location.address) {
+      finalAddress = `${location.placeName}, ${location.address}`
+    } else if (location.placeName && !location.address) {
+      finalAddress = location.placeName
+    }
+    
+    console.log('🏷️ 장소명:', location.placeName)
+    console.log('📍 주소:', location.address)
+    console.log('💾 최종 저장될 주소:', finalAddress)
 
     const reportData: CreateReportData = {
       title: formData.title,
@@ -304,11 +315,15 @@ export default function ReportModal() {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden">
+      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden shadow-2xl border border-gray-300">
         {/* 헤더 */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {step === 'location' ? '제보 위치 선택' : '제보 내용 작성'}
+        <div className="flex items-center justify-between p-6 border-b border-gray-300">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+            {step === 'location' ? (
+              <><MapPin className="w-6 h-6 text-blue-600" /><span>제보 위치 선택</span></>
+            ) : (
+              <><span className="text-blue-600">✏️</span><span>제보 내용 작성</span></>
+            )}
           </h2>
           <button
             onClick={handleClose}
@@ -319,7 +334,7 @@ export default function ReportModal() {
         </div>
 
         {/* 진행 표시바 */}
-        <div className="px-6 py-3 bg-gray-50">
+        <div className="px-6 py-4 bg-blue-50 border-b border-blue-200">
           <div className="flex items-center">
             <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
               step === 'location' ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'
@@ -335,41 +350,53 @@ export default function ReportModal() {
               2
             </div>
           </div>
-          <div className="flex justify-between mt-2 text-sm text-gray-600">
-            <span>위치 선택</span>
-            <span>내용 작성</span>
+          <div className="flex justify-between mt-2 text-sm text-gray-700 font-medium">
+            <span className="flex items-center space-x-1">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              <span>위치 선택</span>
+            </span>
+            <span className="flex items-center space-x-1">
+              <span className="text-blue-600">✏️</span>
+              <span>내용 작성</span>
+            </span>
           </div>
         </div>
 
         {/* 컨텐츠 */}
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
+        <div className="p-6 overflow-y-auto max-h-[65vh] bg-gray-50">
           {step === 'location' ? (
             /* 1단계: 위치 선택 */
             <div className="space-y-6">
               {/* 위치 입력 방법 선택 */}
-              <div className="flex space-x-4">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center space-x-2">
+                  <MapPin className="w-4 h-4 text-blue-600" />
+                  <span>위치 선택 방법</span>
+                </h3>
+                <div className="flex space-x-4">
                 <button
                   onClick={() => setIsMapMode(false)}
                   className={`flex-1 p-3 rounded-lg border-2 transition-all ${
                     !isMapMode 
                       ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
                   <MapPin className="h-5 w-5 mx-auto mb-1" />
-                  <div className="text-sm font-medium">주소 검색</div>
+                  <div className="text-sm font-semibold">주소 검색</div>
                 </button>
                 <button
                   onClick={() => setIsMapMode(true)}
                   className={`flex-1 p-3 rounded-lg border-2 transition-all ${
                     isMapMode 
                       ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
-                  <div className="text-lg mb-1">🗺️</div>
-                  <div className="text-sm font-medium">지도에서 선택</div>
+                  <MapPin className="w-5 h-5 mx-auto mb-1 text-blue-600" />
+                  <div className="text-sm font-semibold">지도에서 선택</div>
                 </button>
+                </div>
               </div>
 
               {!isMapMode ? (
@@ -377,25 +404,25 @@ export default function ReportModal() {
                 <div className="space-y-4">
                   <LocationSearch
                     onLocationSelect={handleLocationSelect}
-                    placeholder="제보할 위치의 주소나 장소명을 검색하세요"
+                    placeholder="제보할 위치의 주소나 장소명을 검색하세요 (예: 신림역, 옵영로 123)"
                   />
                   
                   <div className="text-center">
-                    <span className="text-gray-500 text-sm">또는</span>
+                    <span className="text-gray-600 text-sm font-medium">또는</span>
                   </div>
                   
                   <button
                     onClick={getCurrentLocation}
-                    className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all"
+                    className="w-full p-3 border-2 border-dashed border-gray-400 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all"
                   >
                     <MapPin className="h-5 w-5 mx-auto mb-1 text-blue-600" />
-                    <div className="text-sm font-medium text-blue-600">현재 위치 사용</div>
+                    <div className="text-sm font-semibold text-blue-600">현재 위치 사용</div>
                   </button>
                 </div>
               ) : (
                 /* 지도 선택 모드 */
                 <div className="space-y-4">
-                  <div className="text-sm text-gray-600 p-3 bg-blue-50 rounded-lg">
+                  <div className="text-sm text-gray-700 p-3 bg-blue-50 border border-blue-300 rounded-lg">
                     💡 지도를 드래그하거나 클릭하여 정확한 위치를 선택하세요
                   </div>
                   <LocationPicker
@@ -408,17 +435,17 @@ export default function ReportModal() {
 
               {/* 선택된 위치 표시 */}
               {location && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="p-4 bg-blue-50 border border-blue-300 rounded-lg">
                   <div className="flex items-start space-x-3">
-                    <MapPin className="h-5 w-5 text-green-600 mt-0.5" />
+                    <MapPin className="h-5 w-5 text-blue-600 mt-0.5" />
                     <div className="flex-1">
-                      <div className="font-medium text-green-900">
+                      <div className="font-medium text-blue-900">
                         {location.placeName || '선택된 위치'}
                       </div>
-                      <div className="text-sm text-green-700 mt-1">
+                      <div className="text-sm text-blue-700 mt-1">
                         {location.address}
                       </div>
-                      <div className="text-xs text-green-600 mt-1">
+                      <div className="text-xs text-blue-600 mt-1">
                         위도: {location.lat.toFixed(6)}, 경도: {location.lng.toFixed(6)}
                       </div>
                     </div>
@@ -428,26 +455,26 @@ export default function ReportModal() {
             </div>
           ) : (
             /* 2단계: 내용 작성 */
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-8 bg-white p-6 rounded-lg shadow-sm border border-gray-300">
               {/* 카테고리 선택 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  제보 유형
+                <label className="block text-sm font-semibold text-gray-900 mb-3">
+                  📋 제보 유형 선택
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   {categoryOptions.map((option) => (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => setFormData({ ...formData, category: option.value })}
-                      className={`p-3 rounded-lg border-2 transition-all ${
+                      className={`p-4 rounded-lg border-2 transition-all ${
                         formData.category === option.value
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? `border-blue-500 ${option.color}`
+                          : 'border-gray-300 hover:border-blue-300 hover:bg-blue-50'
                       }`}
                     >
-                      <div className="text-2xl mb-1">{option.emoji}</div>
-                      <div className="text-sm font-medium">{option.label}</div>
+                      <div className="text-3xl mb-2">{option.emoji}</div>
+                      <div className="text-sm font-bold">{option.label}</div>
                     </button>
                   ))}
                 </div>
@@ -455,38 +482,38 @@ export default function ReportModal() {
 
               {/* 제목 입력 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  제목 *
+                <label className="block text-sm font-semibold text-gray-900 mb-3">
+                  ✏️ 제목 *
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   maxLength={100}
-                  placeholder="제보 내용을 간단히 요약해주세요"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="우리 동네 어떤 문제가 있나요?"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 font-medium placeholder:text-gray-400 placeholder:font-normal"
                   required
                 />
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-gray-600 mt-2 font-medium">
                   {formData.title.length}/100자
                 </div>
               </div>
 
               {/* 내용 입력 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  내용 *
+                <label className="block text-sm font-semibold text-gray-900 mb-3">
+                  📝 상세 내용 *
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   maxLength={1000}
-                  rows={4}
-                  placeholder="구체적인 상황을 설명해주세요"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  rows={5}
+                  placeholder="문제가 언제부터 발생했나요? 어떤 상황인지 자세히 알려주세요."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all text-gray-900 font-medium placeholder:text-gray-400 placeholder:font-normal"
                   required
                 />
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-gray-600 mt-2 font-medium">
                   {formData.description.length}/1000자
                 </div>
               </div>
@@ -501,7 +528,7 @@ export default function ReportModal() {
         </div>
 
         {/* 하단 버튼 */}
-        <div className="px-6 py-4 border-t bg-gray-50 flex justify-between">
+        <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-between">
           {step === 'location' ? (
             <>
               <button
@@ -518,7 +545,7 @@ export default function ReportModal() {
                 disabled={!location}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                다음 {location ? '✓' : '(위치 선택 필요)'}
+                다음 단계 {location ? '✓' : '(위치 선택 필요)'}
               </button>
             </>
           ) : (

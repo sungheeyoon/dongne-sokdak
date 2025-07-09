@@ -12,7 +12,8 @@ import { useQuery } from '@tanstack/react-query'
 import { getReports, getReportsInBounds } from '@/lib/api/reports'
 import { useMyProfile } from '@/hooks/useProfile'
 import { useAuth } from '@/hooks/useAuth'
-import LocationSearch from '@/components/map/LocationSearch'
+import UnifiedSearch from '@/components/UnifiedSearch'
+import { MapPin, FileText } from 'lucide-react'
 import LoadingSpinner, { CardSkeleton } from '@/components/ui/LoadingSpinner'
 import ErrorDisplay from '@/components/ui/ErrorDisplay'
 import LocalhostGuide from '@/components/ui/LocalhostGuide'
@@ -58,7 +59,7 @@ export default function Home() {
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState<string>('')
-  const [searchInput, setSearchInput] = useState<string>('')
+  const [searchMode, setSearchMode] = useState<'location' | 'text'>('location')
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null)
   const [searchedLocation, setSearchedLocation] = useState<{ placeName: string; address: string } | null>(null)
   const [userCurrentLocation, setUserCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -332,15 +333,6 @@ export default function Home() {
     }
   }
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    setSearchQuery(searchInput.trim())
-  }
-
-  const clearSearch = () => {
-    setSearchInput('')
-    setSearchQuery('')
-  }
 
   // 카테고리 한글 변환 함수
   const getCategoryLabel = (category: string) => {
@@ -401,16 +393,44 @@ export default function Home() {
             )}
           </div>
 
-          {/* 지역 검색창 */}
+          {/* 통합 검색창 */}
           <div className="mb-4">
+            {/* 검색 모드 탭 */}
+            <div className="flex mb-3 bg-gray-100 rounded-lg p-1 max-w-lg">
+              <button
+                onClick={() => setSearchMode('location')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md font-medium transition-all flex-1 justify-center ${
+                  searchMode === 'location'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <MapPin className="h-4 w-4" />
+                <span>위치 검색</span>
+              </button>
+              <button
+                onClick={() => setSearchMode('text')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md font-medium transition-all flex-1 justify-center ${
+                  searchMode === 'text'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <FileText className="h-4 w-4" />
+                <span>제보 검색</span>
+              </button>
+            </div>
+
+            {/* 검색 입력창과 현재 지역 검색 버튼을 같은 행에 배치 */}
             <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
-              <LocationSearch
+              <UnifiedSearch
+                searchMode={searchMode}
                 onLocationSelect={handleLocationSearch}
-                placeholder="동네, 건물명, 지번을 검색하여 해당 지역 제보를 확인하세요"
+                onTextSearch={(query) => setSearchQuery(query)}
                 className="max-w-lg flex-1"
               />
               
-              {/* 이 지역 재검색 버튼 - 제보 검색창 옆에 위치 */}
+              {/* 이 지역 재검색 버튼 */}
               {currentMapBounds && (
                 <button
                   onClick={handleRegionSearch}
@@ -432,8 +452,8 @@ export default function Home() {
                       <svg className="w-3 md:w-4 h-3 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
-                      <span className="hidden md:inline">이 지역 재검색</span>
-                      <span className="md:hidden">재검색</span>
+                      <span className="hidden md:inline">현재 지역 검색</span>
+                      <span className="md:hidden">지역검색</span>
                     </>
                   )}
                 </button>
@@ -548,38 +568,6 @@ export default function Home() {
 
         {/* 검색 및 필터 영역 */}
         <div className="mb-6">
-          {/* 검색바 */}
-          <form onSubmit={handleSearch} className="max-w-2xl mb-4">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-500 text-lg">🔍</span>
-              </div>
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="block w-full pl-10 pr-20 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-900 placeholder-gray-500"
-                placeholder="제보 제목이나 내용으로 검색..."
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center">
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="mr-2 text-gray-400 hover:text-gray-600 p-1 touch-manipulation"
-                  >
-                    ✕
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-r-lg font-semibold transition-colors touch-manipulation"
-                >
-                  검색
-                </button>
-              </div>
-            </div>
-          </form>
 
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-lg md:text-xl font-semibold text-gray-900">

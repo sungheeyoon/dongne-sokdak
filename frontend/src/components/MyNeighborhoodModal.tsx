@@ -161,15 +161,7 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
             </div>
           )}
 
-          {/* 안내 메시지 */}
-          <div className="text-xs text-gray-500 space-y-1">
-            <p>💡 내 동네를 설정하면:</p>
-            <ul className="ml-4 space-y-1">
-              <li>• 해당 동네 기준으로 근처 제보를 우선 표시</li>
-              <li>• 동네 범위(1km/3km/6km) 내 제보 필터링</li>
-              <li>• 더 관련성 높은 지역 정보 제공</li>
-            </ul>
-          </div>
+          
         </div>
       </div>
     </div>

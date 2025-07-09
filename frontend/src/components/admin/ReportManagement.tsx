@@ -155,7 +155,7 @@ export default function ReportManagementComponent() {
               placeholder="제목, 내용, 사용자명으로 검색..."
               value={filters.search || ''}
               onChange={(e) => handleFilterChange({ search: e.target.value || undefined })}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium placeholder:text-gray-400 placeholder:font-normal"
             />
           </div>
         </div>

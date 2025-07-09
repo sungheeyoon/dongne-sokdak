@@ -2,14 +2,8 @@
 
 import React, { useState, useCallback, useEffect } from 'react'
 import { Map, MapMarker } from 'react-kakao-maps-sdk'
-import { Target, Navigation } from 'lucide-react'
+import { MapPin, Navigation } from 'lucide-react'
 import { createSingleReportMarkerImage } from '@/lib/utils/mapMarkerUtils'
-
-declare global {
-  interface Window {
-    kakao: any;
-  }
-}
 
 interface LocationPickerProps {
   onLocationSelect: (location: { lat: number; lng: number; address: string }) => void
@@ -240,14 +234,14 @@ export default function LocationPicker({
               position={selectedLocation}
               image={{
                 src: 'data:image/svg+xml;base64,' + btoa(`
-                  <svg width="40" height="50" viewBox="0 0 40 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M20 0C31.0457 0 40 8.95431 40 20C40 31.0457 25 50 20 50C15 50 0 31.0457 0 20C0 8.95431 8.95431 0 20 0Z" fill="#22C55E"/>
-                    <circle cx="20" cy="20" r="8" fill="white"/>
-                    <circle cx="20" cy="20" r="4" fill="#22C55E"/>
+                  <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 0C18.627 0 24 5.373 24 12C24 18.627 12 36 12 36C12 36 0 18.627 0 12C0 5.373 5.373 0 12 0Z" fill="#22C55E"/>
+                    <circle cx="12" cy="12" r="5" fill="white"/>
+                    <circle cx="12" cy="12" r="3" fill="#22C55E"/>
                   </svg>
                 `),
-                size: { width: 40, height: 50 },
-                options: { offset: { x: 20, y: 50 } }
+                size: { width: 24, height: 36 },
+                options: { offset: { x: 12, y: 36 } }
               }}
             />
           )}
@@ -279,7 +273,7 @@ export default function LocationPicker({
             className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg shadow-xl font-medium transition-colors flex items-center space-x-2"
             style={{ zIndex: 1000, position: 'relative' }}
           >
-            <Target className="h-4 w-4" />
+            <MapPin className="h-4 w-4" />
             <span>이 위치로 선택</span>
           </button>
         </div>
@@ -288,7 +282,7 @@ export default function LocationPicker({
       {/* 현재 중심 위치 정보 */}
       <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
         <div className="flex items-center space-x-2 text-gray-700">
-          <Target className="h-4 w-4" />
+          <MapPin className="h-4 w-4 text-blue-600" />
           <span className="text-sm font-medium">현재 중심 위치</span>
         </div>
         <div className="text-xs text-gray-600 mt-1">

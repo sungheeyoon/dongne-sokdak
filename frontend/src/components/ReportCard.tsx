@@ -3,7 +3,8 @@
 import { Report, ReportCategory, ReportStatus } from '@/types'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import MarkerIcon from '@/components/ui/MarkerIcon'
+import { MapPin } from 'lucide-react'
+import { parseReportLocation } from '@/lib/utils/locationDisplayUtils'
 
 interface ReportCardProps {
   report: Report
@@ -45,10 +46,13 @@ export default function ReportCard({ report }: ReportCardProps) {
     router.push(`/reports/${report.id}`)
   }
 
+  // 위치 정보 파싱
+  const locationInfo = parseReportLocation(report.address)
+
   return (
     <div 
       onClick={handleClick}
-      className="bg-white rounded-xl shadow-sm border-2 border-gray-100 p-4 md:p-6 hover:shadow-lg hover:border-blue-200 transition-all duration-200 cursor-pointer transform hover:-translate-y-1 active:scale-95 flex flex-col min-h-[280px]"
+      className="bg-white rounded-xl shadow-sm border-2 border-gray-300 p-4 md:p-6 hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer transform hover:-translate-y-1 active:scale-95 flex flex-col min-h-[280px]"
     >
       {/* 상단: 제목과 상태 */}
       <div className="flex justify-between items-start mb-3 md:mb-4">
@@ -67,7 +71,7 @@ export default function ReportCard({ report }: ReportCardProps) {
       
       {/* 이미지 (있을 경우) */}
       {report.imageUrl && (
-        <div className="mb-3 md:mb-4 relative overflow-hidden rounded-lg border border-gray-200">
+        <div className="mb-3 md:mb-4 relative overflow-hidden rounded-lg border border-gray-300">
           <Image
             src={report.imageUrl} 
             alt="제보 이미지" 
@@ -113,12 +117,25 @@ export default function ReportCard({ report }: ReportCardProps) {
 
         {/* 주소 및 위치 (있을 경우) */}
         {(report.address || report.location) && (
-          <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t border-gray-100">
-            <div className="flex items-center">
-              <MarkerIcon category={report.category} className="w-4 h-5 mr-2" />
-              <span className="text-gray-600 text-xs md:text-sm truncate">
-                {report.address || `위도 ${report.location.lat.toFixed(4)}, 경도 ${report.location.lng.toFixed(4)}`}
-              </span>
+          <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t border-gray-200">
+            <div className="flex items-start">
+              <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-blue-600" />
+              <div className="flex-1 min-w-0">
+                {locationInfo.showSeparate ? (
+                  <>
+                    <div className="font-medium text-gray-900 text-xs md:text-sm truncate">
+                      {locationInfo.placeName}
+                    </div>
+                    <div className="text-gray-600 text-xs truncate">
+                      {locationInfo.address}
+                    </div>
+                  </>
+                ) : (
+                  <span className="text-gray-600 text-xs md:text-sm truncate">
+                    {locationInfo.address || `위도 ${report.location.lat.toFixed(4)}, 경도 ${report.location.lng.toFixed(4)}`}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         )}

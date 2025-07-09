@@ -111,7 +111,7 @@ export default function MyReportsPage() {
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all border ${
                     selectedStatus === option.value
                       ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
                   }`}
                 >
                   {option.label}
@@ -128,38 +128,23 @@ export default function MyReportsPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-gray-100 rounded-lg h-64 animate-pulse"></div>
+              <div key={i} className="bg-gray-200 rounded-xl h-64 animate-pulse"></div>
             ))}
           </div>
         ) : reports.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {reports.map((report) => (
-              <div key={report.id} className="relative">
-                <ReportCard report={report} />
-                
-                {/* 수정 버튼 */}
-                <div className="absolute top-4 right-4">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditingReport(report)
-                    }}
-                    className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-1 rounded-md text-sm font-medium shadow-sm transition-colors"
-                  >
-                    ✏️ 수정
-                  </button>
-                </div>
-              </div>
+              <ReportCard key={report.id} report={report} />
             ))}
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">📝</div>
+            <div className="text-6xl mb-4">✨</div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               {selectedStatus === 'all' ? '작성한 제보가 없습니다' : `${statusOptions.find(opt => opt.value === selectedStatus)?.label} 제보가 없습니다`}
             </h3>
             <p className="text-gray-600 mb-6">
-              새로운 제보를 작성해서 우리 동네 문제를 알려주세요!
+              새로운 제보를 작성해서 우리 동네를 더 살기 좋게 만들어보세요!
             </p>
             <button
               onClick={() => window.location.href = '/'}

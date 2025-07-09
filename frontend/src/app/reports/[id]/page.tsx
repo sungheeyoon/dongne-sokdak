@@ -13,6 +13,7 @@ import VoteButton from '@/components/VoteButton'
 import { ReportCategory, ReportStatus } from '@/types'
 import dynamic from 'next/dynamic'
 import { useState } from 'react'
+import { parseReportLocation } from '@/lib/utils/locationDisplayUtils'
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), {
   ssr: false,
@@ -120,6 +121,9 @@ export default function ReportDetailPage() {
   }
 
   const isOwner = user && user.id === report.userId
+  
+  // 위치 정보 파싱
+  const locationInfo = parseReportLocation(report.address)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -133,82 +137,117 @@ export default function ReportDetailPage() {
       />
       
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* 제보 내용 카드 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          {/* 헤더 섹션 */}
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <div className="flex items-center space-x-3 mb-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[report.status]}`}>
-                  {statusLabels[report.status]}
-                </span>
-                <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold border border-blue-200">
-                  {categoryLabels[report.category]}
-                </span>
+        {/* 제보 정보 카드 */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">
+          {/* 헤더 섹션 - 카테고리, 상태, 제목, 시간 */}
+          <div className="p-6 border-b border-gray-300">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-3">
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[report.status]}`}>
+                    {statusLabels[report.status]}
+                  </span>
+                  <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold border border-blue-300">
+                    {categoryLabels[report.category]}
+                  </span>
+                </div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">{report.title}</h1>
+                <div className="text-sm text-gray-600 font-medium">
+                  {formatDate(report.createdAt)}
+                </div>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{report.title}</h1>
-              <p className="text-sm text-gray-700 font-medium">
-                {formatDate(report.createdAt)}
-                {report.address && ` • ${report.address}`}
-              </p>
+              
+              {isOwner && (
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                  >
+                    ✏️ 수정
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleteReportMutation.isPending}
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors"
+                  >
+                    {deleteReportMutation.isPending ? '삭제 중...' : '🗑️ 삭제'}
+                  </button>
+                </div>
+              )}
             </div>
-            
-            {isOwner && (
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-                >
-                  ✏️ 수정
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleteReportMutation.isPending}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors"
-                >
-                  {deleteReportMutation.isPending ? '삭제 중...' : '🗑️ 삭제'}
-                </button>
-              </div>
-            )}
           </div>
 
           {/* 이미지 섹션 */}
           {report.imageUrl && (
-            <div className="mb-6">
+            <div className="border-b border-gray-300">
               <img 
                 src={report.imageUrl} 
                 alt="제보 이미지" 
-                className="w-full max-h-96 object-cover rounded-lg border border-gray-200"
+                className="w-full max-h-96 object-cover"
               />
             </div>
           )}
 
-          {/* 내용 섹션 */}
-          <div className="mb-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-3">상세 내용</h2>
-            <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">{report.description}</p>
+          {/* 상세 내용 섹션 */}
+          <div className="p-6 border-b border-gray-300">
+            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <span className="w-2 h-2 bg-blue-600 rounded-full mr-3"></span>
+              상세 내용
+            </h2>
+            <div className="prose prose-sm max-w-none">
+              <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">{report.description}</p>
+            </div>
           </div>
 
-          {/* 지도 섹션 */}
-          <div className="mb-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-3">위치</h2>
-            <MapComponent 
-              reports={[report]} 
-              center={report.location}
-              zoom={2}
-              height="300px" 
-            />
+          {/* 위치 섹션 */}
+          <div className="p-6 border-b border-gray-300">
+            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <span className="w-2 h-2 bg-red-600 rounded-full mr-3"></span>
+              위치 정보
+            </h2>
+            
+            {/* 주소 정보 */}
+            {report.address && (
+              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                {locationInfo.showSeparate ? (
+                  <div>
+                    <div className="font-semibold text-gray-900 text-lg mb-1">
+                      {locationInfo.placeName}
+                    </div>
+                    <div className="text-gray-600 text-sm">
+                      {locationInfo.address}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-gray-800 font-medium">
+                    {locationInfo.address}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* 지도 */}
+            <div className="rounded-lg overflow-hidden border border-gray-300">
+              <MapComponent 
+                reports={[report]} 
+                center={report.location}
+                zoom={2}
+                height="300px" 
+              />
+            </div>
           </div>
 
           {/* 액션 섹션 */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-            <VoteButton reportId={report.id} initialCount={report.voteCount} />
-            <button
-              onClick={() => router.push('/')}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
-            >
-              목록으로 돌아가기
-            </button>
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <VoteButton reportId={report.id} initialCount={report.voteCount} />
+              <button
+                onClick={() => router.push('/')}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+              >
+                목록으로 돌아가기
+              </button>
+            </div>
           </div>
         </div>
 

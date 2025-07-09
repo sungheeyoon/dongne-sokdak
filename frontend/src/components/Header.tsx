@@ -55,7 +55,7 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-white shadow-lg border-b border-gray-300 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* 로고 섹션 */}
@@ -112,9 +112,9 @@ export default function Header() {
                   onClick={openReportModal}
                   className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5"
                 >
-                  📝 제보하기
+                  ✏️ 제보하기
                 </button>
-                <div className="flex items-center space-x-3 bg-white border border-gray-200 rounded-lg px-4 py-2 shadow-sm">
+                <div className="flex items-center space-x-3 bg-white border border-gray-300 rounded-lg px-4 py-2 shadow-sm">
                   <button
                     onClick={() => router.push('/profile')}
                     className="flex items-center space-x-2 hover:bg-gray-50 p-1 rounded-md transition-colors"
@@ -161,7 +161,7 @@ export default function Header() {
                 onClick={openReportModal}
                 className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white p-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200 active:scale-95"
               >
-                📝
+                ✏️
               </button>
             )}
             <button
@@ -181,7 +181,7 @@ export default function Header() {
 
         {/* 모바일 메뉴 */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 py-4">
+          <div className="md:hidden border-t border-gray-300 py-4">
             <div className="flex flex-col space-y-3">
               {user ? (
                 <>
