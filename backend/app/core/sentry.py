@@ -9,8 +9,8 @@ def init_sentry():
     """Sentry 초기화"""
     sentry_dsn = os.getenv("SENTRY_DSN")
     
-    if not sentry_dsn:
-        # SENTRY_DSN not configured, error tracking disabled
+    if not sentry_dsn or sentry_dsn.strip() == "":
+        print("⚠️ SENTRY_DSN not configured, error tracking disabled")
         return
     
     # 환경별 설정
