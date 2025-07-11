@@ -141,3 +141,4 @@ async def log_admin_activity(
         
     except Exception as e:
         # Failed to log admin activity
+        pass
