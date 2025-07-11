@@ -35,6 +35,7 @@ Thumbs.db
 **/*key*
 **/*token*
 !**/public/**
+!backend/app/schemas/token.py
 
 # ========================================
 # 로그 및 디버그 파일
