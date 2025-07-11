@@ -21,7 +21,7 @@ def init_sentry():
         dsn=sentry_dsn,
         environment=environment,
         integrations=[
-            FastApiIntegration(auto_enabling_integrations=True),
+            FastApiIntegration(),
             SqlalchemyIntegration(),
             LoggingIntegration(
                 level=None,  # 모든 로그 레벨 캡처
