@@ -24,6 +24,8 @@ interface MapComponentProps {
   onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void
   onMarkerClick?: (group: GroupedReport) => void // 마커 클릭 이벤트 추가
   selectedMarkerId?: string // 선택된 마커 ID
+  onRegionSearch?: () => void // 지역 검색 이벤트
+  showRegionSearchButton?: boolean // 지역 검색 버튼 표시 여부
 }
 
 export default function MapComponent({ 
@@ -34,7 +36,9 @@ export default function MapComponent({
   onLocationSelect,
   onBoundsChange,
   onMarkerClick,
-  selectedMarkerId
+  selectedMarkerId,
+  onRegionSearch,
+  showRegionSearchButton = false
 }: MapComponentProps) {
   // center prop이 null인 경우 기본값 사용
   const safeCenter = center && center.lat && center.lng ? center : { lat: 37.5665, lng: 126.9780 }
