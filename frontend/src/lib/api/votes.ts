@@ -32,7 +32,7 @@ export const checkUserVote = async (reportId: string): Promise<boolean> => {
   try {
     const response = await authenticatedRequest(
       createApiUrl(`/votes/check/${reportId}`) // 끝 슬래시 제거
-    )
+    ) as any
     return response.voted || false
   } catch (error) {
     console.log('❌ Vote check failed:', error)
@@ -45,7 +45,7 @@ export const getVoteCount = async (reportId: string): Promise<number> => {
   try {
     const response = await apiRequest(
       createApiUrl(`/votes/count/${reportId}`) // 끝 슬래시 제거
-    )
+    ) as any
     return response.count || 0
   } catch (error) {
     console.log('❌ Vote count failed:', error)

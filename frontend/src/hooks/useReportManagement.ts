@@ -98,7 +98,7 @@ export function useReportManagement() {
       if (filters?.assigned_admin_id) queryParams.append('assigned_admin_id', filters.assigned_admin_id);
 
       const reports = await apiRequest(`/admin/reports?${queryParams.toString()}`);
-      setReports(reports);
+      setReports(reports as ReportManagement[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : '제보 목록 조회 실패');
     } finally {
@@ -113,8 +113,8 @@ export function useReportManagement() {
       setError(null);
       
       const report = await apiRequest(`/admin/reports/${reportId}`);
-      setSelectedReport(report);
-      return report;
+      setSelectedReport(report as ReportDetail);
+      return report as ReportDetail;
     } catch (err) {
       setError(err instanceof Error ? err.message : '제보 상세 조회 실패');
       throw err;

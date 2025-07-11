@@ -30,7 +30,7 @@ export default function KakaoCallbackPage() {
         }
 
         // 카카오 로그인 처리
-        const response = await handleKakaoCallback(code)
+        const response = await handleKakaoCallback(code) as any
         
         if (response.is_new_user) {
           // 새 사용자인 경우 환영 메시지와 함께 홈으로

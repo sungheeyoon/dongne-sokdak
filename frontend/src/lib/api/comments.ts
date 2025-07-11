@@ -76,7 +76,7 @@ export const getCommentsByReportId = async (reportId: string): Promise<Comment[]
     )
     
     console.log('💬 Comments response:', response)
-    return response.map(transformCommentData)
+    return (response as any[]).map(transformCommentData)
   } catch (error: any) {
     console.error('❌ Failed to get comments:', error)
     // 댓글 로딩 실패시 빈 배열 반환

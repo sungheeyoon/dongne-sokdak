@@ -1,5 +1,12 @@
 // 카카오맵 유틸리티 함수들
 
+// 타입 안전성을 위한 전역 선언
+declare global {
+  interface Window {
+    kakao: any;
+  }
+}
+
 export const checkKakaoMapStatus = () => {
   const status = {
     windowExists: typeof window !== 'undefined',
@@ -76,10 +83,10 @@ export const waitForKakaoMaps = (): Promise<boolean> => {
             // window.kakao.maps 존재 확인
             if (!window.kakao.maps) {
               // autoload=false인 경우 수동으로 load 호출
-              if (typeof window.kakao.maps?.load === 'function') {
+              if (typeof window.kakao.load === 'function') {
                 console.log('🔄 카카오맵 수동 로드 시도...')
                 try {
-                  window.kakao.maps.load(() => {
+                  window.kakao.load(() => {
                     console.log('✅ 카카오맵 수동 로드 완료')
                     setTimeout(checkKakaoScript, 100)
                   })
@@ -93,10 +100,10 @@ export const waitForKakaoMaps = (): Promise<boolean> => {
               // window.kakao가 있지만 maps가 없는 경우, load 함수 체크
               if (window.kakao && !window.kakao.maps) {
                 // kakao 객체는 있지만 maps가 아직 로드되지 않은 경우
-                if (window.kakao.maps?.load) {
+                if (window.kakao.load) {
                   console.log('🔄 카카오맵 수동 로드 재시도...')
                   try {
-                    window.kakao.maps.load(() => {
+                    window.kakao.load(() => {
                       console.log('✅ 카카오맵 수동 로드 완료 (재시도)')
                       setTimeout(checkKakaoScript, 100)
                     })
@@ -127,7 +134,7 @@ export const waitForKakaoMaps = (): Promise<boolean> => {
                 console.log('📊 kakao 객체 상태:', {
                   kakao: !!window.kakao,
                   maps: !!window.kakao.maps,
-                  loadFunction: typeof window.kakao.maps?.load,
+                  loadFunction: typeof window.kakao.load,
                   kakaoType: typeof window.kakao
                 })
               }

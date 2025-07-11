@@ -133,7 +133,7 @@ export function useAuth() {
     setLoading(true)
     
     try {
-      const response = await loginWithKakao(authCode)
+      const response = await loginWithKakao(authCode) as any
       
       // 소셜 로그인 토큰 저장
       localStorage.setItem('social_token', response.access_token)

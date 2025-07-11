@@ -44,7 +44,7 @@ const UserRow: React.FC<UserRowProps> = ({ user, onRoleChange, onToggleActive, c
           <div className="flex items-center space-x-2">
             <select
               value={newRole}
-              onChange={(e) => setNewRole(e.target.value)}
+              onChange={(e) => setNewRole(e.target.value as "user" | "moderator" | "admin")}
               className="text-sm border rounded px-2 py-1"
             >
               <option value="user">일반사용자</option>

@@ -115,7 +115,7 @@ export function useAdmin() {
       setLoading(true);
       setError(null);
       const stats = await apiRequest('/admin/dashboard/stats');
-      setAdminStats(stats);
+      setAdminStats(stats as AdminStats);
     } catch (err) {
       setError(err instanceof Error ? err.message : '통계 조회 실패');
     } finally {
@@ -143,7 +143,7 @@ export function useAdmin() {
       if (params?.search) queryParams.append('search', params.search);
 
       const users = await apiRequest(`/admin/users?${queryParams.toString()}`);
-      setUsers(users);
+      setUsers(users as UserManagement[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : '사용자 목록 조회 실패');
     } finally {
@@ -232,9 +232,9 @@ export function useAdmin() {
         users.length === 0 ? apiRequest('/admin/users?limit=100') : Promise.resolve(users)
       ]);
       
-      setActivities(activities);
+      setActivities(activities as AdminActivity[]);
       if (users.length === 0) {
-        setUsers(usersList);
+        setUsers(usersList as UserManagement[]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '활동 로그 조회 실패');

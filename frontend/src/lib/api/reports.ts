@@ -67,7 +67,7 @@ export const getReports = async (filter: ReportsFilter = {}): Promise<Report[]> 
   const response = await apiRequest(url)
   console.log('📊 Response data:', response)
 
-  return response.map(transformReportData)
+  return (response as any[]).map(transformReportData)
 }
 
 // 데이터 변환 헬퍼 함수
@@ -156,9 +156,9 @@ export const getReportsInBounds = async (params: {
   console.log('🗺️ Map bounds reports request:', url)
   
   const response = await apiRequest(url)
-  console.log('📊 Map bounds reports response:', response.length, 'reports')
+  console.log('📊 Map bounds reports response:', (response as any[]).length, 'reports')
   
-  return response.map(transformReportData)
+  return (response as any[]).map(transformReportData)
 }
 
 // 근처 제보 조회 (기존 방식 - 호환성 유지)
@@ -181,9 +181,9 @@ export const getNearbyReports = async (params: {
   console.log('📍 Nearby reports request:', url)
   
   const response = await apiRequest(url)
-  console.log('📊 Nearby reports response:', response.length, 'reports')
+  console.log('📊 Nearby reports response:', (response as any[]).length, 'reports')
   
-  return response.map(transformReportData)
+  return (response as any[]).map(transformReportData)
 }
 
 // 내 동네 기준 제보 조회 (새로 추가된 API)
@@ -202,7 +202,7 @@ export const getMyNeighborhoodReports = async (params?: {
   console.log('🏠 My neighborhood reports request:', url)
   
   const response = await authenticatedRequest(url)
-  console.log('📊 My neighborhood reports response:', response.length, 'reports')
+  console.log('📊 My neighborhood reports response:', (response as any[]).length, 'reports')
   
-  return response.map(transformReportData)
+  return (response as any[]).map(transformReportData)
 }
