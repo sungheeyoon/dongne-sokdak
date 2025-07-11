@@ -10,7 +10,7 @@ def init_sentry():
     sentry_dsn = os.getenv("SENTRY_DSN")
     
     if not sentry_dsn:
-        print("Warning: SENTRY_DSN not configured. Error tracking disabled.")
+        # SENTRY_DSN not configured, error tracking disabled
         return
     
     # 환경별 설정

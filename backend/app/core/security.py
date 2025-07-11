@@ -16,7 +16,7 @@ supabase_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> Optional[str]:
     if not token:
-        print("⚠️ 토큰 없음")
+        # No token provided
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="인증 토큰이 필요합니다",
@@ -24,26 +24,26 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Optional[str]
         )
 
     try:
-        print(f"🔐 받은 토큰 (첫 50자): {token[:50]}...")
+        # Token received for verification
 
         # Supabase JWT 토큰 검증
         try:
             response = supabase_client.auth.get_user(token)
             user = getattr(response, "user", None)
             if user is None or getattr(user, "id", None) is None:
-                print("⚠️ Supabase 사용자 없음")
+                # No Supabase user found
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="유효하지 않은 토큰입니다",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-            print(f"✅ Supabase 사용자 검증 성공: {user.id}")
+            # Supabase user verification successful
             return user.id
 
         except HTTPException:
             raise
         except Exception as supabase_error:
-            print(f"❌ Supabase 토큰 검증 실패: {str(supabase_error)}")
+            # Supabase token verification failed
 
             # 자체 JWT 검증
             try:
@@ -55,10 +55,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Optional[str]
                         detail="유효하지 않은 토큰 형식입니다",
                         headers={"WWW-Authenticate": "Bearer"},
                     )
-                print(f"✅ 자체 JWT 검증 성공: {user_id}")
+                # Self JWT verification successful
                 return user_id
             except JWTError as jwt_error:
-                print(f"❌ 자체 JWT 검증도 실패: {str(jwt_error)}")
+                # Self JWT verification also failed
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="유효하지 않은 토큰입니다",
@@ -68,7 +68,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Optional[str]
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ 전체 인증 과정 실패: {str(e)}")
+        # Authentication process failed
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="인증 처리 중 오류가 발생했습니다",

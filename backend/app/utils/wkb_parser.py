@@ -40,7 +40,7 @@ def parse_wkb_point(wkb_hex: str) -> tuple[float, float] | None:
         return (x, y)  # (lng, lat)
         
     except Exception as e:
-        print(f"WKB parsing error: {e}")
+        # WKB parsing error occurred
         return None
 
 def convert_wkb_to_location(wkb_data: str) -> dict:

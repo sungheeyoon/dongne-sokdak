@@ -93,7 +93,7 @@ export const authenticatedRequest = async (
     if (session?.access_token) {
       headers['Authorization'] = `Bearer ${session.access_token}`
     } else {
-      console.warn('⚠️ No access token found!')
+      // No access token found
       throw new Error('로그인이 필요합니다')
     }
 

@@ -10,11 +10,11 @@ async def get_admin_user(
 ) -> Dict[str, Any]:
     """관리자 권한이 있는 사용자만 접근 허용"""
     
-    print(f"🔍 Admin auth check - user_id: {current_user_id}")
+    # Admin auth check
     
     # 현재 사용자 정보 가져오기
     if not current_user_id:
-        print("❌ No user_id provided")
+        # No user_id provided
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="인증이 필요합니다"
@@ -25,7 +25,7 @@ async def get_admin_user(
         response = supabase.table("profiles").select("*").eq("id", current_user_id).single().execute()
         
         if not response.data:
-            print(f"❌ Profile not found for user_id: {current_user_id}")
+            # Profile not found
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="사용자를 찾을 수 없습니다"
@@ -35,24 +35,24 @@ async def get_admin_user(
         role = profile.get("role", "user")
         is_active = profile.get("is_active", True)
         
-        print(f"✅ Profile found - role: {role}, is_active: {is_active}")
+        # Profile found
         
         # 관리자 권한 확인
         is_admin = role in ["admin", "moderator"] and is_active
         if not is_admin:
-            print(f"❌ Not admin - role: {role}, is_admin: {is_admin}")
+            # Not admin
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="관리자 권한이 필요합니다"
             )
         
-        print(f"✅ Admin access granted for user: {current_user_id}")
+        # Admin access granted
         return profile
         
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
-        print(f"❌ Database error: {e}")
+        # Database error occurred
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="데이터베이스 오류가 발생했습니다"
@@ -137,7 +137,7 @@ async def log_admin_activity(
         }
         
         supabase.table("admin_activity_logs").insert(log_data).execute()
-        print(f"✅ Admin activity logged: {action}")
+        # Admin activity logged
         
     except Exception as e:
-        print(f"❌ Failed to log admin activity: {e}")
+        # Failed to log admin activity

@@ -19,7 +19,8 @@
       "Bash(npm cache clean:*)",
       "Bash(npm install)",
       "Bash(npx tsc:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }
