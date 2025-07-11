@@ -21,6 +21,7 @@ export default function RootLayout({
     <html lang="ko">
       <head>
         {/* 카카오맵 스크립트 */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script
           type="text/javascript"
           src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY}&libraries=services,clusterer&autoload=true`}
