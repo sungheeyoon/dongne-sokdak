@@ -9,7 +9,8 @@ def init_sentry():
     """Sentry 초기화"""
     sentry_dsn = os.getenv("SENTRY_DSN")
     
-    if not sentry_dsn or sentry_dsn.strip() == "":
+    # DSN이 없거나 빈 문자열이거나 플레이스홀더인 경우 스킵
+    if not sentry_dsn or sentry_dsn.strip() == "" or sentry_dsn.startswith("your-"):
         print("⚠️ SENTRY_DSN not configured, error tracking disabled")
         return
     
