@@ -7,11 +7,15 @@ from app.core.config import settings
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, User
 from app.schemas.social import KakaoAuthRequest, SocialLoginResponse
+from app.schemas.webhook import KakaoWebhookRequest, KakaoWebhookResponse
 from app.services.kakao_oauth import kakao_oauth_service
 from app.db.supabase_client import supabase
 from app.api.deps import get_supabase
 from supabase.client import Client
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -218,4 +222,75 @@ async def kakao_login(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"카카오 로그인 처리 중 오류: {str(e)}"
+        )
+
+
+@router.post("/kakao/webhook", response_model=KakaoWebhookResponse)
+async def kakao_webhook(
+    webhook_data: KakaoWebhookRequest,
+    supabase: Client = Depends(get_supabase)
+) -> Any:
+    """
+    카카오 연결 끊기 웹훅 처리
+    사용자가 카카오에서 앱 연결을 끊었을 때 호출됩니다.
+    """
+    try:
+        logger.info(f"카카오 웹훅 수신: {webhook_data.event_type}, 사용자 ID: {webhook_data.data.user_id}")
+        
+        # 연결 끊기 이벤트 처리
+        if webhook_data.event_type == "user.unlinked":
+            kakao_user_id = str(webhook_data.data.user_id)
+            
+            # 해당 카카오 ID를 가진 사용자 찾기
+            user_result = supabase.table("profiles").select("*").eq("kakao_id", kakao_user_id).execute()
+            
+            if user_result.data and len(user_result.data) > 0:
+                user = user_result.data[0]
+                user_id = user["id"]
+                
+                # 카카오 정보 제거 (계정은 유지, 카카오 연동만 해제)
+                update_data = {
+                    "kakao_id": None,
+                    "social_provider": None
+                }
+                
+                # 만약 카카오로만 가입한 사용자라면 계정을 비활성화
+                if not user.get("email") or user.get("social_provider") == "kakao":
+                    update_data["is_active"] = False
+                    logger.info(f"카카오 전용 계정 비활성화: {user_id}")
+                
+                supabase.table("profiles").update(update_data).eq("id", user_id).execute()
+                
+                # 관리자 활동 로그에 기록 (시스템 이벤트로)
+                log_data = {
+                    "admin_id": None,  # 시스템 이벤트
+                    "action": "KAKAO_UNLINKED",
+                    "target_type": "user",
+                    "target_id": user_id,
+                    "details": {
+                        "kakao_user_id": kakao_user_id,
+                        "event_type": webhook_data.event_type,
+                        "app_id": webhook_data.app_id,
+                        "user_deactivated": update_data.get("is_active") == False
+                    },
+                    "ip_address": "system",
+                    "user_agent": "kakao_webhook"
+                }
+                
+                supabase.table("admin_activity_logs").insert(log_data).execute()
+                logger.info(f"카카오 연결 해제 처리 완료: {user_id}")
+            else:
+                logger.warning(f"카카오 연결 해제 요청되었지만 해당 사용자를 찾을 수 없음: {kakao_user_id}")
+        
+        return KakaoWebhookResponse(
+            status="success",
+            message="웹훅 처리 완료"
+        )
+        
+    except Exception as e:
+        logger.error(f"카카오 웹훅 처리 중 오류: {str(e)}")
+        # 웹훅은 실패해도 200 OK를 반환해야 함 (카카오 요구사항)
+        return KakaoWebhookResponse(
+            status="error",
+            message=f"처리 중 오류 발생: {str(e)}"
         )

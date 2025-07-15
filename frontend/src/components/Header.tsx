@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import Avatar from './Avatar'
 import MyNeighborhoodModal from './MyNeighborhoodModal'
 import { Home, Settings } from 'lucide-react'
+import Image from 'next/image'
 import { extractNeighborhoodFromAddress } from '@/lib/utils/neighborhoodUtils'
 
 export default function Header() {
@@ -60,9 +61,17 @@ export default function Header() {
         <div className="flex justify-between items-center h-16">
           {/* 로고 섹션 */}
           <div className="flex items-center cursor-pointer" onClick={() => router.push('/')}>
-            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-              동네속닥
-            </h1>
+            <div className="flex items-center">
+              <Image 
+                src="/images/title.png" 
+                alt="동네속닥 타이틀"
+                width={150}
+                height={40}
+                className="h-6 md:h-8 w-auto"
+                priority
+              />
+             
+            </div>
             <p className="ml-2 md:ml-4 text-xs md:text-sm text-gray-700 hidden sm:block font-medium">
               우리 동네 이슈 제보 커뮤니티
             </p>

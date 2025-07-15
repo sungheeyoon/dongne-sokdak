@@ -33,9 +33,8 @@ export default function LocationPicker({
           window.kakao.maps.LatLng &&
           window.kakao.maps.services) {
         setKakaoReady(true)
-        // 마커 이미지도 함께 생성
-        const markerImage = createSingleReportMarkerImage('OTHER', 'medium')
-        setCenterMarkerImage(markerImage.src)
+        // 아이콘 파일로 마커 이미지 설정
+        setCenterMarkerImage('/icon.png')
         console.log('✅ 카카오맵 API 준비 완료')
       } else {
         console.log('⏳ 카카오맵 API 로딩 중...')
@@ -222,8 +221,8 @@ export default function LocationPicker({
               position={centerLocation}
               image={{
                 src: centerMarkerImage,
-                size: { width: 30, height: 35 },
-                options: { offset: { x: 15, y: 35 } }
+                size: { width: 40, height: 40 },
+                options: { offset: { x: 14, y: 14 } }
               }}
             />
           )}
@@ -233,15 +232,9 @@ export default function LocationPicker({
             <MapMarker
               position={selectedLocation}
               image={{
-                src: 'data:image/svg+xml;base64,' + btoa(`
-                  <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 0C18.627 0 24 5.373 24 12C24 18.627 12 36 12 36C12 36 0 18.627 0 12C0 5.373 5.373 0 12 0Z" fill="#22C55E"/>
-                    <circle cx="12" cy="12" r="5" fill="white"/>
-                    <circle cx="12" cy="12" r="3" fill="#22C55E"/>
-                  </svg>
-                `),
-                size: { width: 24, height: 36 },
-                options: { offset: { x: 12, y: 36 } }
+                src: '/pin.png',
+                size: { width: 40, height: 40 },
+                options: { offset: { x: 14, y: 14 } }
               }}
             />
           )}
