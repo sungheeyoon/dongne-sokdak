@@ -56,10 +56,10 @@ export default function MapComponent({
       // 행정동 기반 주소로 변환
       const adminAddress = formatToAdministrativeAddress(report.address || '')
       
-      // 행정동 + 대략적인 좌표로 그룹핑 키 생성
-      const lat = report.location.lat.toFixed(3) // 소수점 3자리로 근사치 그룹핑
-      const lng = report.location.lng.toFixed(3)
-      const groupKey = adminAddress !== '주소 없음' ? adminAddress : `${lat},${lng}`
+      // 행정동 + 정밀한 좌표로 그룹핑 키 생성 (건물 단위)
+      const lat = report.location.lat.toFixed(5) // 소수점 5자리로 정밀 그룹핑 (~1m 단위)
+      const lng = report.location.lng.toFixed(5)
+      const groupKey = `${adminAddress}-${lat},${lng}` // 행정동 + 좌표 조합으로 정확한 그룹핑
       
       if (groups[groupKey]) {
         groups[groupKey].reports.push(report)
