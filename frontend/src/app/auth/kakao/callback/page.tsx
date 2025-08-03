@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 
-export default function KakaoCallbackPage() {
+function KakaoCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { handleKakaoCallback } = useAuth()
@@ -73,5 +73,17 @@ export default function KakaoCallbackPage() {
         <p className="text-gray-500 mt-4">잠시만 기다려주세요...</p>
       </div>
     </div>
+  )
+}
+
+export default function KakaoCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner size="lg" message="페이지 로딩 중..." />
+      </div>
+    }>
+      <KakaoCallbackContent />
+    </Suspense>
   )
 }

@@ -45,29 +45,51 @@ class Settings(BaseSettings):
     # 카카오 OAuth 설정
     KAKAO_CLIENT_ID: str = os.getenv("KAKAO_CLIENT_ID", "")
     KAKAO_CLIENT_SECRET: str = os.getenv("KAKAO_CLIENT_SECRET", "")
-    KAKAO_REDIRECT_URI: str = os.getenv("KAKAO_REDIRECT_URI", "http://localhost:3000/auth/kakao/callback")
-    
-    # CORS 설정 (기본값)
-    _CORS_ORIGINS_STR: str = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://172.24.19.106:3000")
     
     @property
-    def CORS_ORIGINS(self) -> List[str]:
-        return [origin.strip() for origin in self._CORS_ORIGINS_STR.split(",") if origin.strip()]
-    
-    # 환경별 추가 허용 도메인
-    @property
-    def allowed_origins(self) -> List[str]:
-        origins = self.CORS_ORIGINS
+    def KAKAO_REDIRECT_URI(self) -> str:
+        """환경별 카카오 리다이렉트 URI"""
+        # 환경 변수에서 명시적으로 설정된 경우 우선 사용
+        env_redirect_uri = os.getenv("KAKAO_REDIRECT_URI")
+        if env_redirect_uri:
+            return env_redirect_uri
         
-        # 운영 환경에서는 실제 도메인 추가
+        # 환경별 기본값 설정
         if self.ENVIRONMENT == "production":
-            production_origins = os.getenv("CORS_ORIGINS", "").split(",")
-            origins.extend([origin.strip() for origin in production_origins if origin.strip()])
+            return "https://dongne-sokdak.vercel.app/auth/kakao/callback"
         elif self.ENVIRONMENT == "staging":
-            staging_origins = os.getenv("CORS_ORIGINS", "").split(",")
-            origins.extend([origin.strip() for origin in staging_origins if origin.strip()])
+            return "https://dongne-sokdak-staging.vercel.app/auth/kakao/callback"
+        else:
+            return "http://localhost:3000/auth/kakao/callback"
+    
+    # CORS 설정
+    @property 
+    def CORS_ORIGINS(self) -> List[str]:
+        """환경별 CORS 허용 도메인"""
+        # 기본 로컬 개발 도메인
+        origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000", 
+            "http://172.24.19.106:3000"
+        ]
         
-        return origins
+        # 환경별 추가 도메인
+        if self.ENVIRONMENT == "production":
+            origins.extend([
+                "https://dongne-sokdak.vercel.app",
+                "https://dongne-sokdak-backend.onrender.com"
+            ])
+        elif self.ENVIRONMENT == "staging":
+            origins.extend([
+                "https://dongne-sokdak-staging.vercel.app"
+            ])
+        
+        # 환경 변수에서 추가 도메인 로드
+        env_origins = os.getenv("CORS_ORIGINS", "")
+        if env_origins:
+            origins.extend([origin.strip() for origin in env_origins.split(",") if origin.strip()])
+        
+        return list(set(origins))  # 중복 제거
     
     class Config:
         env_file = ".env"
