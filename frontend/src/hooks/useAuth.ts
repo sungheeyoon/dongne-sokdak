@@ -149,7 +149,8 @@ export function useAuth() {
         if (!profile) {
           // 새 사용자인 경우 프로필 생성
           const nickname = session.user.user_metadata?.full_name || 
-                          session.user.user_metadata?.name || 
+                          session.user.user_metadata?.name ||
+                          session.user.user_metadata?.nickname ||
                           `카카오사용자${session.user.id.slice(-4)}`
           
           await supabase
@@ -157,8 +158,8 @@ export function useAuth() {
             .insert([{
               id: session.user.id,
               nickname,
-              email: session.user.email,
-              avatar_url: session.user.user_metadata?.avatar_url,
+              email: session.user.email || null, // 이메일이 없을 수 있음
+              avatar_url: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture,
               social_provider: 'kakao',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
