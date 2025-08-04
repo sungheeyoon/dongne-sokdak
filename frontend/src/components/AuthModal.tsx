@@ -51,8 +51,11 @@ export default function AuthModal() {
   const handleKakaoLogin = async () => {
     try {
       setLoading(true)
+      setError('')
       await signInWithKakao()
+      // signInWithKakao는 리다이렉트를 하므로 여기까지 오지 않음
     } catch (error: any) {
+      console.error('카카오 로그인 오류:', error)
       setError(error.message || '카카오 로그인 중 오류가 발생했습니다.')
       setLoading(false)
     }
