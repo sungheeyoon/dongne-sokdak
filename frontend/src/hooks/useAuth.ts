@@ -127,6 +127,27 @@ export function useAuth() {
     }
   }
 
+  const signInWithGoogle = async (): Promise<void> => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      })
+      
+      if (error) {
+        setLoading(false)
+        throw error
+      }
+    } catch (error) {
+      setLoading(false)
+      console.error('구글 로그인 실패:', error)
+      throw error
+    }
+  }
+
   const handleOAuthCallback = async (): Promise<void> => {
     try {
       setLoading(true)
@@ -148,10 +169,11 @@ export function useAuth() {
         
         if (!profile) {
           // 새 사용자인 경우 프로필 생성
+          const provider = session.user.app_metadata?.provider || 'unknown'
           const nickname = session.user.user_metadata?.full_name || 
                           session.user.user_metadata?.name ||
                           session.user.user_metadata?.nickname ||
-                          `카카오사용자${session.user.id.slice(-4)}`
+                          `${provider}사용자${session.user.id.slice(-4)}`
           
           await supabase
             .from('profiles')
@@ -160,7 +182,7 @@ export function useAuth() {
               nickname,
               email: session.user.email || null, // 이메일이 없을 수 있음
               avatar_url: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture,
-              social_provider: 'kakao',
+              social_provider: provider,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             }])
@@ -195,6 +217,7 @@ export function useAuth() {
     signInWithEmail,
     signUpWithEmail,
     signInWithKakao,
+    signInWithGoogle,
     handleOAuthCallback,
     signOut,
     getToken
