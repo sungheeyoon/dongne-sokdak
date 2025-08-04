@@ -2,20 +2,57 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/hooks/useAuth'
+import { supabase } from '@/lib/supabase'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 
 export default function AuthCallbackPage() {
   const router = useRouter()
-  const { handleOAuthCallback } = useAuth()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const processCallback = async () => {
       try {
-        await handleOAuthCallback()
+        // Supabase가 자동으로 URL 해시를 처리
+        const { data: { session }, error } = await supabase.auth.getSession()
         
-        // 성공 시 메인 페이지로 이동
+        if (error) {
+          throw error
+        }
+        
+        if (session?.user) {
+          // 프로필 확인/생성
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+          
+          if (!profile) {
+            // 새 사용자인 경우 프로필 생성
+            const provider = session.user.app_metadata?.provider || 'unknown'
+            const nickname = session.user.user_metadata?.full_name || 
+                            session.user.user_metadata?.name ||
+                            session.user.user_metadata?.nickname ||
+                            `${provider}사용자${session.user.id.slice(-4)}`
+            
+            await supabase
+              .from('profiles')
+              .insert([{
+                id: session.user.id,
+                nickname,
+                email: session.user.email || null,
+                avatar_url: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture,
+                social_provider: provider,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }])
+          }
+          
+          // 로그인 성공 메시지
+          alert('로그인이 완료되었습니다!')
+        }
+        
+        // 메인 페이지로 이동
         router.push('/')
         
       } catch (error: unknown) {
@@ -26,7 +63,7 @@ export default function AuthCallbackPage() {
     }
 
     processCallback()
-  }, [handleOAuthCallback, router])
+  }, [router])
 
   if (error) {
     return (
