@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useUserStore } from '@/stores/useUserStore'
 import { User } from '@supabase/supabase-js'
-import { getKakaoAuthUrl, loginWithKakao, SocialAuthResponse } from '@/lib/api/auth'
 
 export function useAuth() {
   const { user, setUser, setLoading } = useUserStore()
@@ -98,20 +97,9 @@ export function useAuth() {
     setLoading(true)
     
     try {
-      // 소셜 로그인 사용자인지 확인 (localStorage에서 토큰 확인)
-      const socialToken = localStorage.getItem('social_token')
-      
-      if (socialToken) {
-        // 소셜 로그인 사용자 로그아웃
-        localStorage.removeItem('social_token')
-        localStorage.removeItem('social_user_id')
-        setUser(null)
-      } else {
-        // Supabase Auth 사용자 로그아웃
-        const { error } = await supabase.auth.signOut()
-        if (error) {
-          throw error
-        }
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        throw error
       }
     } finally {
       setLoading(false)
@@ -120,83 +108,73 @@ export function useAuth() {
 
   const signInWithKakao = async (): Promise<void> => {
     try {
-      const authUrl = await getKakaoAuthUrl()
-      // 카카오 로그인 페이지로 리다이렉트
-      window.location.href = authUrl
-    } catch (error) {
-      console.error('카카오 로그인 URL 요청 실패:', error)
-      throw error
-    }
-  }
-
-  const handleKakaoCallback = async (authCode: string): Promise<SocialAuthResponse> => {
-    setLoading(true)
-    
-    try {
-      const response = await loginWithKakao(authCode) as any
-      
-      // 소셜 로그인 토큰 저장
-      localStorage.setItem('social_token', response.access_token)
-      localStorage.setItem('social_user_id', response.user_id)
-      
-      // 가짜 User 객체 생성 (기존 로직과 호환성 위해)
-      const socialUser: User = {
-        id: response.user_id,
-        email: '',
-        aud: 'authenticated',
-        role: 'authenticated',
-        app_metadata: {},
-        user_metadata: {},
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      
-      setUser(socialUser)
-      setLoading(false)
-      
-      return response
-    } catch (error) {
-      setLoading(false)
-      throw error
-    }
-  }
-
-  // 초기화 시 소셜 로그인 토큰 확인
-  useEffect(() => {
-    const checkSocialToken = () => {
-      const socialToken = localStorage.getItem('social_token')
-      const socialUserId = localStorage.getItem('social_user_id')
-      
-      if (socialToken && socialUserId) {
-        // 소셜 로그인 사용자 복원
-        const socialUser: User = {
-          id: socialUserId,
-          email: '',
-          aud: 'authenticated',
-          role: 'authenticated',
-          app_metadata: {},
-          user_metadata: {},
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+      setLoading(true)
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'kakao',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
         }
-        setUser(socialUser)
+      })
+      
+      if (error) {
+        setLoading(false)
+        throw error
       }
+    } catch (error) {
+      setLoading(false)
+      console.error('카카오 로그인 실패:', error)
+      throw error
     }
-    
-    if (initialized) {
-      checkSocialToken()
+  }
+
+  const handleOAuthCallback = async (): Promise<void> => {
+    try {
+      setLoading(true)
+      
+      // URL에서 세션 정보 확인
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        throw error
+      }
+      
+      if (session?.user) {
+        // 프로필 확인/생성
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+        
+        if (!profile) {
+          // 새 사용자인 경우 프로필 생성
+          const nickname = session.user.user_metadata?.full_name || 
+                          session.user.user_metadata?.name || 
+                          `카카오사용자${session.user.id.slice(-4)}`
+          
+          await supabase
+            .from('profiles')
+            .insert([{
+              id: session.user.id,
+              nickname,
+              email: session.user.email,
+              avatar_url: session.user.user_metadata?.avatar_url,
+              social_provider: 'kakao',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }])
+        }
+      }
+      
+      setLoading(false)
+    } catch (error) {
+      setLoading(false)
+      throw error
     }
-  }, [initialized, setUser])
+  }
 
   const getToken = async (): Promise<string | null> => {
     try {
-      // 소셜 로그인 토큰 확인
-      const socialToken = localStorage.getItem('social_token')
-      if (socialToken) {
-        return socialToken
-      }
-      
-      // Supabase 세션 토큰 확인
       const { data: { session }, error } = await supabase.auth.getSession()
       if (error) {
         console.error('Error getting session:', error)
@@ -216,7 +194,7 @@ export function useAuth() {
     signInWithEmail,
     signUpWithEmail,
     signInWithKakao,
-    handleKakaoCallback,
+    handleOAuthCallback,
     signOut,
     getToken
   }

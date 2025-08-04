@@ -1,22 +1,26 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 
-export default function KakaoCallbackPage() {
+function KakaoCallbackContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { handleKakaoCallback } = useAuth()
   const [error, setError] = useState<string | null>(null)
+  const [processed, setProcessed] = useState(false)
 
   useEffect(() => {
+    if (processed) return
+
     const processKakaoCallback = async () => {
       try {
-        // URL에서 직접 파라미터 추출 (useSearchParams 대신)
-        const urlParams = new URLSearchParams(window.location.search)
-        const code = urlParams.get('code')
-        const error = urlParams.get('error')
+        setProcessed(true)
+        
+        const code = searchParams.get('code')
+        const error = searchParams.get('error')
 
         if (error) {
           setError('카카오 로그인이 취소되었습니다.')
@@ -52,7 +56,7 @@ export default function KakaoCallbackPage() {
     }
 
     processKakaoCallback()
-  }, [handleKakaoCallback, router])
+  }, [searchParams, handleKakaoCallback, router, processed])
 
   if (error) {
     return (
@@ -74,5 +78,20 @@ export default function KakaoCallbackPage() {
         <p className="text-gray-500 mt-4">잠시만 기다려주세요...</p>
       </div>
     </div>
+  )
+}
+
+export default function KakaoCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="lg" message="페이지 로딩 중..." />
+          <p className="text-gray-500 mt-4">잠시만 기다려주세요...</p>
+        </div>
+      </div>
+    }>
+      <KakaoCallbackContent />
+    </Suspense>
   )
 }
