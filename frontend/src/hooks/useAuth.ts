@@ -109,6 +109,7 @@ export function useAuth() {
   const signInWithKakao = async (): Promise<void> => {
     try {
       setLoading(true)
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
@@ -130,6 +131,7 @@ export function useAuth() {
   const signInWithGoogle = async (): Promise<void> => {
     try {
       setLoading(true)
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
