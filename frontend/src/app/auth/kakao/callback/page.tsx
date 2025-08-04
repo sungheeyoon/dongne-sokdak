@@ -8,55 +8,43 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner'
 function KakaoCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { handleKakaoCallback } = useAuth()
+  const { handleOAuthCallback } = useAuth()
   const [error, setError] = useState<string | null>(null)
   const [processed, setProcessed] = useState(false)
 
   useEffect(() => {
     if (processed) return
 
-    const processKakaoCallback = async () => {
+    const processOAuthCallback = async () => {
       try {
         setProcessed(true)
         
-        const code = searchParams.get('code')
+        // OAuth 에러 확인
         const error = searchParams.get('error')
-
         if (error) {
-          setError('카카오 로그인이 취소되었습니다.')
+          setError('로그인이 취소되었습니다.')
           setTimeout(() => router.push('/'), 3000)
           return
         }
 
-        if (!code) {
-          setError('잘못된 접근입니다.')
-          setTimeout(() => router.push('/'), 3000)
-          return
-        }
-
-        // 카카오 로그인 처리
-        const response = await handleKakaoCallback(code) as any
+        // OAuth 콜백 처리
+        await handleOAuthCallback()
         
-        if (response.is_new_user) {
-          // 새 사용자인 경우 환영 메시지와 함께 홈으로
-          alert('카카오 로그인이 완료되었습니다! 동네속닥에 오신 것을 환영합니다.')
-        } else {
-          // 기존 사용자인 경우
-          alert('카카오 로그인이 완료되었습니다!')
-        }
+        // 로그인 성공 메시지
+        alert('카카오 로그인이 완료되었습니다!')
 
         // 메인 페이지로 리다이렉트
         router.push('/')
         
       } catch (error: unknown) {
-        console.error('카카오 로그인 콜백 처리 실패:', error)
-        setError(error instanceof Error ? error.message : '카카오 로그인 처리 중 오류가 발생했습니다.')
+        console.error('OAuth 콜백 처리 실패:', error)
+        setError(error instanceof Error ? error.message : '로그인 처리 중 오류가 발생했습니다.')
         setTimeout(() => router.push('/'), 3000)
       }
     }
 
-    processKakaoCallback()
-  }, [searchParams, handleKakaoCallback, router, processed])
+    processOAuthCallback()
+  }, [searchParams, handleOAuthCallback, router, processed])
 
   if (error) {
     return (
