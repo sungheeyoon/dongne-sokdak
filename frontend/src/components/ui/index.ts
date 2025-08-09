@@ -23,8 +23,8 @@ export { RegionSearchButton, CurrentRegionButton, RefreshSearchButton, MapBounds
 
 // 레이아웃 컴포넌트
 export { default as AppHeader } from './AppHeader'
-export { default as Navbar } from './Navbar'
-export { default as HeroSection } from './HeroSection'
+export { Navbar } from './Navbar'
+export { HeroSection } from './HeroSection'
 
 // 기타 UI 컴포넌트
 export { default as LoadingSpinner, CardSkeleton } from './LoadingSpinner'
