@@ -117,15 +117,9 @@ export const ReportCard = React.forwardRef<HTMLDivElement, ReportCardProps>(
       currentSize.padding,
     ];
 
-    // DOM에 전달할 안전한 props만 선택
-    const { 
-      updatedAt, 
-      userId, 
-      user, 
-      adminComment, 
-      assignedAdminId,
-      ...safeProps 
-    } = otherProps || {};
+    // DOM에 전달할 안전한 props만 선택 (존재하는 속성들만)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { ...safeProps } = otherProps || {};
 
     return (
       <div

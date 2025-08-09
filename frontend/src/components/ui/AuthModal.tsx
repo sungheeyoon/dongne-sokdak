@@ -201,10 +201,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <Button
           type="button"
           variant="outline"
-          fullWidth
           onClick={() => handleSocialAuth('google')}
           disabled={loading}
-          className="flex items-center justify-center space-x-2"
+          className="w-full flex items-center justify-center space-x-2"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M19.8055 8.0415H19V8H10V12H15.6515C14.827 14.3285 12.6115 16 10 16C6.6865 16 4 13.3135 4 10C4 6.6865 6.6865 4 10 4C11.5295 4 12.921 4.577 13.9805 5.5195L16.809 2.691C15.023 1.0265 12.634 0 10 0C4.4775 0 0 4.4775 0 10C0 15.5225 4.4775 20 10 20C15.5225 20 20 15.5225 20 10C20 9.3295 19.931 8.675 19.8055 8.0415Z" fill="#FFC107"/>
@@ -220,10 +219,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <Button
             type="button"
             variant="outline"
-            fullWidth
             onClick={() => handleSocialAuth('kakao')}
             disabled={loading}
-            className="flex items-center justify-center space-x-2 bg-yellow-400 hover:bg-yellow-500 border-yellow-400 text-gray-900"
+            className="w-full flex items-center justify-center space-x-2 bg-yellow-400 hover:bg-yellow-500 border-yellow-400 text-gray-900"
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <path fillRule="evenodd" clipRule="evenodd" d="M10 2C14.4183 2 18 4.69067 18 8C18 11.3093 14.4183 14 10 14C9.1819 14 8.39259 13.9059 7.64815 13.7296L4 16V12.8148C2.32963 11.6111 1.33333 9.93333 1.33333 8C1.33333 4.69067 4.91496 2 10 2Z" fill="#3C1E1E"/>

@@ -434,7 +434,7 @@ export default function Home() {
             {/* 제보 목록 */}
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {(selectedMapMarker.reports || []).map((report: { id: string }) => (
+                {(selectedMapMarker.reports || []).map((report: Report) => (
                   <ReportCard key={report.id} report={report} />
                 ))}
               </div>

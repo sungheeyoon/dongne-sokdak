@@ -3,12 +3,12 @@
 import React, { forwardRef } from 'react'
 import { clsx } from 'clsx'
 
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
   label?: string
   error?: string
   hint?: string
   variant?: 'default' | 'filled' | 'outlined'
-  size?: 'sm' | 'md' | 'lg'
+  inputSize?: 'sm' | 'md' | 'lg'
   startIcon?: React.ReactNode
   endIcon?: React.ReactNode
   fullWidth?: boolean
@@ -20,7 +20,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     error,
     hint,
     variant = 'default',
-    size = 'md',
+    inputSize = 'md',
     startIcon,
     endIcon,
     fullWidth = true,
@@ -43,7 +43,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       'rounded-lg font-medium transition-all duration-200 outline-none',
       'placeholder:text-gray-400 placeholder:font-normal',
       'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100',
-      sizeStyles[size],
+      sizeStyles[inputSize],
       variantStyles[variant],
       error && 'border-red-500 focus:border-red-500 focus:ring-red-200',
       fullWidth && 'w-full',

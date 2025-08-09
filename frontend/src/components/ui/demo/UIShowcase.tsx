@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react'
 import {
-  Button, Input, Alert, Badge, Form, FormActions, Card,
-  BaseModal, ReportDetailModal, LoadingSpinner,
+  Button, Input, Alert, Badge, Form, FormActions,
+  BaseModal, ReportDetailModal,
   UnifiedSearch, RegionSearchButton, CurrentRegionButton, RefreshSearchButton,
-  demoReports, demoGroupedReports, demoUsers, demoComments
+  demoReports, demoGroupedReports, demoUsers
 } from '../index'
 import { OriginalAuthModal } from './OriginalAuthModal'
 import { ReportCard as UIReportCard } from '../ReportCard'
@@ -18,24 +18,24 @@ export const UIShowcase: React.FC = () => {
   const [showReportModal, setShowReportModal] = useState(false)
   const [showBaseModal, setShowBaseModal] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
-  const [loading, setLoading] = useState(false)
+  // const [loading, setLoading] = useState(false) // 사용하지 않음
   const [inputValue, setInputValue] = useState('')
   const [inputError, setInputError] = useState('')
 
-  const handleAuthSubmit = async (email: string, password: string, nickname?: string) => {
-    setLoading(true)
-    // 데모용 딜레이
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setLoading(false)
-    console.log('Auth submitted:', { email, password, nickname })
-  }
+  // const handleAuthSubmit = async (email: string, password: string, nickname?: string) => {
+  //   setLoading(true)
+  //   // 데모용 딜레이
+  //   await new Promise(resolve => setTimeout(resolve, 1000))
+  //   setLoading(false)
+  //   console.log('Auth submitted:', { email, password, nickname })
+  // }
 
-  const handleSocialAuth = async () => {
-    setLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setLoading(false)
-    console.log('Social auth')
-  }
+  // const handleSocialAuth = async () => {
+  //   setLoading(true)
+  //   await new Promise(resolve => setTimeout(resolve, 1000))
+  //   setLoading(false)
+  //   console.log('Social auth')
+  // }
 
   const validateInput = (value: string) => {
     if (value.length < 3) {
@@ -922,13 +922,13 @@ export const UIShowcase: React.FC = () => {
               <div>
                 <h3 className="text-xl font-semibold mb-4">📦 사용 방법</h3>
                 <div className="bg-black/20 rounded-lg p-4 text-sm font-mono">
-                  <div className="text-green-300">// 한 번에 모든 컴포넌트 import</div>
+                  <div className="text-green-300">{/* 한 번에 모든 컴포넌트 import */}</div>
                   <div className="text-yellow-300">import {`{`}</div>
                   <div className="text-white ml-2">Button, Input, Alert,</div>
                   <div className="text-white ml-2">Modal, Badge, Form</div>
-                  <div className="text-yellow-300">{`}`} from '@/components/ui'</div>
-                  <div className="mt-2 text-green-300">// 사용</div>
-                  <div className="text-white">&lt;Button variant="primary"&gt;</div>
+                  <div className="text-yellow-300">{`}`} from &apos;@/components/ui&apos;</div>
+                  <div className="mt-2 text-green-300">{/* 사용 */}</div>
+                  <div className="text-white">&lt;Button variant=&quot;primary&quot;&gt;</div>
                   <div className="text-white ml-2">Click me</div>
                   <div className="text-white">&lt;/Button&gt;</div>
                 </div>

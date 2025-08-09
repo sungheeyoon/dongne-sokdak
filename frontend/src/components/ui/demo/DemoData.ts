@@ -1,6 +1,6 @@
 // 더미/데모 데이터 - UI 테스트용
 
-import { Report, ReportCategory } from '@/types'
+import { Report, ReportCategory, ReportStatus } from '@/types'
 
 export const demoReports: Report[] = [
   {
@@ -11,7 +11,7 @@ export const demoReports: Report[] = [
     location: { lat: 37.5665, lng: 126.9780 },
     address: '서울특별시 중구 명동1가',
     imageUrl: '/demo/noise-report.jpg',
-    status: 'OPEN',
+    status: ReportStatus.OPEN,
     voteCount: 15,
     commentCount: 8,
     createdAt: '2024-01-15T10:30:00Z',
@@ -25,7 +25,7 @@ export const demoReports: Report[] = [
     category: ReportCategory.TRASH,
     location: { lat: 37.5651, lng: 126.9895 },
     address: '서울특별시 중구 명동2가',
-    status: 'IN_PROGRESS',
+    status: ReportStatus.IN_PROGRESS,
     voteCount: 23,
     commentCount: 12,
     createdAt: '2024-01-14T14:20:00Z',
@@ -39,13 +39,12 @@ export const demoReports: Report[] = [
     category: ReportCategory.FACILITY,
     location: { lat: 37.5640, lng: 126.9810 },
     address: '서울특별시 중구 회현동1가',
-    status: 'RESOLVED',
+    status: ReportStatus.RESOLVED,
     voteCount: 31,
     commentCount: 18,
     createdAt: '2024-01-13T09:15:00Z',
     updatedAt: '2024-01-16T11:00:00Z',
-    userId: 'demo-user-3',
-    adminComment: '담당 부서에서 가로등 수리 완료했습니다. 신고해주셔서 감사합니다.'
+    userId: 'demo-user-3'
   },
   {
     id: 'demo-4',
@@ -54,7 +53,7 @@ export const demoReports: Report[] = [
     category: ReportCategory.TRAFFIC,
     location: { lat: 37.5670, lng: 126.9850 },
     address: '서울특별시 중구 소공동',
-    status: 'OPEN',
+    status: ReportStatus.OPEN,
     voteCount: 42,
     commentCount: 25,
     createdAt: '2024-01-16T08:45:00Z',
@@ -68,7 +67,7 @@ export const demoReports: Report[] = [
     category: ReportCategory.OTHER,
     location: { lat: 37.5680, lng: 126.9770 },
     address: '서울특별시 중구 태평로1가',
-    status: 'IN_PROGRESS',
+    status: ReportStatus.IN_PROGRESS,
     voteCount: 18,
     commentCount: 7,
     createdAt: '2024-01-12T16:30:00Z',
