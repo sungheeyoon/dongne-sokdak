@@ -71,57 +71,83 @@ export const convertToAdministrativeAddress = async (
 }
 
 /**
- * 기존 주소를 행정동 형태로 변환
+ * 기존 주소를 행정동 기준으로 표기 (동으로 끝나면 동만, 로로 끝나면 로만 표기)
  */
 export const formatToAdministrativeAddress = (address: string): string => {
   if (!address || address === '주소 없음') return '주소 없음'
   
-  // 이미 행정동 형태인지 확인 (예: "부평구 부개3동")
-  const dongPattern = /(.+?구)\s+(.+?동)/
-  const match = address.match(dongPattern)
+  // 주소를 공백 기준으로 분리
+  const parts = address.split(' ').filter(part => part.trim())
   
-  if (match) {
-    return `${match[1]} ${match[2]}`
+  // 마지막 부분부터 검사 (번지 제외)
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i]
+    
+    // 순수 숫자는 건너뛰기 (번지)
+    if (/^\d+$/.test(part)) {
+      continue
+    }
+    
+    // '동'으로 끝나는 경우 (행정동) - 동만 표기
+    if (part.endsWith('동')) {
+      return part
+    }
+    
+    // '로'로 끝나는 경우 (도로명) - 로만 표기  
+    if (part.endsWith('로')) {
+      return part
+    }
+    
+    // '가'로 끝나는 경우 (법정동) - 가만 표기 (예: 종로1가, 태평로1가)
+    if (part.endsWith('가')) {
+      return part
+    }
   }
   
-  // 서울특별시, 인천광역시 등 제거하고 구 + 동 추출
+  // 서울특별시, 인천광역시 등 제거
   const cleanAddress = address
     .replace(/(서울특별시|부산광역시|대구광역시|인천광역시|광주광역시|대전광역시|울산광역시|세종특별자치시|경기도|강원도|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도|제주특별자치도)\s*/g, '')
   
-  // 구/군/시 + 동/읍/면 패턴 찾기
-  const adminPattern = /(.+?(?:구|군|시))\s+(.+?(?:동|읍|면))/
-  const adminMatch = cleanAddress.match(adminPattern)
+  const cleanParts = cleanAddress.split(' ').filter(part => part.trim())
   
-  if (adminMatch) {
-    return `${adminMatch[1]} ${adminMatch[2]}`
+  // 다시 동/로/가 검사 (번지 제외)
+  for (let i = cleanParts.length - 1; i >= 0; i--) {
+    const part = cleanParts[i]
+    
+    // 순수 숫자는 건너뛰기 (번지)
+    if (/^\d+$/.test(part)) {
+      continue
+    }
+    
+    if (part.endsWith('동') || part.endsWith('로') || part.endsWith('가')) {
+      return part
+    }
   }
   
-  // 동만 있는 경우 (예: "명동2가")
-  const dongOnlyPattern = /(.+?동)/
-  const dongOnlyMatch = cleanAddress.match(dongOnlyPattern)
-  
-  if (dongOnlyMatch) {
-    return dongOnlyMatch[1]
+  // 해당사항 없으면 번지를 제외한 마지막 의미있는 부분 반환
+  for (let i = cleanParts.length - 1; i >= 0; i--) {
+    const part = cleanParts[i]
+    // 순수 숫자가 아닌 첫 번째 부분 반환
+    if (!/^\d+$/.test(part)) {
+      return part
+    }
   }
   
-  // 변환 실패 시 원본 주소의 앞부분만 반환
-  const parts = cleanAddress.split(' ')
-  if (parts.length >= 2) {
-    return `${parts[0]} ${parts[1]}`
-  }
-  
-  return parts[0] || '주소 없음'
+  return cleanParts[cleanParts.length - 1] || '주소 없음'
 }
 
 /**
  * 카카오 장소 검색 결과를 행정동 주소로 변환
  */
 export const convertPlaceToAdministrativeAddress = (place: any): string => {
-  // 카카오 장소 검색 API 결과에서 행정동 주소 추출
+  // 전체 주소 정보를 보존하면서 반환 (원본 그대로 저장)
+  // 나중에 formatToAdministrativeAddress로 변환할 수 있도록 원본 유지
+  if (place.address_name) {
+    return place.address_name; // 원본 주소 그대로 저장 (예: "서울 종로구 종로1가 54")
+  }
+  
   if (place.road_address_name) {
-    return formatToAdministrativeAddress(place.road_address_name)
-  } else if (place.address_name) {
-    return formatToAdministrativeAddress(place.address_name)
+    return place.road_address_name;
   }
   
   return '주소 없음'
@@ -138,11 +164,8 @@ export const isSameAdministrativeArea = (address1: string, address2: string): bo
 }
 
 /**
- * 주소에서 동 이름만 추출 (예: "부평구 부개3동" -> "부개3동")
+ * 주소에서 동 또는 로 이름만 추출 (예: "부평구 부개3동" -> "부개3동", "을지로" -> "을지로")
  */
 export const extractDongName = (address: string): string => {
-  const dongPattern = /(.+?동)/
-  const match = address.match(dongPattern)
-  
-  return match ? match[1] : address
+  return formatToAdministrativeAddress(address)
 }

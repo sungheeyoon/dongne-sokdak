@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useUIStore } from '@/stores/useUIStore'
 import { useAuth } from '@/hooks/useAuth'
 import { useMyProfile } from '@/hooks/useProfile'
@@ -8,9 +8,10 @@ import { useAdmin } from '@/hooks/useAdmin'
 import { useRouter } from 'next/navigation'
 import Avatar from './Avatar'
 import MyNeighborhoodModal from './MyNeighborhoodModal'
-import { Home, Settings } from 'lucide-react'
+import { Home, Settings, User, LogOut, ChevronDown } from 'lucide-react'
 import Image from 'next/image'
 import { extractNeighborhoodFromAddress } from '@/lib/utils/neighborhoodUtils'
+import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 
 export default function Header() {
   const { openAuthModal, openReportModal } = useUIStore()
@@ -20,39 +21,36 @@ export default function Header() {
   const router = useRouter()
   const [isNeighborhoodModalOpen, setIsNeighborhoodModalOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
+  const profileDropdownRef = useRef<HTMLDivElement>(null)
 
-  // 내 동네 표시명 계산 (행정동 우선)
+  // 프로필 드롭다운 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setIsProfileDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // 내 동네 표시명 계산 (행정동 기준으로 단순화)
   const getNeighborhoodDisplayName = () => {
     if (!profile?.neighborhood) return '내 동네'
     
-    const neighborhoodInfo = extractNeighborhoodFromAddress(profile.neighborhood.address)
+    // 행정동 기준으로 표시 (동/로 끝나면 해당 부분만 표시)
+    const adminAddress = formatToAdministrativeAddress(profile.neighborhood.address)
     
-    // 행정동이 명확한 경우 우선 표시 (부개3동, 양평1동 등)
-    if (neighborhoodInfo.neighborhood && /\d+동$/.test(neighborhoodInfo.neighborhood)) {
-      return neighborhoodInfo.neighborhood
+    // 변환 결과가 의미있으면 사용, 아니면 place_name 사용
+    if (adminAddress && adminAddress !== '주소 없음') {
+      return adminAddress
     }
     
-    // 일반 동명 표시 (역삼동, 신사동 등)
-    if (neighborhoodInfo.neighborhood && neighborhoodInfo.neighborhood.endsWith('동')) {
-      return neighborhoodInfo.neighborhood
-    }
-    
-    // 가명 표시 (태평로1가 등)
-    if (neighborhoodInfo.neighborhood && /\d*가$/.test(neighborhoodInfo.neighborhood)) {
-      return neighborhoodInfo.neighborhood
-    }
-    
-    // 역명이나 건물명인 경우 행정구역명 사용
-    if (profile.neighborhood.place_name.includes('역') || 
-        profile.neighborhood.place_name.includes('호선') ||
-        profile.neighborhood.place_name.includes('타워') ||
-        profile.neighborhood.place_name.includes('빌딩') ||
-        profile.neighborhood.place_name.length > 8) {
-      return neighborhoodInfo.full
-    }
-    
-    // 기본적으로 행정동 표시 우선
-    return neighborhoodInfo.neighborhood || profile.neighborhood.place_name
+    return profile.neighborhood.place_name || '내 동네'
   }
 
   return (
@@ -123,26 +121,59 @@ export default function Header() {
                 >
                   ✏️ 제보하기
                 </button>
-                <div className="flex items-center space-x-3 bg-white border border-gray-300 rounded-lg px-4 py-2 shadow-sm">
+                <div className="relative" ref={profileDropdownRef}>
                   <button
-                    onClick={() => router.push('/profile')}
-                    className="flex items-center space-x-2 hover:bg-gray-50 p-1 rounded-md transition-colors"
+                    onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                    className="flex items-center space-x-2 bg-white border border-gray-300 rounded-lg px-4 py-2 shadow-sm hover:bg-gray-50 transition-colors"
                   >
-                    <Avatar 
-                      src={profile?.avatar_url} 
-                      size="sm" 
-                      alt={profile?.nickname || user.email} 
-                    />
-                    <span className="text-sm text-gray-800 font-medium">
-                      {profile?.nickname || user.email}
-                    </span>
+                    <User className="h-4 w-4 text-gray-600" />
+                    <span className="text-sm text-gray-800 font-medium">프로필</span>
+                    <ChevronDown className={`h-4 w-4 text-gray-600 transition-transform ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
-                  <button 
-                    onClick={signOut}
-                    className="text-sm text-gray-600 hover:text-gray-800 font-medium px-3 py-1 rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"
-                  >
-                    로그아웃
-                  </button>
+                  
+                  {isProfileDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <div className="flex items-center space-x-3">
+                          <Avatar 
+                            src={profile?.avatar_url} 
+                            size="sm" 
+                            alt={profile?.nickname || user.email} 
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {profile?.nickname || user.email}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {user.email}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            router.push('/profile')
+                            setIsProfileDropdownOpen(false)
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center space-x-2"
+                        >
+                          <User className="h-4 w-4" />
+                          <span>프로필 관리</span>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            signOut()
+                            setIsProfileDropdownOpen(false)
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          <span>로그아웃</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
@@ -246,21 +277,18 @@ export default function Header() {
                     }}
                     className="text-left px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
                   >
-                    <Avatar 
-                      src={profile?.avatar_url} 
-                      size="sm" 
-                      alt={profile?.nickname || user.email} 
-                    />
-                    <span>{profile?.nickname || user.email}</span>
+                    <User className="h-5 w-5" />
+                    <span>프로필</span>
                   </button>
                   <button 
                     onClick={() => {
                       signOut()
                       setIsMobileMenuOpen(false)
                     }}
-                    className="text-left px-4 py-3 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-colors"
+                    className="text-left px-4 py-3 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
                   >
-                    로그아웃
+                    <LogOut className="h-5 w-5" />
+                    <span>로그아웃</span>
                   </button>
                 </>
               ) : (

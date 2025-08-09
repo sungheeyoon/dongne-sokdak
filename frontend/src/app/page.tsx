@@ -18,7 +18,9 @@ import LoadingSpinner, { CardSkeleton } from '@/components/ui/LoadingSpinner'
 import ErrorDisplay from '@/components/ui/ErrorDisplay'
 import LocalhostGuide from '@/components/ui/LocalhostGuide'
 import MarkerIcon from '@/components/ui/MarkerIcon'
+import { CurrentRegionButton } from '@/components/ui'
 import { extractNeighborhoodFromAddress } from '@/lib/utils/neighborhoodUtils'
+import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), {
   ssr: false,
@@ -44,17 +46,9 @@ export default function Home() {
   // 행정동 기반 동네 표시명 계산 함수
   const getNeighborhoodDisplayName = (profile: any) => {
     if (!profile?.neighborhood) return '내 동네'
-    const neighborhoodInfo = extractNeighborhoodFromAddress(profile.neighborhood.address)
-    if (neighborhoodInfo.neighborhood && /\d+동$/.test(neighborhoodInfo.neighborhood)) {
-      return neighborhoodInfo.neighborhood
-    }
-    if (neighborhoodInfo.neighborhood && neighborhoodInfo.neighborhood.endsWith('동')) {
-      return neighborhoodInfo.neighborhood
-    }
-    if (neighborhoodInfo.neighborhood && /\d*가$/.test(neighborhoodInfo.neighborhood)) {
-      return neighborhoodInfo.neighborhood
-    }
-    return neighborhoodInfo.neighborhood || profile.neighborhood.place_name
+    
+    const adminAddress = formatToAdministrativeAddress(profile.neighborhood.address)
+    return adminAddress && adminAddress !== '주소 없음' ? adminAddress : profile.neighborhood.place_name
   }
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
@@ -289,7 +283,16 @@ export default function Home() {
 
   // 마커 클릭 핸들러
   const handleMarkerClick = (group: any) => {
+    console.log('📥 Page: handleMarkerClick 호출됨', group)
+    console.log('📊 Page: group 데이터 구조:', {
+      id: group?.id,
+      count: group?.count,
+      reports: group?.reports?.length,
+      location: group?.location
+    })
+    
     setSelectedMapMarker(group)
+    console.log('✅ Page: setSelectedMapMarker 설정 완료')
     
     // 역지오코딩으로 건물명/도로명 가져오기
     if (typeof window !== 'undefined' && window.kakao && window.kakao.maps) {
@@ -320,12 +323,15 @@ export default function Home() {
           }
           
           setSelectedLocation(locationName || '선택한 위치')
+          console.log('📍 Page: 위치명 설정 완료:', locationName)
         } else {
           setSelectedLocation('선택한 위치')
+          console.log('📍 Page: 기본 위치명 설정')
         }
       })
     } else {
       setSelectedLocation('선택한 위치')
+      console.log('📍 Page: 카카오맵 없어서 기본 위치명 설정')
     }
     
     if (process.env.NODE_ENV === 'development') {
@@ -333,6 +339,17 @@ export default function Home() {
     }
   }
 
+  // selectedMapMarker 상태 변화 디버깅
+  useEffect(() => {
+    console.log('🔄 Page: selectedMapMarker 상태 변화:', selectedMapMarker)
+    if (selectedMapMarker) {
+      console.log('📊 Page: selectedMapMarker 상세:', {
+        id: selectedMapMarker.id,
+        count: selectedMapMarker.count,
+        reports: selectedMapMarker.reports?.map((r: any) => ({ id: r.id, title: r.title }))
+      })
+    }
+  }, [selectedMapMarker])
 
   // 카테고리 한글 변환 함수
   const getCategoryLabel = (category: string) => {
@@ -431,33 +448,12 @@ export default function Home() {
               />
               
               {/* 이 지역 재검색 버튼 */}
-              {currentMapBounds && (
-                <button
-                  onClick={handleRegionSearch}
-                  disabled={isFetchingMapReports}
-                  className={`px-3 md:px-4 py-2 rounded-lg font-medium shadow-md transition-all flex items-center space-x-1 md:space-x-2 text-sm touch-manipulation whitespace-nowrap ${
-                    isFetchingMapReports
-                      ? 'bg-gray-400 text-white cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg active:scale-95'
-                  }`}
-                >
-                  {isFetchingMapReports ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 md:h-4 w-3 md:w-4 border-b-2 border-white"></div>
-                      <span className="hidden md:inline">검색 중...</span>
-                      <span className="md:hidden">검색중</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-3 md:w-4 h-3 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      <span className="hidden md:inline">현재 지역 검색</span>
-                      <span className="md:hidden">지역검색</span>
-                    </>
-                  )}
-                </button>
-              )}
+              <CurrentRegionButton
+                onClick={handleRegionSearch}
+                loading={isFetchingMapReports}
+                disabled={!currentMapBounds}
+                loadingText="검색 중..."
+              />
             </div>
             
             {searchedLocation && (
@@ -478,90 +474,39 @@ export default function Home() {
           />
         </div>
 
-        {/* 선택된 마커 정보 영역 */}
+        {/* 선택된 마커의 제보들 표시 */}
         {selectedMapMarker && (
-          <div className="mb-8 p-4 bg-white rounded-xl shadow-sm border">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <MarkerIcon className="w-4 h-5 mr-1" />
-                {selectedLocation || '선택한 위치'} 제보
-                {selectedMapMarker.count > 1 && (
-                  <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                    {selectedMapMarker.count}개
-                  </span>
-                )}
-              </h3>
-              <button
-                onClick={() => setSelectedMapMarker(null)}
-                className="text-gray-400 hover:text-gray-600 p-1"
-              >
-                ✕
-              </button>
+          <div className="mb-8 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            {/* 헤더 */}
+            <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <MapPin className="w-5 h-5 text-blue-600 mr-2" />
+                    {selectedLocation || '선택한 위치'}
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {selectedMapMarker.count}개의 제보가 있습니다
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedMapMarker(null)}
+                  className="text-gray-500 hover:text-gray-700 transition-colors p-2 hover:bg-white/50 rounded-lg"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
             
-            <div className="space-y-4">
-              {selectedMapMarker.reports.map((report: Report, index: number) => (
-                <div 
-                  key={report.id} 
-                  onClick={() => router.push(`/reports/${report.id}`)}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300"
-                >
-                  <div className="flex items-start space-x-4">
-                    {/* 카테고리 아이콘 */}
-                    <div className="flex-shrink-0">
-                      <div 
-                        className="w-4 h-4 rounded-full"
-                        style={{ backgroundColor: 
-                          report.category === 'NOISE' ? '#FF6B6B' :
-                          report.category === 'TRASH' ? '#4ECDC4' :
-                          report.category === 'FACILITY' ? '#45B7D1' :
-                          report.category === 'TRAFFIC' ? '#96CEB4' :
-                          '#FECA57'
-                        }}
-                      ></div>
-                    </div>
-                    
-                    {/* 제보 내용 */}
-                    <div className="flex-1">
-                      <div className="flex items-center mb-2">
-                        <span className="text-xs text-gray-500 font-medium mr-3">
-                          {getCategoryLabel(report.category)}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {new Date(report.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      
-                      <h4 className="font-semibold text-gray-900 mb-2">
-                        {report.title}
-                      </h4>
-                      
-                      <p className="text-gray-600 text-sm mb-3">
-                        {report.description}
-                      </p>
-                      
-                      {/* 주소 및 통계 */}
-                      <div className="flex flex-col md:flex-row md:items-center justify-between text-sm text-gray-500 gap-2">
-                        <div className="flex items-center">
-                          <MarkerIcon category={report.category} className="w-3 h-4 mr-1" />
-                          <span className="truncate">{report.address}</span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-4">
-                          <span className="flex items-center">
-                            <span className="mr-1">👍</span>
-                            {report.voteCount || 0}
-                          </span>
-                          <span className="flex items-center">
-                            <span className="mr-1">💬</span>
-                            {report.commentCount || 0}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            {/* 제보 목록 */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {(selectedMapMarker.reports || []).map((report: any) => (
+                  <ReportCard key={report.id} report={report} />
+                ))}
+              </div>
             </div>
           </div>
         )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useReportManagement, ReportDetail } from '../../hooks/useReportManagement';
 import MarkerIcon from '@/components/ui/MarkerIcon';
+import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils';
 
 interface ReportDetailModalProps {
   reportId: string;
@@ -81,8 +82,14 @@ export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportD
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {loading && !reportDetail ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -162,7 +169,7 @@ export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportD
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-gray-700 mb-2 flex items-center">
                       <MarkerIcon category={reportDetail.category} className="w-4 h-5 mr-2" />
-                      {reportDetail.address}
+                      {formatToAdministrativeAddress(reportDetail.address || '')}
                     </p>
                     {reportDetail.location && (
                       <div className="h-48 bg-gray-200 rounded-lg flex items-center justify-center">

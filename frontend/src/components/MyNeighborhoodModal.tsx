@@ -7,6 +7,7 @@ import { MapPin, X, Home, Trash2 } from 'lucide-react'
 import { NeighborhoodInfo } from '@/types'
 import { extractNeighborhoodFromAddress } from '@/lib/utils/neighborhoodUtils'
 import MarkerIcon from '@/components/ui/MarkerIcon'
+import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 
 interface MyNeighborhoodModalProps {
   isOpen: boolean
@@ -18,6 +19,12 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
   const updateNeighborhoodMutation = useUpdateNeighborhood()
   const deleteNeighborhoodMutation = useDeleteNeighborhood()
   const [isSelecting, setIsSelecting] = useState(false)
+
+  // 모달이 닫힐 때 상태 초기화
+  const handleClose = () => {
+    setIsSelecting(false)
+    onClose()
+  }
 
   if (!isOpen) return null
 
@@ -32,8 +39,7 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
 
     updateNeighborhoodMutation.mutate(neighborhood, {
       onSuccess: () => {
-        setIsSelecting(false)
-        onClose()
+        handleClose()
       }
     })
   }
@@ -43,15 +49,23 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
     if (confirm('내 동네 설정을 삭제하시겠습니까?')) {
       deleteNeighborhoodMutation.mutate(undefined, {
         onSuccess: () => {
-          onClose()
+          handleClose()
         }
       })
     }
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-hidden">
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+      onClick={handleClose}
+    >
+      <div 
+        className={`bg-white rounded-xl max-w-lg w-full overflow-hidden ${
+          isSelecting ? 'max-h-[90vh]' : 'max-h-[200vh]'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* 헤더 */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center">
@@ -59,7 +73,7 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
             내 동네 설정
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <X className="h-5 w-5" />
@@ -67,7 +81,9 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
         </div>
 
         {/* 컨텐츠 */}
-        <div className="p-6 space-y-6">
+        <div className={`p-6 space-y-6 overflow-y-auto ${
+          isSelecting ? 'max-h-[calc(90vh-120px)]' : 'max-h-[calc(95vh-120px)]'
+        }`}>
           {/* 현재 설정된 동네 */}
           {profile?.neighborhood && !isSelecting ? (
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -78,29 +94,21 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
                     <span className="font-medium text-blue-900">현재 내 동네</span>
                   </div>
                   
-                  {/* 설정된 동네명과 실제 행정구역 분석 */}
+                  {/* 주소 */}
                   <div className="space-y-2">
-                    <h3 className="text-lg font-semibold text-blue-900">
-                      {profile.neighborhood.place_name}
+                    <h3 className="text-lg font-semibold text-blue-900">                      
+                      {formatToAdministrativeAddress(profile.neighborhood.address)}
                     </h3>
-                    
-                    {/* 행정구역 정보 추출해서 표시 */}
-                    {(() => {
-                      const neighborhoodInfo = extractNeighborhoodFromAddress(profile.neighborhood.address)
-                      return (
-                        <div className="text-sm space-y-1">
+                    <div className="text-sm space-y-1">
                           <p className="text-blue-700 flex items-center">
-                            <MarkerIcon className="w-3 h-4 mr-1" />
-                            {profile.neighborhood.address}
+                           
+                            위치: {profile.neighborhood.place_name}
                           </p>
-                          {neighborhoodInfo.full !== profile.neighborhood.place_name && (
-                            <p className="text-blue-600 bg-blue-100 px-2 py-1 rounded text-xs">
-                              🏘️ 행정구역: {neighborhoodInfo.full}
-                            </p>
-                          )}
+                       
+                  
                         </div>
-                      )
-                    })()}
+                    
+                    
                   </div>
                 </div>
                 <button
@@ -125,12 +133,12 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
           ) : (
             /* 동네 선택 */
             <div className="space-y-4">
-              <div className="text-center">
-                <div className="text-4xl mb-4">🏠</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <div className="text-center py-4">
+                <div className="text-4xl mb-6">🏠</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">
                   {profile?.neighborhood ? '새로운 동네를 선택해주세요' : '내 동네를 설정해주세요'}
                 </h3>
-                <p className="text-gray-600 text-sm">
+                <p className="text-gray-600 text-base leading-relaxed px-4">
                   설정한 동네를 기준으로 근처 제보들을 우선적으로 보여드립니다
                 </p>
               </div>
@@ -141,12 +149,14 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
               />
 
               {profile?.neighborhood && (
-                <button
-                  onClick={() => setIsSelecting(false)}
-                  className="w-full text-gray-600 hover:text-gray-800 px-4 py-2 border border-gray-300 rounded-lg font-medium transition-colors"
-                >
-                  취소
-                </button>
+                <div className="mt-12">
+                  <button
+                    onClick={handleClose}
+                    className="w-full text-gray-600 hover:text-gray-800 px-4 py-2 border border-gray-300 rounded-lg font-medium transition-colors"
+                  >
+                    취소
+                  </button>
+                </div>
               )}
             </div>
           )}

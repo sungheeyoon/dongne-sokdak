@@ -1,6 +1,7 @@
 /**
  * 주소에서 장소명과 주소를 분리하는 유틸리티 함수들
  */
+import { formatToAdministrativeAddress } from './addressUtils';
 
 export interface LocationDisplay {
   placeName: string;
@@ -30,7 +31,7 @@ export function parseReportLocation(address?: string): LocationDisplay {
     if (!isSimpleAddress(placeName)) {
       return {
         placeName: placeName.trim(),
-        address: addressPart.trim(),
+        address: formatToAdministrativeAddress(addressPart.trim()),
         showSeparate: true
       };
     }
@@ -44,7 +45,7 @@ export function parseReportLocation(address?: string): LocationDisplay {
     const [, addressPart, placeName] = buildingMatch;
     return {
       placeName: placeName.trim(),
-      address: addressPart.trim(),
+      address: formatToAdministrativeAddress(addressPart.trim()),
       showSeparate: true
     };
   }
@@ -57,7 +58,7 @@ export function parseReportLocation(address?: string): LocationDisplay {
     const [, placeName, addressPart] = frontPlaceMatch;
     return {
       placeName: placeName.trim(),
-      address: addressPart.trim(),
+      address: formatToAdministrativeAddress(addressPart.trim()),
       showSeparate: true
     };
   }
@@ -71,7 +72,7 @@ export function parseReportLocation(address?: string): LocationDisplay {
     if (!isSimpleAddress(placeName)) {
       return {
         placeName: placeName.trim(),
-        address: addressPart.trim(),
+        address: formatToAdministrativeAddress(addressPart.trim()),
         showSeparate: true
       };
     }
@@ -80,7 +81,7 @@ export function parseReportLocation(address?: string): LocationDisplay {
   // 분리할 수 없는 경우 전체를 주소로 처리
   return {
     placeName: '',
-    address: address,
+    address: formatToAdministrativeAddress(address),
     showSeparate: false
   };
 }
@@ -104,22 +105,8 @@ function isSimpleAddress(text: string): boolean {
 }
 
 /**
- * 행정동 기반으로 동네명 추출 (기존 함수와 연동)
+ * 행정동 기반으로 동네명 추출
  */
 export function getDisplayNeighborhood(address: string): string {
-  // 행정동 추출 로직 (기존 neighborhoodUtils.ts와 연동 가능)
-  const parts = address.split(' ');
-  const dongIndex = parts.findIndex(part => part.endsWith('동'));
-  
-  if (dongIndex !== -1) {
-    return parts[dongIndex];
-  }
-  
-  // 구 단위까지만 추출
-  const guIndex = parts.findIndex(part => part.endsWith('구'));
-  if (guIndex !== -1) {
-    return parts[guIndex];
-  }
-  
-  return '알 수 없는 지역';
+  return formatToAdministrativeAddress(address);
 }
