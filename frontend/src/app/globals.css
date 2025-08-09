@@ -1,15 +1,69 @@
 @import "tailwindcss";
 
 :root {
+  /* Theme Colors */
+  --primary-black: 0 0 0;
+  --primary-dark-brown: 30 25 25;
+  --primary-light-beige: 247 245 242;
+  --primary-blue: 0 97 254;
+  --primary-white: 255 255 255;
+  --primary-pink: 205 47 123;
+  
+  /* Secondary Colors */
+  --accent-brown: 82 74 62;
+  --accent-light-beige: 250 249 247;
+  
+  /* Legacy variables for compatibility */
   --background: #ffffff;
   --foreground: #171717;
 }
 
 @theme inline {
+  /* Color System */
+  --color-primary-black: rgb(var(--primary-black));
+  --color-primary-dark-brown: rgb(var(--primary-dark-brown));
+  --color-primary-light-beige: rgb(var(--primary-light-beige));
+  --color-primary-blue: rgb(var(--primary-blue));
+  --color-primary-white: rgb(var(--primary-white));
+  --color-primary-pink: rgb(var(--primary-pink));
+  --color-accent-brown: rgba(var(--accent-brown), 0.82);
+  --color-accent-light-beige: rgb(var(--accent-light-beige));
+  
+  /* Legacy compatibility */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  
+  /* Typography */
+  --font-noto-sans-kr: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-atlas-grotesk: "Atlas Grotesk Web", "Atlas Grotesk", AtlasGrotesk, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sharp-grotesk-wide: SharpGroteskWide, "Sharp Grotesk 23", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sharp-grotesk: "Sharp Grotesk", SharpGrotesk, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  
+  /* Font Sizes */
+  --font-size-xs: 12px;
+  --font-size-sm: 13.3333px;
+  --font-size-base: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 26px;
+  --font-size-4xl: 32px;
+  --font-size-5xl: 40px;
+  
+  /* Spacing */
+  --spacing-section: 96px;
+  --spacing-common: 24px;
+  --spacing-card-gap: 8px;
+  
+  /* Border Radius */
+  --radius-card: 16px;
+  --radius-button: 12px;
+  
+  /* Transitions */
+  --transition-fast: 0.125s;
+  --transition-medium: 0.2s;
+  --transition-slow: 0.333s;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,7 +75,7 @@
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: rgb(var(--primary-dark-brown));
   font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -77,11 +131,20 @@ body {
 }
 
 /* 라인 클램프 유틸리티 */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .line-clamp-3 {
@@ -89,6 +152,7 @@ body {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 카카오맵 로고 및 브랜딩 숨기기 */

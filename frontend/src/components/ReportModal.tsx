@@ -314,8 +314,14 @@ export default function ReportModal() {
   if (!isReportModalOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden shadow-2xl border border-gray-300">
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+      onClick={handleClose}
+    >
+      <div 
+        className="bg-white rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden shadow-2xl border border-gray-300"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* 헤더 */}
         <div className="flex items-center justify-between p-6 border-b border-gray-300">
           <h2 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
@@ -335,32 +341,39 @@ export default function ReportModal() {
 
         {/* 진행 표시바 */}
         <div className="px-6 py-4 bg-blue-50 border-b border-blue-200">
-          <div className="flex items-center">
-            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-              step === 'location' ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'
-            }`}>
-              1
-            </div>
-            <div className={`flex-1 h-1 mx-3 rounded ${
-              step === 'details' ? 'bg-green-600' : 'bg-gray-300'
-            }`}></div>
-            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-              step === 'details' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-            }`}>
-              2
-            </div>
-          </div>
-          <div className="flex justify-between mt-2 text-sm text-gray-700 font-medium">
-            <span className="flex items-center space-x-1">
-              <MapPin className="w-4 h-4 text-blue-600" />
-              <span>위치 선택</span>
-            </span>
-            <span className="flex items-center space-x-1">
-              <span className="text-blue-600">✏️</span>
-              <span>내용 작성</span>
-            </span>
-          </div>
-        </div>
+  <div className="flex items-center justify-center gap-8 max-w-md mx-auto">
+    {/* Step 1 */}
+    <div className="flex flex-col items-center space-y-2">
+      <div
+        className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium
+        ${step === 'location' ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'}`}
+      >
+        1
+      </div>
+      <div className="flex items-center space-x-1 text-sm text-gray-700 font-medium">
+        <MapPin className="w-4 h-4 text-blue-600" />
+        <span>위치 선택</span>
+      </div>
+    </div>
+
+    {/* Divider */}
+    <div className="h-0.5 bg-gray-300 flex-1" />
+
+    {/* Step 2 */}
+    <div className="flex flex-col items-center space-y-2">
+      <div
+        className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium
+        ${step === 'details' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'}`}
+      >
+        2
+      </div>
+      <div className="flex items-center space-x-1 text-sm text-gray-700 font-medium">
+        <span className="text-blue-600">✏️</span>
+        <span>내용 작성</span>
+      </div>
+    </div>
+  </div>
+</div>
 
         {/* 컨텐츠 */}
         <div className="p-6 overflow-y-auto max-h-[65vh] bg-gray-50">

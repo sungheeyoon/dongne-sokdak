@@ -3,6 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useReportManagement, ReportManagement, ReportFilters } from '@/hooks/useReportManagement'
 import ReportDetailModal from './ReportDetailModal'
+import { 
+  FileText, Search, Filter, Eye, Trash2, CheckCircle, 
+  Clock, AlertTriangle, Camera, ThumbsUp, MessageCircle,
+  RefreshCw, X, Users, Mail 
+} from 'lucide-react'
 
 import { getStatusColor, getCategoryLabel, getStatusLabel } from '@/lib/constants/status';
 
@@ -100,24 +105,33 @@ export default function ReportManagementComponent() {
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">제보 관리</h1>
-        <div className="text-sm text-gray-500">
-          총 {reports.length}개의 제보
+        <h1 className="text-4xl font-bold text-gray-900 flex items-center">
+          <FileText className="w-8 h-8 mr-4 text-red-600" />
+          제보 관리
+        </h1>
+        <div className="bg-white px-4 py-2 rounded-lg shadow-sm border">
+          <div className="text-sm text-gray-500">총 제보 수</div>
+          <div className="text-2xl font-bold text-red-600">{reports.length}</div>
         </div>
       </div>
 
       {/* 필터 영역 */}
-      <div className="bg-white p-4 rounded-lg shadow">
+      <div className="bg-white rounded-xl p-6 shadow-sm border">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <Filter className="w-5 h-5 mr-2 text-gray-600" />
+          필터 및 검색
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* 상태 필터 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+              <AlertTriangle className="w-4 h-4 mr-1 text-orange-500" />
               상태
             </label>
             <select
               value={filters.status || ''}
               onChange={(e) => handleFilterChange({ status: e.target.value || undefined })}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">모든 상태</option>
               <option value="OPEN">접수됨</option>
@@ -128,13 +142,14 @@ export default function ReportManagementComponent() {
 
           {/* 카테고리 필터 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+              <FileText className="w-4 h-4 mr-1 text-blue-500" />
               카테고리
             </label>
             <select
               value={filters.category || ''}
               onChange={(e) => handleFilterChange({ category: e.target.value || undefined })}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">모든 카테고리</option>
               <option value="NOISE">소음</option>
@@ -147,49 +162,58 @@ export default function ReportManagementComponent() {
 
           {/* 검색 */}
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+              <Search className="w-4 h-4 mr-1 text-emerald-500" />
               검색
             </label>
-            <input
-              type="text"
-              placeholder="제목, 내용, 사용자명으로 검색..."
-              value={filters.search || ''}
-              onChange={(e) => handleFilterChange({ search: e.target.value || undefined })}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium placeholder:text-gray-400 placeholder:font-normal"
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="제목, 내용, 사용자명으로 검색..."
+                value={filters.search || ''}
+                onChange={(e) => handleFilterChange({ search: e.target.value || undefined })}
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* 일괄 작업 버튼 */}
       {selectedReports.length > 0 && (
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm text-blue-800">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg font-medium">
+              <CheckCircle className="w-4 h-4 mr-2" />
               {selectedReports.length}개 선택됨
-            </span>
+            </div>
             <button
               onClick={() => handleBulkStatusChange('IN_PROGRESS')}
-              className="px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600"
+              className="flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-lg hover:from-amber-600 hover:to-amber-700 transition-all duration-200 font-medium"
             >
+              <Clock className="w-4 h-4 mr-2" />
               처리중으로 변경
             </button>
             <button
               onClick={() => handleBulkStatusChange('RESOLVED')}
-              className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
+              className="flex items-center px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition-all duration-200 font-medium"
             >
+              <CheckCircle className="w-4 h-4 mr-2" />
               해결됨으로 변경
             </button>
             <button
               onClick={handleBulkDelete}
-              className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+              className="flex items-center px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 font-medium"
             >
+              <Trash2 className="w-4 h-4 mr-2" />
               삭제
             </button>
             <button
               onClick={() => setSelectedReports([])}
-              className="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600"
+              className="flex items-center px-4 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 font-medium"
             >
+              <X className="w-4 h-4 mr-2" />
               선택 취소
             </button>
           </div>
@@ -255,19 +279,26 @@ export default function ReportManagementComponent() {
                         </span>
                         {report.image_url && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                            📷 이미지
+                            <Camera className="w-3 h-3 mr-1" />
+                            이미지
                           </span>
                         )}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {report.user_nickname}
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+                        <Users className="w-4 h-4 text-gray-600" />
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {report.user_email}
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {report.user_nickname}
+                        </div>
+                        <div className="text-sm text-gray-500 flex items-center">
+                          <Mail className="w-3 h-3 mr-1" />
+                          {report.user_email}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -284,8 +315,14 @@ export default function ReportManagementComponent() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     <div className="flex gap-4">
-                      <span>👍 {report.votes_count}</span>
-                      <span>💬 {report.comments_count}</span>
+                      <span className="flex items-center">
+                        <ThumbsUp className="w-4 h-4 mr-1 text-blue-500" />
+                        {report.votes_count}
+                      </span>
+                      <span className="flex items-center">
+                        <MessageCircle className="w-4 h-4 mr-1 text-green-500" />
+                        {report.comments_count}
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
@@ -303,14 +340,16 @@ export default function ReportManagementComponent() {
                           setSelectedReportId(report.id)
                           setShowDetailModal(true)
                         }}
-                        className="text-blue-600 hover:text-blue-900 text-sm"
+                        className="flex items-center px-3 py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 text-sm font-medium"
                       >
+                        <Eye className="w-4 h-4 mr-1" />
                         상세
                       </button>
                       <button
                         onClick={() => deleteReport(report.id, '관리자에 의한 삭제')}
-                        className="text-red-600 hover:text-red-900 text-sm"
+                        className="flex items-center px-3 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 text-sm font-medium"
                       >
+                        <Trash2 className="w-4 h-4 mr-1" />
                         삭제
                       </button>
                     </div>

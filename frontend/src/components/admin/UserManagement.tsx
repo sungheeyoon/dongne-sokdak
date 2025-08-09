@@ -3,117 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useAdmin, UserManagement as UserData } from '../../hooks/useAdmin';
 import { getRoleLabel as getRoleDisplay, getRoleBadgeColor } from '../../lib/constants/status';
+import { 
+  Users, Search, Filter, RefreshCw, Check, X, 
+  UserCheck, UserX, Crown, Shield, User 
+} from 'lucide-react';
 
-interface UserRowProps {
-  user: UserData;
-  onRoleChange: (userId: string, role: string) => void;
-  onToggleActive: (userId: string, activate: boolean) => void;
-  canModifyRole: boolean;
-}
-
-const UserRow: React.FC<UserRowProps> = ({ user, onRoleChange, onToggleActive, canModifyRole }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [newRole, setNewRole] = useState(user.role);
-
-  const handleRoleSubmit = () => {
-    if (newRole !== user.role) {
-      onRoleChange(user.id, newRole);
-    }
-    setIsEditing(false);
-  };
-
-  return (
-    <tr className="hover:bg-gray-50">
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="flex items-center">
-          <div className="flex-shrink-0 h-10 w-10">
-            <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-              <span className="text-sm font-medium text-gray-700">
-                {user.nickname.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          </div>
-          <div className="ml-4">
-            <div className="text-sm font-medium text-gray-900">{user.nickname}</div>
-            <div className="text-sm text-gray-500">{user.email}</div>
-          </div>
-        </div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        {isEditing && canModifyRole ? (
-          <div className="flex items-center space-x-2">
-            <select
-              value={newRole}
-              onChange={(e) => setNewRole(e.target.value as "user" | "moderator" | "admin")}
-              className="text-sm border rounded px-2 py-1"
-            >
-              <option value="user">일반사용자</option>
-              <option value="moderator">중간관리자</option>
-              <option value="admin">최고관리자</option>
-            </select>
-            <button
-              onClick={handleRoleSubmit}
-              className="text-green-600 hover:text-green-900"
-            >
-              ✓
-            </button>
-            <button
-              onClick={() => {
-                setIsEditing(false);
-                setNewRole(user.role);
-              }}
-              className="text-red-600 hover:text-red-900"
-            >
-              ✗
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center space-x-2">
-            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
-              {getRoleDisplay(user.role)}
-            </span>
-            {canModifyRole && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="text-blue-600 hover:text-blue-900 text-sm"
-              >
-                편집
-              </button>
-            )}
-          </div>
-        )}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-        }`}>
-          {user.is_active ? '활성' : '비활성'}
-        </span>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : '없음'}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        {user.login_count}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        {new Date(user.created_at).toLocaleDateString()}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-        <button
-          onClick={() => onToggleActive(user.id, !user.is_active)}
-          className={`${
-            user.is_active
-              ? 'text-red-600 hover:text-red-900'
-              : 'text-green-600 hover:text-green-900'
-          }`}
-        >
-          {user.is_active ? '비활성화' : '활성화'}
-        </button>
-      </td>
-    </tr>
-  );
-};
 
 export default function UserManagement() {
   const {
@@ -202,21 +96,29 @@ export default function UserManagement() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">사용자 관리</h1>
-          <p className="text-gray-600 mt-1">사용자 계정을 관리하고 권한을 설정합니다.</p>
+          <h1 className="text-4xl font-bold text-gray-900 flex items-center">
+            <Users className="w-8 h-8 mr-4 text-blue-600" />
+            사용자 관리
+          </h1>
+          <p className="text-gray-600 mt-2 ml-12">사용자 계정을 관리하고 권한을 설정합니다.</p>
         </div>
 
         {/* 필터 */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+        <div className="bg-white rounded-xl p-6 shadow-sm border mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <Filter className="w-5 h-5 mr-2 text-gray-600" />
+            필터 및 검색
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <Crown className="w-4 h-4 mr-1 text-purple-500" />
                 역할
               </label>
               <select
                 value={filters.role}
                 onChange={(e) => handleFilterChange('role', e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">전체</option>
                 <option value="user">일반사용자</option>
@@ -225,13 +127,14 @@ export default function UserManagement() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <UserCheck className="w-4 h-4 mr-1 text-emerald-500" />
                 활성 상태
               </label>
               <select
                 value={filters.is_active}
                 onChange={(e) => handleFilterChange('is_active', e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">전체</option>
                 <option value="true">활성</option>
@@ -239,16 +142,20 @@ export default function UserManagement() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <Search className="w-4 h-4 mr-1 text-blue-500" />
                 검색
               </label>
-              <input
-                type="text"
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-                placeholder="닉네임 또는 이메일 검색"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-400 placeholder:font-normal"
-              />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  placeholder="닉네임 또는 이메일 검색"
+                  className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
+                />
+              </div>
             </div>
             <div className="flex items-end">
               <button
@@ -256,8 +163,9 @@ export default function UserManagement() {
                   setFilters({ role: '', is_active: '', search: '' });
                   fetchUsers();
                 }}
-                className="w-full bg-gray-500 text-white py-2 rounded-md hover:bg-gray-600"
+                className="w-full bg-gradient-to-r from-gray-500 to-gray-600 text-white py-2 rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 font-medium flex items-center justify-center"
               >
+                <RefreshCw className="w-4 h-4 mr-2" />
                 필터 초기화
               </button>
             </div>
@@ -335,7 +243,7 @@ export default function UserManagement() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {users.map((user) => (
-                    <tr key={user.id}>
+                    <tr key={user.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <input
                           type="checkbox"
@@ -344,12 +252,77 @@ export default function UserManagement() {
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
                       </td>
-                      <UserRow
-                        user={user}
-                        onRoleChange={handleRoleChange}
-                        onToggleActive={handleToggleActive}
-                        canModifyRole={isSuperAdmin()}
-                      />
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                              <span className="text-sm font-medium text-gray-700">
+                                {user.nickname.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{user.nickname}</div>
+                            <div className="text-sm text-gray-500">{user.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
+                            {getRoleDisplay(user.role)}
+                          </span>
+                          {isSuperAdmin() && (
+                            <select
+                              value={user.role}
+                              onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                              className="text-sm border rounded px-2 py-1 bg-white"
+                            >
+                              <option value="user">일반사용자</option>
+                              <option value="moderator">중간관리자</option>
+                              <option value="admin">최고관리자</option>
+                            </select>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {user.is_active ? '활성' : '비활성'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : '없음'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {user.login_count}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleToggleActive(user.id, !user.is_active)}
+                          className={`flex items-center px-3 py-1 rounded-lg font-medium transition-all duration-200 ${
+                            user.is_active
+                              ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                              : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
+                          }`}
+                        >
+                          {user.is_active ? (
+                            <>
+                              <UserX className="w-4 h-4 mr-1" />
+                              비활성화
+                            </>
+                          ) : (
+                            <>
+                              <UserCheck className="w-4 h-4 mr-1" />
+                              활성화
+                            </>
+                          )}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

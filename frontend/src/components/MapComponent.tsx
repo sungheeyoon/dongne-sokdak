@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useEffect, useState, useMemo, useCallback } from 'react'
-import { Map, MapMarker, MapInfoWindow, MarkerClusterer } from 'react-kakao-maps-sdk'
+import { Map, MapMarker, MapInfoWindow, MarkerClusterer, CustomOverlayMap } from 'react-kakao-maps-sdk'
+import { MapPin } from 'lucide-react'
 import { Report } from '@/types'
 import { formatToAdministrativeAddress, isSameAdministrativeArea } from '@/lib/utils/addressUtils'
-import { createGroupMarkerImage } from '@/lib/utils/mapMarkerUtils'
+import { getMarkerColor } from '@/lib/utils/mapMarkerUtils'
 
 interface GroupedReport {
   id: string
@@ -379,6 +380,8 @@ export default function MapComponent({
 
   // 그룹 마커 클릭 핸들러
   const handleGroupMarkerClick = (group: GroupedReport) => {
+    console.log('🎯 MapComponent: 마커 클릭됨', group)
+    
     // 마커를 클릭하면 해당 위치로 맵 중심 부드럽게 이동하고 적당히 줌인
     if (map) {
       const moveLatLng = new window.kakao.maps.LatLng(group.location.lat, group.location.lng)
@@ -399,8 +402,11 @@ export default function MapComponent({
     }
     
     // 부모 컴포넌트에 마커 클릭 이벤트 전달
+    console.log('📤 MapComponent: onMarkerClick 호출', typeof onMarkerClick, group)
     if (onMarkerClick) {
       onMarkerClick(group)
+    } else {
+      console.warn('⚠️ MapComponent: onMarkerClick이 정의되지 않음')
     }
   }
 
@@ -472,34 +478,59 @@ export default function MapComponent({
           onCreate={setMap}
           onClick={handleMapClick}
         >
-          {/* 그룹화된 마커들 */}
+          {/* 그룹화된 마커들 - MapPin 아이콘 사용 */}
           {groupedReports.map((group) => (
-            <MapMarker
+            <CustomOverlayMap
               key={group.id}
               position={{ lat: group.location.lat, lng: group.location.lng }}
-              onClick={() => handleGroupMarkerClick(group)}
-              image={createGroupMarkerImage(group.primaryCategory, group.count, selectedMarkerId === group.id)}
-            />
+              yAnchor={1}
+              xAnchor={0.5}
+            >
+              <div 
+                onClick={() => handleGroupMarkerClick(group)}
+                className="cursor-pointer transform hover:scale-110 transition-transform duration-200"
+                style={{
+                  filter: selectedMarkerId === group.id ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))' : 'none'
+                }}
+              >
+                {group.count > 1 ? (
+                  // 다중 제보 - 숫자가 있는 원형 마커
+                  <div 
+                    className="relative flex items-center justify-center w-8 h-8 rounded-full border-2 border-white shadow-lg text-white font-bold text-sm"
+                    style={{ 
+                      backgroundColor: getMarkerColor(group.primaryCategory),
+                      transform: selectedMarkerId === group.id ? 'scale(1.1)' : 'scale(1)'
+                    }}
+                  >
+                    {group.count}
+                  </div>
+                ) : (
+                  // 단일 제보 - MapPin 아이콘 (fill + 가운데 흰 원)
+                  <div
+                    className="relative w-6 h-6 drop-shadow-lg"
+                    style={{
+                      transform: selectedMarkerId === group.id ? 'scale(1.1)' : 'scale(1)'
+                    }}
+                  >
+                    <MapPin 
+                      className="w-8 h-8"
+                      style={{ 
+                        fill: getMarkerColor(group.primaryCategory),
+                        stroke: 'white',
+                        strokeWidth: '1',
+                      }}
+                    />
+                    
+                  </div>
+                )}
+              </div>
+            </CustomOverlayMap>
           ))}
         </Map>
       </div>
 
 
-      {/* 범례 - 모바일 최적화 */}
-      <div className="absolute bottom-2 md:bottom-4 right-2 md:right-4 bg-white rounded-lg shadow-lg p-2 md:p-3 text-xs">
-        <div className="font-medium mb-1 md:mb-2 text-xs md:text-sm">🗺️ 범례</div>
-        <div className="space-y-1">
-          <div className="flex items-center">
-            <div className="w-3 md:w-4 h-3 md:h-4 rounded-full bg-blue-500 mr-1 md:mr-2 flex items-center justify-center text-white text-xs">1</div>
-            <span className="text-xs">단일 제보</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-3 md:w-4 h-3 md:h-4 rounded-full bg-red-500 mr-1 md:mr-2 flex items-center justify-center text-white text-xs">N</div>
-            <span className="text-xs hidden md:inline">다중 제보 (클릭하면 목록 표시)</span>
-            <span className="text-xs md:hidden">다중 제보</span>
-          </div>
-        </div>
-      </div>
+      
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import { getSafeHomeUrl } from '@/lib/utils/redirectUtils'
 
 function KakaoCallbackContent() {
   const router = useRouter()
@@ -30,11 +31,12 @@ function KakaoCallbackContent() {
         // OAuth 콜백 처리
         await handleOAuthCallback()
         
-        // 로그인 성공 메시지
-        alert('카카오 로그인이 완료되었습니다!')
+        // 로그인 성공 로그 (alert 제거)
+        console.log('✅ 카카오 로그인 성공')
 
-        // 메인 페이지로 리다이렉트
-        router.push('/')
+        // 안전한 홈 리다이렉트
+        const homeUrl = getSafeHomeUrl()
+        router.push(homeUrl)
         
       } catch (error: unknown) {
         console.error('OAuth 콜백 처리 실패:', error)

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { createSingleReportMarkerImage } from '@/lib/utils/mapMarkerUtils'
+import { MapPin } from 'lucide-react'
+import { getMarkerColor } from '@/lib/utils/mapMarkerUtils'
 
 interface MarkerIconProps {
   category?: string
@@ -12,27 +12,34 @@ interface MarkerIconProps {
 export default function MarkerIcon({ 
   category = 'OTHER', 
   size = 'small', 
-  className = 'w-4 h-5' 
+  className 
 }: MarkerIconProps) {
-  const [markerImageSrc, setMarkerImageSrc] = useState<string>('')
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const markerImage = createSingleReportMarkerImage(category, size)
-      setMarkerImageSrc(markerImage.src)
+  // 크기에 따른 클래스 설정
+  const getSizeClass = () => {
+    switch (size) {
+      case 'small':
+        return 'w-3 h-4'
+      case 'medium':
+        return 'w-4 h-5'
+      case 'large':
+        return 'w-6 h-7'
+      default:
+        return 'w-4 h-5'
     }
-  }, [category, size])
-
-  if (!markerImageSrc) {
-    // 로딩 중일 때는 기본 이모티콘 표시
-    return <span>📍</span>
   }
 
+  const finalClassName = className || getSizeClass()
+  const markerColor = getMarkerColor(category)
+
   return (
-    <img 
-      src={markerImageSrc} 
-      alt="위치 마커"
-      className={`object-contain ${className}`}
+    <MapPin 
+      className={`${finalClassName} drop-shadow-sm`}
+      style={{ 
+        color: markerColor,
+        fill: markerColor,
+        stroke: 'white',
+        strokeWidth: '1',
+      }}
     />
   )
 }

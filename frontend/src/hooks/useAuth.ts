@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useUserStore } from '@/stores/useUserStore'
 import { User } from '@supabase/supabase-js'
+import { getOAuthRedirectUrl } from '@/lib/utils/redirectUtils'
 
 export function useAuth() {
   const { user, setUser, setLoading } = useUserStore()
@@ -28,6 +29,18 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email)
+        
+        // 로그인 성공 시 알림 (OAuth 로그인만)
+        if (event === 'SIGNED_IN' && session?.user) {
+          const provider = session.user.app_metadata?.provider
+          if (provider === 'google' || provider === 'kakao') {
+            const providerName = provider === 'google' ? '구글' : '카카오'
+            setTimeout(() => {
+              alert(`${providerName} 로그인이 완료되었습니다!`)
+            }, 500) // 페이지 이동 후 표시
+          }
+        }
+        
         setUser(session?.user ?? null)
         setLoading(false)
       }
@@ -108,12 +121,22 @@ export function useAuth() {
 
   const signInWithKakao = async (): Promise<void> => {
     try {
+      // 이미 로그인된 상태인지 확인
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        console.log('이미 로그인된 상태입니다.')
+        alert('이미 로그인되어 있습니다.')
+        return
+      }
+
       setLoading(true)
+      
+      const redirectTo = getOAuthRedirectUrl('kakao')
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo
         }
       })
       
@@ -130,12 +153,22 @@ export function useAuth() {
 
   const signInWithGoogle = async (): Promise<void> => {
     try {
+      // 이미 로그인된 상태인지 확인
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        console.log('이미 로그인된 상태입니다.')
+        alert('이미 로그인되어 있습니다.')
+        return
+      }
+
       setLoading(true)
+      
+      const redirectTo = getOAuthRedirectUrl('google')
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo
         }
       })
       

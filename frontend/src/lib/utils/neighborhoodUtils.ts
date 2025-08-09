@@ -299,6 +299,12 @@ export function extractAdministrativeDong(
   let district = ''
   let neighborhood = ''
   
+  // 디버깅을 위한 로그
+  console.log('🔍 extractAdministrativeDong 호출됨:', {
+    address,
+    roadAddress
+  })
+  
   try {
     // 지번주소에서 행정동 추출 (예: "인천 부평구 부개3동 123-45")
     const addressParts = address.split(' ')
@@ -335,7 +341,13 @@ export function extractAdministrativeDong(
         
         // 동을 찾지 못한 경우, 법정동을 행정동으로 매핑
         if (!neighborhood) {
+          console.log('🔍 동을 찾지 못해 convertToAdministrativeDong 호출:', {
+            district,
+            address,
+            roadAddress
+          })
           neighborhood = convertToAdministrativeDong(district, address, roadAddress)
+          console.log('🔍 convertToAdministrativeDong 결과:', neighborhood)
         }
       }
     }
@@ -368,11 +380,15 @@ export function extractAdministrativeDong(
     (neighborhood.includes(district.replace(/[구군]$/, '')) ? neighborhood : `${district} ${neighborhood}`) :
     neighborhood || district || '동네'
   
-  return {
+  const result = {
     district: district || '알 수 없음',
     neighborhood: neighborhood || '알 수 없음', 
     full: full.replace(/\s+/g, ' ').trim() // 공백 정리
   }
+  
+  console.log('🔍 extractAdministrativeDong 최종 결과:', result)
+  
+  return result
 }
 
 /**
