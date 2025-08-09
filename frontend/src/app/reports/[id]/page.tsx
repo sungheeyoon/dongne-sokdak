@@ -14,6 +14,7 @@ import { ReportCategory, ReportStatus } from '@/types'
 import dynamic from 'next/dynamic'
 import { useState } from 'react'
 import { parseReportLocation } from '@/lib/utils/locationDisplayUtils'
+import { Pencil } from 'lucide-react'
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), {
   ssr: false,
@@ -161,9 +162,9 @@ export default function ReportDetailPage() {
                 <div className="flex space-x-2">
                   <button
                     onClick={() => setIsEditModalOpen(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                    className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
                   >
-                    ✏️ 수정
+                    <Pencil className="w-4 h-4" /> 수정
                   </button>
                   <button
                     onClick={handleDelete}

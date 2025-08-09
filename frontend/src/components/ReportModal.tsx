@@ -6,11 +6,9 @@ import { ReportCategory } from '@/types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createReport, CreateReportData } from '@/lib/api/reports'
 import ImageUpload from './ImageUpload'
-import AddressSearchComponent from './AddressSearchComponent'
-import MapComponent from './MapComponent'
 import LocationPicker from './map/LocationPicker'
 import LocationSearch from './map/LocationSearch'
-import { X, Camera, MapPin, Loader2 } from 'lucide-react'
+import { X, MapPin, Loader2, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface LocationData {
@@ -328,7 +326,7 @@ export default function ReportModal() {
             {step === 'location' ? (
               <><MapPin className="w-6 h-6 text-blue-600" /><span>제보 위치 선택</span></>
             ) : (
-              <><span className="text-blue-600">✏️</span><span>제보 내용 작성</span></>
+              <><Pencil className="w-6 h-6 text-blue-600" /><span>제보 내용 작성</span></>
             )}
           </h2>
           <button
@@ -368,7 +366,7 @@ export default function ReportModal() {
         2
       </div>
       <div className="flex items-center space-x-1 text-sm text-gray-700 font-medium">
-        <span className="text-blue-600">✏️</span>
+        <Pencil className="w-4 h-4 text-blue-600" />
         <span>내용 작성</span>
       </div>
     </div>

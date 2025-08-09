@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { addVote, removeVote, checkUserVote, getVoteCount } from '@/lib/api/votes'
+import { ThumbsUp } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth'
 
 interface VoteButtonProps {
@@ -77,8 +78,8 @@ export default function VoteButton({ reportId, initialCount = 0 }: VoteButtonPro
           : 'bg-gray-100 text-gray-700 border-2 border-gray-300 hover:bg-gray-200'
       }`}
     >
-      <span className={`text-lg ${userVoted ? '👍' : '👍'}`}>
-        {userVoted ? '👍' : '👍'}
+      <span className={`text-lg ${userVoted ? <ThumbsUp/> : <ThumbsUp/>}`}>
+        {userVoted ? <ThumbsUp/> : <ThumbsUp/>}
       </span>
       <span>
         공감 {voteCount}

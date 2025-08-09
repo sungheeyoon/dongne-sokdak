@@ -8,7 +8,7 @@ import { useAdmin } from '@/hooks/useAdmin'
 import { useRouter } from 'next/navigation'
 import Avatar from './Avatar'
 import MyNeighborhoodModal from './MyNeighborhoodModal'
-import { Home, Settings, User, LogOut, ChevronDown } from 'lucide-react'
+import { Home, Settings, User, LogOut, ChevronDown, Pencil } from 'lucide-react'
 import Image from 'next/image'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 
@@ -92,7 +92,7 @@ export default function Header() {
                   onClick={() => router.push('/my-reports')}
                   className="text-gray-700 hover:text-gray-900 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
                 >
-                  📋 내 제보
+                  내 제보
                 </button>
                 {adminInfo && isAdmin() && (
                   <>
@@ -109,16 +109,16 @@ export default function Header() {
                       className="text-orange-700 hover:text-orange-900 px-4 py-2 rounded-lg font-semibold hover:bg-orange-50 transition-colors flex items-center space-x-1"
                       title="제보 관리"
                     >
-                      <span>📋</span>
                       <span>제보 관리</span>
                     </button>
                   </>
                 )}
                 <button
                   onClick={openReportModal}
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5"
+                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5"
                 >
-                  ✏️ 제보하기
+                  <Pencil className="w-4 h-4" />
+                  제보하기
                 </button>
                 <div className="relative" ref={profileDropdownRef}>
                   <button
@@ -200,7 +200,7 @@ export default function Header() {
                 onClick={openReportModal}
                 className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white p-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200 active:scale-95"
               >
-                ✏️
+                <Pencil/>
               </button>
             )}
             <button
