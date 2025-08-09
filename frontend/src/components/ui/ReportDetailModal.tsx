@@ -138,17 +138,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      title={
-        <div className="flex items-center">
-          <MapPin className="w-5 h-5 mr-2 text-blue-600" />
-          <span>{locationName} 제보</span>
-          {reportCount > 1 && (
-            <Badge variant="primary" className="ml-2">
-              {reportCount}개
-            </Badge>
-          )}
-        </div>
-      }
+      title={`${locationName} 제보${reportCount > 1 ? ` (${reportCount}개)` : ''}`}
       size="lg"
       className="max-w-2xl"
     >
