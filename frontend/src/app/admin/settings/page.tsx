@@ -16,6 +16,7 @@ interface SystemInfo {
 function AdminSettingsPage() {
   const router = useRouter();
   const { isAdmin } = useAdmin();
+  const admin = isAdmin();
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [systemLoading, setSystemLoading] = useState(false);
   const [systemError, setSystemError] = useState<string | null>(null);
@@ -53,7 +54,7 @@ function AdminSettingsPage() {
     if (isAdmin()) {
       fetchSystemInfo();
     }
-  }, []);
+  }, [admin]);
 
 
   const getStatusColor = (status: string) => {

@@ -3,7 +3,6 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { Map, MapMarker } from 'react-kakao-maps-sdk'
 import { MapPin, Navigation } from 'lucide-react'
-import { createSingleReportMarkerImage } from '@/lib/utils/mapMarkerUtils'
 
 interface LocationPickerProps {
   onLocationSelect: (location: { lat: number; lng: number; address: string }) => void

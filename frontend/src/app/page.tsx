@@ -53,7 +53,7 @@ export default function Home() {
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null)
   const [searchedLocation, setSearchedLocation] = useState<{ placeName: string; address: string } | null>(null)
   const [userCurrentLocation, setUserCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [locationPermissionStatus, setLocationPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'loading'>('unknown')
+  // Location permission status 제거 - 사용하지 않음
   const [currentMapBounds, setCurrentMapBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null)
   const [triggerMapSearch, setTriggerMapSearch] = useState(0) // 수동 검색 트리거
   const [useMapBoundsFilter, setUseMapBoundsFilter] = useState(false) // 맵 영역 필터 (내부 사용)
@@ -64,10 +64,12 @@ export default function Home() {
   const { data: profile } = useMyProfile()
   
   // 내 동네 위치 (로그인된 사용자의 설정된 동네)
-  const myNeighborhoodLocation = profile?.neighborhood ? {
-    lat: profile.neighborhood.lat,
-    lng: profile.neighborhood.lng
-  } : null
+  const myNeighborhoodLocation = useMemo(() => {
+    return profile?.neighborhood ? {
+      lat: profile.neighborhood.lat,
+      lng: profile.neighborhood.lng
+    } : null
+  }, [profile?.neighborhood])
 
   // 내 동네 제보 데이터 가져오기 (기본 방식)
   const { 
@@ -138,63 +140,7 @@ export default function Home() {
   const isLoading = useMapBoundsFilter ? isLoadingMapReports : isLoadingAllReports
   const error = useMapBoundsFilter ? mapReportsError : allReportsError
 
-  // 현재 위치 가져오기 함수
-  const getCurrentLocation = async () => {
-    if (!navigator.geolocation) {
-      alert('이 브라우저는 위치 서비스를 지원하지 않습니다.')
-      return
-    }
-
-    setLocationPermissionStatus('loading')
-
-    try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          reject,
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 300000
-          }
-        )
-      })
-
-      const location = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude
-      }
-
-      setUserCurrentLocation(location)
-      setLocationPermissionStatus('granted')
-      setMapCenter(null) // 검색된 위치 초기화
-      setSearchedLocation(null)
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📍 현재 위치 설정:', location)
-      }
-      
-    } catch (error: any) {
-      console.error('위치 가져오기 실패:', error)
-      setLocationPermissionStatus('denied')
-      
-      let errorMessage = '현재 위치를 가져올 수 없습니다.'
-      
-      switch(error.code) {
-        case error.PERMISSION_DENIED:
-          errorMessage = '위치 접근 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.'
-          break
-        case error.POSITION_UNAVAILABLE:
-          errorMessage = '위치 정보를 사용할 수 없습니다.'
-          break
-        case error.TIMEOUT:
-          errorMessage = '위치 정보 요청 시간이 초과되었습니다.'
-          break
-      }
-      
-      alert(errorMessage)
-    }
-  }
+  // getCurrentLocation 함수 제거 - 사용하지 않음
 
   // 위치 검색 핸들러 
   const handleLocationSearch = (location: { lat: number; lng: number; address: string; placeName: string }) => {
@@ -277,7 +223,7 @@ export default function Home() {
   }
 
   // 마커 클릭 핸들러
-  const handleMarkerClick = (group: any) => {
+  const handleMarkerClick = (group: { id: string; location: { lat: number; lng: number }; count: number; reports: Report[] }) => {
     console.log('📥 Page: handleMarkerClick 호출됨', group)
     console.log('📊 Page: group 데이터 구조:', {
       id: group?.id,
@@ -293,7 +239,7 @@ export default function Home() {
     if (typeof window !== 'undefined' && window.kakao && window.kakao.maps) {
       const geocoder = new window.kakao.maps.services.Geocoder()
       
-      geocoder.coord2Address(group.location.lng, group.location.lat, (result: any, status: any) => {
+      geocoder.coord2Address(group.location.lng, group.location.lat, (result: { address?: { address_name: string }; road_address?: { road_name: string; building_name: string; address_name: string } }[], status: string) => {
         if (status === window.kakao.maps.services.Status.OK) {
           const addr = result[0]
           let locationName = ''
@@ -341,22 +287,12 @@ export default function Home() {
       console.log('📊 Page: selectedMapMarker 상세:', {
         id: selectedMapMarker.id,
         count: selectedMapMarker.count,
-        reports: selectedMapMarker.reports?.map((r: any) => ({ id: r.id, title: r.title }))
+        reports: selectedMapMarker.reports?.map((r: { id: string; title: string }) => ({ id: r.id, title: r.title }))
       })
     }
   }, [selectedMapMarker])
 
-  // 카테고리 한글 변환 함수
-  const getCategoryLabel = (category: string) => {
-    const categoryLabels = {
-      NOISE: '소음',
-      TRASH: '쓰레기',
-      FACILITY: '시설물',
-      TRAFFIC: '교통',
-      OTHER: '기타'
-    }
-    return categoryLabels[category as keyof typeof categoryLabels] || category
-  }
+  // getCategoryLabel 함수 제거 - 사용하지 않음
 
   // 개발용 디버깅 제거 (성능 최적화)
 
@@ -498,7 +434,7 @@ export default function Home() {
             {/* 제보 목록 */}
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {(selectedMapMarker.reports || []).map((report: any) => (
+                {(selectedMapMarker.reports || []).map((report: { id: string }) => (
                   <ReportCard key={report.id} report={report} />
                 ))}
               </div>
@@ -548,7 +484,7 @@ export default function Home() {
 
           {searchQuery && (
             <div className="mt-2 text-sm text-gray-600">
-              <span className="font-medium">'{searchQuery}'</span> 검색 결과: {displayReports.length}개
+              <span className="font-medium">&apos;{searchQuery}&apos;</span> 검색 결과: {displayReports.length}개
             </div>
           )}
         </div>

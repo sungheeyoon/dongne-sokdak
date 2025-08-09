@@ -10,7 +10,6 @@ import Avatar from './Avatar'
 import MyNeighborhoodModal from './MyNeighborhoodModal'
 import { Home, Settings, User, LogOut, ChevronDown } from 'lucide-react'
 import Image from 'next/image'
-import { extractNeighborhoodFromAddress } from '@/lib/utils/neighborhoodUtils'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 
 export default function Header() {

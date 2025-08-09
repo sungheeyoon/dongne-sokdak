@@ -25,7 +25,8 @@
       "WebFetch(domain:react.dev)",
       "WebFetch(domain:docs.anthropic.com)",
       "Bash(.venv\\Scripts\\Activate.ps1)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
