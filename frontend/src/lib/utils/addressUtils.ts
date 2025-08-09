@@ -32,7 +32,7 @@ export const convertToAdministrativeAddress = async (
 
     const geocoder = new window.kakao.maps.services.Geocoder()
     
-    geocoder.coord2Address(lng, lat, (result: KakaoAddressResult[], status: any) => {
+    geocoder.coord2Address(lng, lat, (result: KakaoAddressResult[], status: string) => {
       if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
         const addr = result[0]
         
@@ -139,7 +139,12 @@ export const formatToAdministrativeAddress = (address: string): string => {
 /**
  * 카카오 장소 검색 결과를 행정동 주소로 변환
  */
-export const convertPlaceToAdministrativeAddress = (place: any): string => {
+interface KakaoPlace {
+  address_name?: string;
+  road_address_name?: string;
+}
+
+export const convertPlaceToAdministrativeAddress = (place: KakaoPlace): string => {
   // 전체 주소 정보를 보존하면서 반환 (원본 그대로 저장)
   // 나중에 formatToAdministrativeAddress로 변환할 수 있도록 원본 유지
   if (place.address_name) {

@@ -22,7 +22,7 @@ export { UnifiedSearch } from './UnifiedSearch'
 export { RegionSearchButton, CurrentRegionButton, RefreshSearchButton, MapBoundsSearchButton } from './RegionSearchButton'
 
 // 레이아웃 컴포넌트
-export { default as AppHeader } from './AppHeader'
+export { AppHeader } from './AppHeader'
 export { Navbar } from './Navbar'
 export { HeroSection } from './HeroSection'
 
@@ -30,8 +30,8 @@ export { HeroSection } from './HeroSection'
 export { default as LoadingSpinner, CardSkeleton } from './LoadingSpinner'
 export { default as ErrorDisplay } from './ErrorDisplay'
 export { default as MarkerIcon } from './MarkerIcon'
-export { default as SearchButton } from './SearchButton'
-export { default as SearchInput } from './SearchInput'
+export { SearchButton } from './SearchButton'
+export { SearchInput } from './SearchInput'
 export { default as LocalhostGuide } from './LocalhostGuide'
 
 // 데모 데이터

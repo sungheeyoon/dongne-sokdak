@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import ReportCard from '@/components/ReportCard'
 import AuthModal from '@/components/AuthModal'
@@ -11,7 +10,6 @@ import { ReportCategory, Report } from '@/types'
 import { useQuery } from '@tanstack/react-query'
 import { getReports, getReportsInBounds } from '@/lib/api/reports'
 import { useMyProfile } from '@/hooks/useProfile'
-import { useAuth } from '@/hooks/useAuth'
 import UnifiedSearch from '@/components/UnifiedSearch'
 import { MapPin, FileText } from 'lucide-react'
 import LoadingSpinner, { CardSkeleton } from '@/components/ui/LoadingSpinner'
@@ -19,7 +17,6 @@ import ErrorDisplay from '@/components/ui/ErrorDisplay'
 import LocalhostGuide from '@/components/ui/LocalhostGuide'
 import MarkerIcon from '@/components/ui/MarkerIcon'
 import { CurrentRegionButton } from '@/components/ui'
-import { extractNeighborhoodFromAddress } from '@/lib/utils/neighborhoodUtils'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), {
@@ -41,10 +38,9 @@ const categories = [
 ]
 
 export default function Home() {
-  const router = useRouter()
 
   // 행정동 기반 동네 표시명 계산 함수
-  const getNeighborhoodDisplayName = (profile: any) => {
+  const getNeighborhoodDisplayName = (profile: { neighborhood?: { address: string; place_name: string } }) => {
     if (!profile?.neighborhood) return '내 동네'
     
     const adminAddress = formatToAdministrativeAddress(profile.neighborhood.address)
@@ -61,11 +57,10 @@ export default function Home() {
   const [currentMapBounds, setCurrentMapBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null)
   const [triggerMapSearch, setTriggerMapSearch] = useState(0) // 수동 검색 트리거
   const [useMapBoundsFilter, setUseMapBoundsFilter] = useState(false) // 맵 영역 필터 (내부 사용)
-  const [selectedMapMarker, setSelectedMapMarker] = useState<any>(null) // 선택된 마커 정보
+  const [selectedMapMarker, setSelectedMapMarker] = useState<{ id: string; location: { lat: number; lng: number }; count: number; reports: Report[] } | null>(null) // 선택된 마커 정보
   const [selectedLocation, setSelectedLocation] = useState<string>('') // 선택된 위치명
 
   // 사용자 정보 및 프로필 가져오기
-  const { user } = useAuth()
   const { data: profile } = useMyProfile()
   
   // 내 동네 위치 (로그인된 사용자의 설정된 동네)
@@ -396,7 +391,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">
               {searchedLocation ? `${searchedLocation.placeName} 근처 제보` : 
-               myNeighborhoodLocation ? `${getNeighborhoodDisplayName(profile)} 근처 제보` :
+               myNeighborhoodLocation && profile ? `${getNeighborhoodDisplayName(profile)} 근처 제보` :
                userCurrentLocation ? '내 위치 근처 제보' :
                useMapBoundsFilter ? '현재 지도 영역 제보' : '제보 지도'}
             </h2>
