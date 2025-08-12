@@ -30,14 +30,12 @@ export function useAuth() {
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email)
         
-        // 로그인 성공 시 알림 (OAuth 로그인만)
-        if (event === 'SIGNED_IN' && session?.user) {
+        // 개발 모드에서만 로그인 상태 변경 로그 기록
+        if (process.env.NODE_ENV === 'development' && event === 'SIGNED_IN' && session?.user) {
           const provider = session.user.app_metadata?.provider
           if (provider === 'google' || provider === 'kakao') {
             const providerName = provider === 'google' ? '구글' : '카카오'
-            setTimeout(() => {
-              alert(`${providerName} 로그인이 완료되었습니다!`)
-            }, 500) // 페이지 이동 후 표시
+            console.log(`✅ ${providerName} 로그인 완료`)
           }
         }
         
