@@ -22,8 +22,7 @@ class User(BaseModel):
     email: EmailStr
     nickname: Optional[str] = None
     
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 # 데이터베이스에 저장되는 사용자 모델
 class UserInDB(User):

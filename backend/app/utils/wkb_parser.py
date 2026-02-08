@@ -2,8 +2,9 @@
 PostGIS WKB (Well-Known Binary) 파싱 유틸리티
 """
 import struct
+from typing import Tuple, Optional
 
-def parse_wkb_point(wkb_hex: str) -> tuple[float, float] | None:
+def parse_wkb_point(wkb_hex: str) -> Optional[Tuple[float, float]]:
     """
     PostGIS WKB POINT 데이터를 파싱하여 (lng, lat) 튜플 반환
     

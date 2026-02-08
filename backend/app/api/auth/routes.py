@@ -6,6 +6,8 @@ from app.core.security import create_access_token
 from app.core.config import settings
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, User
+from app.schemas.social import KakaoAuthRequest, GoogleAuthRequest, SocialLoginResponse
+from app.services.social_auth import SocialAuthService
 from app.db.supabase_client import supabase
 from app.api.deps import get_supabase
 from supabase.client import Client
@@ -25,10 +27,25 @@ async def register(
     사용자 회원가입
     """
     try:
+        # Determine redirect URL based on environment
+        redirect_url = "http://localhost:3000/auth/callback"
+        if settings.ENVIRONMENT == "production":
+            redirect_url = "https://dongne-sokdak.vercel.app/auth/callback"
+        elif settings.ENVIRONMENT == "staging":
+            redirect_url = "https://dongne-sokdak-staging.vercel.app/auth/callback"
+
         # Supabase Auth로 사용자 생성
+        # data 옵션을 통해 user_metadata에 nickname을 전달하면, 
+        # handle_new_user 트리거가 이를 사용하여 profiles 테이블에 레코드를 생성합니다.
         auth_response = supabase.auth.sign_up({
             "email": user_in.email,
             "password": user_in.password,
+            "options": {
+                "data": {
+                    "full_name": user_in.nickname
+                },
+                "email_redirect_to": redirect_url
+            }
         })
         
         if auth_response.user is None:
@@ -39,22 +56,8 @@ async def register(
         
         user_id = auth_response.user.id
         
-        # 사용자 프로필 정보 저장
-        profile_data = {
-            "id": user_id,
-            "nickname": user_in.nickname,
-            "avatar_url": None,
-        }
-        
-        profile_response = supabase.table("profiles").insert(profile_data).execute()
-        
-        if not profile_response.data or len(profile_response.data) == 0:
-            # 프로필 생성 실패 시 생성된 사용자 계정도 삭제 (롤백)
-            supabase.auth.admin.delete_user(user_id)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="사용자 프로필 생성 중 오류가 발생했습니다",
-            )
+        # 프로필 생성은 DB 트리거(handle_new_user)가 자동으로 처리하므로
+        # 별도의 insert 로직을 수행하지 않습니다.
         
         return {
             "id": user_id,
@@ -119,4 +122,46 @@ async def logout(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"로그아웃 중 오류가 발생했습니다: {str(e)}",
         )
+
+@router.post("/social/kakao", response_model=SocialLoginResponse)
+async def login_kakao(
+    request: KakaoAuthRequest,
+) -> Any:
+    """
+    카카오 소셜 로그인
+    프론트엔드에서 전달받은 인가 코드로 로그인 처리
+    """
+    # 1. 인가 코드로 카카오 ID 토큰 발급
+    id_token = await SocialAuthService.get_kakao_token(request.code)
+    
+    # 2. Supabase 로그인
+    auth_result = await SocialAuthService.sign_in_with_id_token("kakao", id_token)
+    
+    return {
+        "access_token": auth_result["access_token"],
+        "token_type": "bearer",
+        "user_id": auth_result["user"].id,
+        "is_new_user": False # Supabase가 처리하므로 정확히 알기 어려움 (추가 로직 필요 시 구현)
+    }
+
+@router.post("/social/google", response_model=SocialLoginResponse)
+async def login_google(
+    request: GoogleAuthRequest,
+) -> Any:
+    """
+    구글 소셜 로그인
+    프론트엔드에서 전달받은 인가 코드로 로그인 처리
+    """
+    # 1. 인가 코드로 구글 ID 토큰 발급
+    id_token = await SocialAuthService.get_google_token(request.code)
+    
+    # 2. Supabase 로그인
+    auth_result = await SocialAuthService.sign_in_with_id_token("google", id_token)
+    
+    return {
+        "access_token": auth_result["access_token"],
+        "token_type": "bearer",
+        "user_id": auth_result["user"].id,
+        "is_new_user": False
+    }
 

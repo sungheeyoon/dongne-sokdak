@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     # 카카오 OAuth 설정
     KAKAO_CLIENT_ID: str = os.getenv("KAKAO_CLIENT_ID", "")
     KAKAO_CLIENT_SECRET: str = os.getenv("KAKAO_CLIENT_SECRET", "")
+
+    # 구글 OAuth 설정
+    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
     
     @property
     def KAKAO_REDIRECT_URI(self) -> str:
@@ -56,11 +60,27 @@ class Settings(BaseSettings):
         
         # 환경별 기본값 설정
         if self.ENVIRONMENT == "production":
-            return "https://dongne-sokdak.vercel.app/auth/kakao/callback"
+            return "https://dongne-sokdak.vercel.app/auth/callback/kakao"
         elif self.ENVIRONMENT == "staging":
-            return "https://dongne-sokdak-staging.vercel.app/auth/kakao/callback"
+            return "https://dongne-sokdak-staging.vercel.app/auth/callback/kakao"
         else:
-            return "http://localhost:3000/auth/kakao/callback"
+            return "http://localhost:3000/auth/callback/kakao"
+
+    @property
+    def GOOGLE_REDIRECT_URI(self) -> str:
+        """환경별 구글 리다이렉트 URI"""
+        # 환경 변수에서 명시적으로 설정된 경우 우선 사용
+        env_redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+        if env_redirect_uri:
+            return env_redirect_uri
+        
+        # 환경별 기본값 설정
+        if self.ENVIRONMENT == "production":
+            return "https://dongne-sokdak.vercel.app/auth/callback/google"
+        elif self.ENVIRONMENT == "staging":
+            return "https://dongne-sokdak-staging.vercel.app/auth/callback/google"
+        else:
+            return "http://localhost:3000/auth/callback/google"
     
     # CORS 설정
     @property 

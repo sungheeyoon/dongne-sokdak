@@ -3,6 +3,9 @@ from typing import Optional
 
 class KakaoAuthRequest(BaseModel):
     code: str
+
+class GoogleAuthRequest(BaseModel):
+    code: str
     
 class KakaoUserInfo(BaseModel):
     id: int

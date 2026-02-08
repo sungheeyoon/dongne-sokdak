@@ -6,6 +6,7 @@ from datetime import datetime, date
 import uuid
 
 from app.db.supabase_client import supabase
+from app.core.security import get_current_user
 from app.middleware.admin_auth import get_admin_user, get_super_admin_user, log_admin_activity
 from app.api.admin.schemas import (
     AdminDashboardStats,
@@ -619,19 +620,30 @@ async def get_admin_activity_logs(
 
 @router.get("/my-info")
 async def get_admin_info(
-    admin_user: dict = Depends(get_admin_user)
+    current_user_id: str = Depends(get_current_user)
 ):
-    """현재 관리자 정보 조회"""
+    """현재 사용자 정보 조회 (관리자 여부 확인용 - 모든 인증된 사용자 접근 가능)"""
+    
+    # Supabase로 사용자 프로필 조회
+    response = supabase.table("profiles").select("*").eq("id", current_user_id).single().execute()
+    
+    if not response.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="사용자를 찾을 수 없습니다"
+        )
+    
+    user = response.data
     
     return {
-        "id": admin_user.get("id"),
-        "email": admin_user.get("email"),
-        "nickname": admin_user.get("nickname"),
-        "role": admin_user.get("role"),
-        "is_active": admin_user.get("is_active"),
-        "last_login_at": admin_user.get("last_login_at"),
-        "login_count": admin_user.get("login_count"),
-        "created_at": admin_user.get("created_at")
+        "id": user.get("id"),
+        "email": user.get("email"),
+        "nickname": user.get("nickname"),
+        "role": user.get("role", "user"),
+        "is_active": user.get("is_active"),
+        "last_login_at": user.get("last_login_at"),
+        "login_count": user.get("login_count"),
+        "created_at": user.get("created_at")
     }
 
 
