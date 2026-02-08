@@ -5,19 +5,32 @@ import { ReportCategory, ReportStatus, Report } from '@/types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateReport, UpdateReportData } from '@/lib/api/reports'
 import ImageUpload from './ImageUpload'
+import { Loader2 } from 'lucide-react'
+import toast from 'react-hot-toast'
+
+import { 
+  UiDialog as Dialog, 
+  UiDialogContent as DialogContent, 
+  UiDialogHeader as DialogHeader, 
+  UiDialogTitle as DialogTitle,
+  UiDialogFooter as DialogFooter,
+  UiButton as Button,
+  UiInput as Input,
+  UiLabel as Label
+} from "@/components/ui"
 
 const categoryOptions = [
-  { value: ReportCategory.NOISE, label: '소음', emoji: '🔊' },
-  { value: ReportCategory.TRASH, label: '쓰레기', emoji: '🗑️' },
-  { value: ReportCategory.FACILITY, label: '시설물', emoji: '🏗️' },
-  { value: ReportCategory.TRAFFIC, label: '교통', emoji: '🚗' },
-  { value: ReportCategory.OTHER, label: '기타', emoji: '📝' }
+  { value: ReportCategory.NOISE, label: '소음' },
+  { value: ReportCategory.TRASH, label: '쓰레기' },
+  { value: ReportCategory.FACILITY, label: '시설물' },
+  { value: ReportCategory.TRAFFIC, label: '교통' },
+  { value: ReportCategory.OTHER, label: '기타' }
 ]
 
 const statusOptions = [
-  { value: ReportStatus.OPEN, label: '접수됨', color: 'text-red-800 bg-red-100 border-red-200' },
-  { value: ReportStatus.IN_PROGRESS, label: '처리중', color: 'text-yellow-800 bg-yellow-100 border-yellow-200' },
-  { value: ReportStatus.RESOLVED, label: '해결됨', color: 'text-green-800 bg-green-100 border-green-200' }
+  { value: ReportStatus.OPEN, label: '접수됨' },
+  { value: ReportStatus.IN_PROGRESS, label: '처리중' },
+  { value: ReportStatus.RESOLVED, label: '해결됨' }
 ]
 
 interface EditReportModalProps {
@@ -56,10 +69,10 @@ export default function EditReportModal({ report, isOpen, onClose }: EditReportM
       queryClient.invalidateQueries({ queryKey: ['reports'] })
       queryClient.invalidateQueries({ queryKey: ['report', report!.id] })
       onClose()
-      alert('제보가 성공적으로 수정되었습니다!')
+      toast.success('제보가 수정되었습니다')
     },
     onError: (error: any) => {
-      alert(`제보 수정 중 오류가 발생했습니다: ${error.message}`)
+      toast.error(`오류 발생: ${error.message}`)
     }
   })
 
@@ -71,7 +84,7 @@ export default function EditReportModal({ report, isOpen, onClose }: EditReportM
     e.preventDefault()
     
     if (!formData.title.trim() || !formData.description.trim()) {
-      alert('제목과 내용을 모두 입력해주세요.')
+      toast.error('제목과 내용을 입력해주세요')
       return
     }
 
@@ -86,72 +99,51 @@ export default function EditReportModal({ report, isOpen, onClose }: EditReportM
     updateReportMutation.mutate(updateData)
   }
 
-  const handleClose = () => {
-    onClose()
-  }
-
-  if (!isOpen || !report) return null
+  if (!report) return null
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4"
-      onClick={handleClose}
-    >
-      <div 
-        className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-8">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900">제보 수정</h2>
-            <button
-              onClick={handleClose}
-              className="text-gray-600 hover:text-gray-800 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-            >
-              ×
-            </button>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>제보 수정</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-6 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">제목</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              placeholder="제목을 입력하세요"
+              required
+            />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                제목 *
-              </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-gray-900 placeholder-gray-600"
-                placeholder="예: 횡단보도 신호등 고장"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                카테고리
-              </label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="category">카테고리</Label>
               <select
+                id="category"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value as ReportCategory })}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-gray-900"
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {categoryOptions.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.emoji} {option.label}
+                    {option.label}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                상태
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="status">상태</Label>
               <select
+                id="status"
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as ReportStatus })}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-gray-900"
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {statusOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -160,45 +152,39 @@ export default function EditReportModal({ report, isOpen, onClose }: EditReportM
                 ))}
               </select>
             </div>
+          </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                내용 *
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all resize-none text-gray-900 placeholder-gray-600"
-                rows={5}
-                placeholder="상세한 상황을 설명해주세요"
-                required
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="description">내용</Label>
+            <textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+              placeholder="상세 내용을 입력하세요"
+              required
+            />
+          </div>
 
+          <div className="space-y-2">
+            <Label>사진 수정</Label>
             <ImageUpload 
               onImageSelect={handleImageSelect}
               currentImage={formData.imageUrl}
             />
+          </div>
 
-            <div className="flex space-x-4 pt-6">
-              <button
-                type="submit"
-                disabled={updateReportMutation.isPending}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {updateReportMutation.isPending ? '수정 중...' : '수정 완료'}
-              </button>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-semibold transition-colors"
-              >
-                취소
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={onClose}>
+              취소
+            </Button>
+            <Button type="submit" disabled={updateReportMutation.isPending}>
+              {updateReportMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              수정 완료
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

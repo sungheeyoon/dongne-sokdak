@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
-import { Button } from './Button';
+import { Button } from './button';
 
 export interface NavItem {
   label: string;

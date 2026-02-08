@@ -1,14 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useUserStore } from '@/stores/useUserStore'
 import { User } from '@supabase/supabase-js'
 import { getOAuthRedirectUrl } from '@/lib/utils/redirectUtils'
+import { useRouter } from 'next/navigation'
 
 export function useAuth() {
   const { user, setUser, setLoading } = useUserStore()
   const [initialized, setInitialized] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     // 초기 세션 확인
@@ -49,7 +51,7 @@ export function useAuth() {
     }
   }, [setUser, setLoading])
 
-  const signInWithEmail = async (email: string, password: string) => {
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
     setLoading(true)
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -62,39 +64,37 @@ export function useAuth() {
     }
     
     return data
-  }
+  }, [setLoading])
 
-  const signUpWithEmail = async (email: string, password: string, nickname?: string) => {
+  const signUpWithEmail = useCallback(async (email: string, password: string, nickname?: string) => {
     setLoading(true)
     
     try {
-      // 회원가입
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password
+      // Supabase SDK를 직접 호출하는 대신, 우리 백엔드 서버(FastAPI)로 요청을 보냅니다.
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, nickname })
       })
-      
-      if (error) {
-        throw error
-      }
 
-      // 회원가입 성공 시 프로필 생성
-      if (data.user && nickname) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([{
-            id: data.user.id,
-            nickname: nickname.trim(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }])
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError)
-          // 프로필 생성에 실패해도 회원가입은 성공으로 처리
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || '회원가입 실패');
+        } else {
+          const text = await response.text();
+          console.error("Non-JSON error response:", text);
+          throw new Error(`서버 오류 발생 (${response.status}): ${response.statusText}`);
         }
       }
 
+      const data = await response.json()
+      
+      // 회원가입 성공 시, 바로 로그인을 시도할 수 있도록 처리
+      // (백엔드에서 세션을 생성해주지 않으므로, 클라이언트에서 다시 로그인 필요)
+      // 또는 가입 성공 메시지를 보여주고 로그인 페이지로 이동하도록 유도
+      
       setLoading(false)
       return data
       
@@ -102,9 +102,9 @@ export function useAuth() {
       setLoading(false)
       throw error
     }
-  }
+  }, [setLoading])
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     setLoading(true)
     
     try {
@@ -112,124 +112,75 @@ export function useAuth() {
       if (error) {
         throw error
       }
+      router.push('/') // 로그아웃 후 홈으로 이동
     } finally {
       setLoading(false)
     }
-  }
+  }, [setLoading, router])
 
-  const signInWithKakao = async (): Promise<void> => {
-    try {
-      // 이미 로그인된 상태인지 확인
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        console.log('이미 로그인된 상태입니다.')
-        alert('이미 로그인되어 있습니다.')
-        return
-      }
-
-      setLoading(true)
-      
-      const redirectTo = getOAuthRedirectUrl('kakao')
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'kakao',
-        options: {
-          redirectTo
-        }
-      })
-      
-      if (error) {
-        setLoading(false)
-        throw error
-      }
-    } catch (error) {
-      setLoading(false)
-      console.error('카카오 로그인 실패:', error)
-      throw error
+  const signInWithKakao = useCallback(async (): Promise<void> => {
+    // Backend-centric flow: Redirect to Kakao
+    const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID
+    if (!clientId) {
+      console.error('Kakao Client ID not found')
+      return
     }
-  }
+    const redirectUri = `${window.location.origin}/auth/callback/kakao`
+    const kauthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code`
+    window.location.href = kauthUrl
+  }, [])
 
-  const signInWithGoogle = async (): Promise<void> => {
-    try {
-      // 이미 로그인된 상태인지 확인
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        console.log('이미 로그인된 상태입니다.')
-        alert('이미 로그인되어 있습니다.')
+  const signInWithGoogle = useCallback(async (): Promise<void> => {
+    // Backend-centric flow: Redirect to Google
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    if (!clientId) {
+        console.error('Google Client ID not found')
         return
-      }
-
-      setLoading(true)
-      
-      const redirectTo = getOAuthRedirectUrl('google')
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo
-        }
-      })
-      
-      if (error) {
-        setLoading(false)
-        throw error
-      }
-    } catch (error) {
-      setLoading(false)
-      console.error('구글 로그인 실패:', error)
-      throw error
     }
-  }
+    const redirectUri = `${window.location.origin}/auth/callback/google`
+    const scope = "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid"
+    const googleUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`
+    window.location.href = googleUrl
+  }, [])
 
-  const handleOAuthCallback = async (): Promise<void> => {
+  const loginWithSocial = useCallback(async (provider: 'kakao' | 'google', code: string) => {
+    setLoading(true)
     try {
-      setLoading(true)
-      
-      // URL에서 세션 정보 확인
-      const { data: { session }, error } = await supabase.auth.getSession()
-      
-      if (error) {
-        throw error
-      }
-      
-      if (session?.user) {
-        // 프로필 확인/생성
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/social/${provider}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        })
+
+        if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.detail || `${provider} 로그인 실패`)
+        }
+
+        const data = await response.json()
         
-        if (!profile) {
-          // 새 사용자인 경우 프로필 생성
-          const provider = session.user.app_metadata?.provider || 'unknown'
-          const nickname = session.user.user_metadata?.full_name || 
-                          session.user.user_metadata?.name ||
-                          session.user.user_metadata?.nickname ||
-                          `${provider}사용자${session.user.id.slice(-4)}`
-          
-          await supabase
-            .from('profiles')
-            .insert([{
-              id: session.user.id,
-              nickname,
-              email: session.user.email || null, // 이메일이 없을 수 있음
-              avatar_url: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture,
-              social_provider: provider,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }])
-        }
-      }
-      
-      setLoading(false)
-    } catch (error) {
-      setLoading(false)
-      throw error
-    }
-  }
+        // Supabase 세션 설정
+        const { error } = await supabase.auth.setSession({
+            access_token: data.access_token,
+            refresh_token: data.access_token, // Note: Backend might need to return refresh_token if we want persistence
+        })
 
-  const getToken = async (): Promise<string | null> => {
+        if (error) throw error
+
+        // 사용자 정보 갱신
+        const { data: { user } } = await supabase.auth.getUser()
+        setUser(user)
+        
+        return data
+    } catch (error) {
+        console.error(`${provider} login error:`, error)
+        throw error
+    } finally {
+        setLoading(false)
+    }
+  }, [setLoading, setUser])
+
+  const getToken = useCallback(async (): Promise<string | null> => {
     try {
       const { data: { session }, error } = await supabase.auth.getSession()
       if (error) {
@@ -242,7 +193,7 @@ export function useAuth() {
       console.error('Error getting token:', error)
       return null
     }
-  }
+  }, [])
 
   return {
     user,
@@ -251,7 +202,7 @@ export function useAuth() {
     signUpWithEmail,
     signInWithKakao,
     signInWithGoogle,
-    handleOAuthCallback,
+    loginWithSocial,
     signOut,
     getToken
   }

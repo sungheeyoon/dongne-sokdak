@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react'
 import { clsx } from 'clsx'
 import { X } from 'lucide-react'
-import { Button } from './Button'
+import { Button } from './button'
 
 export interface BaseModalProps {
   isOpen: boolean
@@ -130,7 +130,7 @@ export const BaseModal = React.forwardRef<HTMLDivElement, BaseModalProps>(
               {showCloseButton && (
                 <Button
                   variant="ghost"
-                  size="small"
+                  size="sm"
                   onClick={onClose}
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >

@@ -1,10 +1,16 @@
 // API 기본 설정
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-export const API_V1_PREFIX = '/api/v1'
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
 
 // API 엔드포인트 생성 헬퍼
 export const createApiUrl = (endpoint: string) => {
-  return `${API_BASE_URL}${API_V1_PREFIX}${endpoint}`
+  // 이미 전체 URL인 경우 그대로 반환
+  if (endpoint.startsWith('http')) return endpoint
+  
+  // API_BASE_URL이 /api/v1을 포함하고 있는지 확인
+  const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  
+  return `${baseUrl}${path}`
 }
 
 // HTTP 요청 헬퍼 함수

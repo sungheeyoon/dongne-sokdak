@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { clsx } from 'clsx';
 import { Home, Settings, Menu, X, MapPin, User, LogOut, Edit3, ChevronDown } from 'lucide-react';
-import { Button } from './Button';
+import { Button } from './button';
 import Image from 'next/image';
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils';
 
@@ -197,7 +197,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
                   {/* Neighborhood Button */}
                   <Button
                     variant="ghost"
-                    size="medium"
+                    size="default"
                     onClick={onNeighborhoodClick}
                     className={clsx(
                       'flex items-center space-x-2',
@@ -214,7 +214,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
                   {/* My Reports */}
                   <Button
                     variant="ghost"
-                    size="medium"
+                    size="default"
                     onClick={onMyReportsClick}
                     className="flex items-center space-x-2"
                   >
@@ -227,7 +227,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
                     <>
                       <Button
                         variant="ghost"
-                        size="medium"
+                        size="default"
                         onClick={onAdminClick}
                         className="flex items-center space-x-2 text-purple-700 hover:text-purple-900 hover:bg-purple-50"
                         title="관리자 대시보드"
@@ -238,7 +238,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
                       
                       <Button
                         variant="ghost"
-                        size="medium"
+                        size="default"
                         onClick={onAdminReportsClick}
                         className="flex items-center space-x-2 text-orange-700 hover:text-orange-900 hover:bg-orange-50"
                         title="제보 관리"
@@ -251,8 +251,8 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
 
                   {/* Report Button */}
                   <Button
-                    variant="primary"
-                    size="medium"
+                    variant="default"
+                    size="default"
                     onClick={onReportClick}
                     className="bg-gradient-to-r from-[rgb(var(--primary-blue))] to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                   >
@@ -264,7 +264,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
                   <div className="relative" ref={profileDropdownRef}>
                     <Button
                       variant="ghost"
-                      size="medium"
+                      size="default"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -291,14 +291,14 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
                 <>
                   <Button
                     variant="ghost"
-                    size="medium"
+                    size="default"
                     onClick={() => onAuthClick?.('signin')}
                   >
                     로그인
                   </Button>
                   <Button
-                    variant="primary"
-                    size="medium"
+                    variant="default"
+                    size="default"
                     onClick={() => onAuthClick?.('signup')}
                     className="bg-gradient-to-r from-[rgb(var(--primary-blue))] to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                   >
@@ -312,8 +312,8 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
             <div className="md:hidden flex items-center space-x-2">
               {user && (
                 <Button
-                  variant="primary"
-                  size="small"
+                  variant="default"
+                                    size="sm"
                   onClick={onReportClick}
                   className="bg-gradient-to-r from-[rgb(var(--primary-blue))] to-blue-700 p-2"
                 >
@@ -322,7 +322,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
               )}
               <Button
                 variant="ghost"
-                size="small"
+                                  size="sm"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2"
               >
@@ -343,7 +343,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
                   <>
                     <Button
                       variant="ghost"
-                      size="medium"
+                      size="default"
                       onClick={() => {
                         onNeighborhoodClick?.();
                         setIsMobileMenuOpen(false);
@@ -361,7 +361,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
 
                     <Button
                       variant="ghost"
-                      size="medium"
+                      size="default"
                       onClick={() => {
                         onMyReportsClick?.();
                         setIsMobileMenuOpen(false);
@@ -376,7 +376,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
                       <>
                         <Button
                           variant="ghost"
-                          size="medium"
+                          size="default"
                           onClick={() => {
                             onAdminClick?.();
                             setIsMobileMenuOpen(false);
@@ -389,7 +389,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
 
                         <Button
                           variant="ghost"
-                          size="medium"
+                          size="default"
                           onClick={() => {
                             onAdminReportsClick?.();
                             setIsMobileMenuOpen(false);
@@ -404,7 +404,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
 
                     <Button
                       variant="ghost"
-                      size="medium"
+                      size="default"
                       onClick={() => {
                         onProfileClick?.();
                         setIsMobileMenuOpen(false);
@@ -417,7 +417,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
 
                     <Button
                       variant="ghost"
-                      size="medium"
+                      size="default"
                       onClick={() => {
                         onSignOut?.();
                         setIsMobileMenuOpen(false);
@@ -432,7 +432,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
                   <>
                     <Button
                       variant="ghost"
-                      size="medium"
+                      size="default"
                       onClick={() => {
                         onAuthClick?.('signin');
                         setIsMobileMenuOpen(false);
@@ -442,8 +442,8 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
                       로그인
                     </Button>
                     <Button
-                      variant="primary"
-                      size="medium"
+                      variant="default"
+                      size="default"
                       onClick={() => {
                         onAuthClick?.('signup');
                         setIsMobileMenuOpen(false);

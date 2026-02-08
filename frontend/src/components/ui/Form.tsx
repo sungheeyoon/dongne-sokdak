@@ -1,101 +1,168 @@
-'use client'
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { Controller, ControllerProps, FieldPath, FieldValues, FormProvider, useFormContext } from "react-hook-form"
 
-import React from 'react'
-import { clsx } from 'clsx'
+import { cn } from "@/lib/utils"
+import { Label } from "@/components/ui/label"
 
-export interface FormProps extends React.FormHTMLAttributes<HTMLFormElement> {
-  spacing?: 'sm' | 'md' | 'lg'
-  children: React.ReactNode
+const Form = FormProvider
+
+type FormFieldContextValue<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+> = {
+  name: TName
 }
 
-export interface FormSectionProps {
-  title?: string
-  description?: string
-  children: React.ReactNode
-  className?: string
+const FormFieldContext = React.createContext<FormFieldContextValue>(
+  {} as FormFieldContextValue
+)
+
+const FormField = <
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+>({
+  ...props
+}: ControllerProps<TFieldValues, TName>) => {
+  return (
+    <FormFieldContext.Provider value={{ name: props.name }}>
+      <Controller {...props} />
+    </FormFieldContext.Provider>
+  )
 }
 
-export interface FormActionsProps {
-  children: React.ReactNode
-  align?: 'left' | 'center' | 'right' | 'between'
-  spacing?: 'sm' | 'md' | 'lg'
-  className?: string
+const useFormField = () => {
+  const fieldContext = React.useContext(FormFieldContext)
+  const itemContext = React.useContext(FormItemContext)
+  const { getFieldState, formState } = useFormContext()
+
+  const fieldState = getFieldState(fieldContext.name, formState)
+
+  if (!fieldContext) {
+    throw new Error("useFormField should be used within <FormField>")
+  }
+
+  const { id } = itemContext
+
+  return {
+    id,
+    name: fieldContext.name,
+    formItemId: `${id}-form-item`,
+    formDescriptionId: `${id}-form-item-description`,
+    formMessageId: `${id}-form-item-message`,
+    ...fieldState,
+  }
 }
 
-export const Form: React.FC<FormProps> = ({ 
-  spacing = 'md', 
-  className, 
-  children, 
-  ...props 
-}) => {
-  const spacingStyles = {
-    sm: 'space-y-3',
-    md: 'space-y-5',
-    lg: 'space-y-7'
+type FormItemContextValue = {
+  id: string
+}
+
+const FormItemContext = React.createContext<FormItemContextValue>(
+  {} as FormItemContextValue
+)
+
+const FormItem = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const id = React.useId()
+
+  return (
+    <FormItemContext.Provider value={{ id }}>
+      <div ref={ref} className={cn("space-y-2", className)} {...props} />
+    </FormItemContext.Provider>
+  )
+})
+FormItem.displayName = "FormItem"
+
+const FormLabel = React.forwardRef<
+  React.ElementRef<typeof Label>,
+  React.ComponentPropsWithoutRef<typeof Label>
+>(({ className, ...props }, ref) => {
+  const { error, formItemId } = useFormField()
+
+  return (
+    <Label
+      ref={ref}
+      className={cn(error && "text-destructive", className)}
+      htmlFor={formItemId}
+      {...props}
+    />
+  )
+})
+FormLabel.displayName = "FormLabel"
+
+const FormControl = React.forwardRef<
+  React.ElementRef<typeof Slot>,
+  React.ComponentPropsWithoutRef<typeof Slot>
+>(({ ...props }, ref) => {
+  const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
+
+  return (
+    <Slot
+      ref={ref}
+      id={formItemId}
+      aria-describedby={
+        !error
+          ? `${formDescriptionId}`
+          : `${formDescriptionId} ${formMessageId}`
+      }
+      aria-invalid={!!error}
+      {...props}
+    />
+  )
+})
+FormControl.displayName = "FormControl"
+
+const FormDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => {
+  const { formDescriptionId } = useFormField()
+
+  return (
+    <p
+      ref={ref}
+      id={formDescriptionId}
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  )
+})
+FormDescription.displayName = "FormDescription"
+
+const FormMessage = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, children, ...props }, ref) => {
+  const { error, formMessageId } = useFormField()
+  const body = error ? String(error?.message) : children
+
+  if (!body) {
+    return null
   }
 
   return (
-    <form
-      className={clsx(spacingStyles[spacing], className)}
+    <p
+      ref={ref}
+      id={formMessageId}
+      className={cn("text-sm font-medium text-destructive", className)}
       {...props}
     >
-      {children}
-    </form>
+      {body}
+    </p>
   )
-}
+})
+FormMessage.displayName = "FormMessage"
 
-export const FormSection: React.FC<FormSectionProps> = ({
-  title,
-  description,
-  children,
-  className
-}) => {
-  return (
-    <div className={clsx('space-y-4', className)}>
-      {(title || description) && (
-        <div className="space-y-1">
-          {title && (
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          )}
-          {description && (
-            <p className="text-sm text-gray-600">{description}</p>
-          )}
-        </div>
-      )}
-      <div className="space-y-4">
-        {children}
-      </div>
-    </div>
-  )
-}
-
-export const FormActions: React.FC<FormActionsProps> = ({
-  children,
-  align = 'right',
-  spacing = 'md',
-  className
-}) => {
-  const spacingStyles = {
-    sm: 'space-x-2',
-    md: 'space-x-3',
-    lg: 'space-x-4'
-  }
-
-  const alignStyles = {
-    left: 'justify-start',
-    center: 'justify-center',
-    right: 'justify-end',
-    between: 'justify-between'
-  }
-
-  return (
-    <div className={clsx(
-      'flex items-center pt-4',
-      alignStyles[align],
-      spacingStyles[spacing],
-      className
-    )}>
-      {children}
-    </div>
-  )
+export {
+  useFormField,
+  Form,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage,
+  FormField,
 }

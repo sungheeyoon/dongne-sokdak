@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { clsx } from 'clsx';
-import { Button } from './Button';
+import { Button } from './button';
 
 export interface HeroSectionProps {
   title: string;
@@ -102,8 +102,8 @@ export const HeroSection = React.forwardRef<HTMLDivElement, HeroSectionProps>(
               {buttonText && onButtonClick && (
                 <div className="pt-4">
                   <Button
-                    variant={backgroundImage ? 'secondary' : 'primary'}
-                    size="large"
+                    variant={backgroundImage ? 'secondary' : 'default'}
+                    size="lg"
                     onClick={onButtonClick}
                     className={clsx(
                       'text-lg',

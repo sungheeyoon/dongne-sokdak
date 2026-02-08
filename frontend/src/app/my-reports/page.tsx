@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { getReports } from '@/lib/api/reports'
 import { Report, ReportStatus } from '@/types'
 import Header from '@/components/Header'
-import AuthModal from '@/components/AuthModal'
+import { AuthDialog } from '@/components/auth/AuthDialog'
 import ReportModal from '@/components/ReportModal'
 import EditReportModal from '@/components/EditReportModal'
 import ReportCard from '@/components/ReportCard'
@@ -42,7 +42,7 @@ export default function MyReportsPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <AuthModal />
+        <AuthDialog />
         <ReportModal />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
@@ -64,7 +64,7 @@ export default function MyReportsPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <AuthModal />
+        <AuthDialog />
         <ReportModal />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
@@ -85,7 +85,7 @@ export default function MyReportsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <AuthModal />
+      <AuthDialog />
       <ReportModal />
       <EditReportModal 
         report={editingReport}

@@ -3,8 +3,8 @@
 import React from 'react'
 import { MapPin, Calendar, User, MessageCircle, ThumbsUp, Tag } from 'lucide-react'
 import { BaseModal } from './BaseModal'
-import { Button } from './Button'
-import { Badge } from './Badge'
+import { Button } from './button'
+import { Badge } from './badge'
 import { Report } from '@/types'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 

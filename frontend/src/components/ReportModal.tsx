@@ -8,8 +8,21 @@ import { createReport, CreateReportData } from '@/lib/api/reports'
 import ImageUpload from './ImageUpload'
 import LocationPicker from './map/LocationPicker'
 import LocationSearch from './map/LocationSearch'
-import { X, MapPin, Loader2, Pencil } from 'lucide-react'
+import { MapPin, Loader2, Search, ArrowLeft, Send, Check, Megaphone, Trash2, Construction, Car, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { 
+  UiDialog as Dialog, 
+  UiDialogContent as DialogContent, 
+  UiDialogHeader as DialogHeader, 
+  UiDialogTitle as DialogTitle, 
+  UiDialogFooter as DialogFooter, 
+  UiDialogDescription as DialogDescription,
+  UiButton as Button,
+  UiInput as Input,
+  UiCard as Card,
+  UiLabel as Label
+} from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 interface LocationData {
   lat: number
@@ -19,11 +32,11 @@ interface LocationData {
 }
 
 const categoryOptions = [
-  { value: ReportCategory.NOISE, label: '소음', emoji: '🔊', color: 'bg-blue-50 text-blue-700 border-blue-300' },
-  { value: ReportCategory.TRASH, label: '쓰레기', emoji: '🗑️', color: 'bg-blue-50 text-blue-700 border-blue-300' },
-  { value: ReportCategory.FACILITY, label: '시설물', emoji: '🏗️', color: 'bg-blue-50 text-blue-700 border-blue-300' },
-  { value: ReportCategory.TRAFFIC, label: '교통', emoji: '🚙', color: 'bg-blue-50 text-blue-700 border-blue-300' },
-  { value: ReportCategory.OTHER, label: '기타', emoji: '📋', color: 'bg-blue-50 text-blue-700 border-blue-300' }
+  { value: ReportCategory.NOISE, label: '소음', icon: Megaphone, desc: '층간소음, 공사장 소음 등' },
+  { value: ReportCategory.TRASH, label: '쓰레기', icon: Trash2, desc: '무단투기, 수거 미이행' },
+  { value: ReportCategory.FACILITY, label: '시설물', icon: Construction, desc: '파손된 벤치, 가로등 고장' },
+  { value: ReportCategory.TRAFFIC, label: '교통', icon: Car, desc: '불법주차, 신호등 고장' },
+  { value: ReportCategory.OTHER, label: '기타', icon: FileText, desc: '그 외 다양한 생활 불편' }
 ]
 
 export default function ReportModal() {
@@ -40,20 +53,10 @@ export default function ReportModal() {
     lng: 126.9780
   })
 
-  // UI 상태
   const [step, setStep] = useState<'location' | 'details'>('location')
   const [isMapMode, setIsMapMode] = useState(false)
   const [location, setLocation] = useState<LocationData | null>(null)
 
-  // 모달이 열릴 때 로그
-  useEffect(() => {
-    if (isReportModalOpen) {
-      console.log('📝 ReportModal 열림')
-      console.log('🗺️ selectedLocation:', selectedLocation)
-    }
-  }, [isReportModalOpen, selectedLocation])
-
-  // 선택된 위치가 있으면 사용
   useEffect(() => {
     if (selectedLocation) {
       const locationData = {
@@ -62,7 +65,6 @@ export default function ReportModal() {
         address: selectedLocation.address || '지도에서 선택한 위치',
         placeName: '지도에서 선택'
       }
-      
       setLocation(locationData)
       setFormData(prev => ({
         ...prev,
@@ -70,26 +72,21 @@ export default function ReportModal() {
         lng: selectedLocation.lng,
         address: locationData.address
       }))
-      
-      console.log('✅ 지도에서 선택된 위치 적용:', locationData)
-      console.log('🔄 다음 버튼 활성화 상태:', !!locationData)
     }
   }, [selectedLocation])
 
   const createReportMutation = useMutation({
     mutationFn: (data: CreateReportData) => createReport(data),
     onSuccess: () => {
-      // 모든 제보 관련 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ['reports'] })
       queryClient.invalidateQueries({ queryKey: ['my-reports'] })
       queryClient.invalidateQueries({ queryKey: ['mapBoundsReports'] })
       
-      closeReportModal()
-      resetForm()
+      handleClose()
       toast.success('제보가 성공적으로 등록되었습니다!')
     },
     onError: (error: any) => {
-      toast.error(`제보 등록 중 오류가 발생했습니다: ${error.message}`)
+      toast.error(`오류 발생: ${error.message}`)
     }
   })
 
@@ -109,147 +106,56 @@ export default function ReportModal() {
     setSelectedLocation(null)
   }
 
-  const handleImageSelect = (imageUrl: string) => {
-    setFormData(prev => ({ ...prev, imageUrl }))
+  const handleClose = () => {
+    closeReportModal()
+    resetForm()
   }
 
-  // 위치 선택 핸들러 (LocationPicker 및 LocationSearch용)
   const handleLocationSelect = (selectedLocation: { lat: number; lng: number; address: string; placeName?: string }) => {
-    console.log('📍 handleLocationSelect 호출됨:', selectedLocation)
-    
     const locationData: LocationData = {
       lat: selectedLocation.lat,
       lng: selectedLocation.lng,
       address: selectedLocation.address,
       placeName: selectedLocation.placeName
     }
-    
-    // location state 업데이트
     setLocation(locationData)
-    
-    // formData도 함께 업데이트
     setFormData(prev => ({
       ...prev,
       lat: selectedLocation.lat,
       lng: selectedLocation.lng,
       address: selectedLocation.address
     }))
-    
-    console.log('✅ 제보 위치 설정 완료:', locationData)
-    console.log('🔄 location state:', locationData)
-    console.log('🔄 다음 버튼 활성화 여부:', !!locationData)
-    
-    // 성공 피드백
-    toast.success('위치가 선택되었습니다!')
+    toast.success('위치가 선택되었습니다')
   }
 
-  // 주소 검색 결과 선택
-  const handleAddressSelect = (selectedLocation: LocationData) => {
-    setLocation(selectedLocation)
-    setFormData(prev => ({
-      ...prev,
-      lat: selectedLocation.lat,
-      lng: selectedLocation.lng,
-      address: selectedLocation.address
-    }))
-    setIsMapMode(false)
-  }
-
-  // 지도에서 위치 선택
-  const handleMapLocationSelect = (selectedLocation: LocationData) => {
-    setLocation(selectedLocation)
-    setFormData(prev => ({
-      ...prev,
-      lat: selectedLocation.lat,
-      lng: selectedLocation.lng,
-      address: selectedLocation.address
-    }))
-  }
-
-  // 현재 위치 가져오기
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       toast.error('위치 서비스가 지원되지 않습니다.')
       return
     }
 
-    const loadingToast = toast.loading('현재 위치를 가져오는 중...')
+    const loadingToast = toast.loading('현재 위치 확인 중...')
     
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords
-        
-        // 역지오코딩으로 주소 가져오기
         const geocoder = new window.kakao.maps.services.Geocoder()
         
         geocoder.coord2Address(longitude, latitude, (result: any, status: any) => {
           toast.dismiss(loadingToast)
-          
           if (status === window.kakao.maps.services.Status.OK) {
             const addr = result[0]
-            const address = addr.road_address ? 
-              addr.road_address.address_name : 
-              addr.address.address_name
-
-            const locationData = {
-              lat: latitude,
-              lng: longitude,
-              address,
-              placeName: '현재 위치'
-            }
-            
+            const address = addr.road_address ? addr.road_address.address_name : addr.address.address_name
+            const locationData = { lat: latitude, lng: longitude, address, placeName: '현재 위치' }
             setLocation(locationData)
-            setFormData(prev => ({
-              ...prev,
-              lat: latitude,
-              lng: longitude,
-              address
-            }))
+            setFormData(prev => ({ ...prev, lat: latitude, lng: longitude, address }))
             toast.success('현재 위치를 가져왔습니다.')
-          } else {
-            const locationData = {
-              lat: latitude,
-              lng: longitude,
-              address: '주소를 가져올 수 없습니다.',
-              placeName: '현재 위치'
-            }
-            
-            setLocation(locationData)
-            setFormData(prev => ({
-              ...prev,
-              lat: latitude,
-              lng: longitude,
-              address: '주소를 가져올 수 없습니다.'
-            }))
-            toast.success('위치를 가져왔습니다.')
           }
         })
       },
-      (error) => {
+      () => {
         toast.dismiss(loadingToast)
-        let errorMessage = '위치 정보를 가져올 수 없습니다.'
-        
-        // 구체적인 에러 메시지 제공
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = '위치 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.'
-            break
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = '위치 정보를 사용할 수 없습니다.'
-            break
-          case error.TIMEOUT:
-            errorMessage = '위치 정보 요청 시간이 초과되었습니다.'
-            break
-          default:
-            errorMessage = '알 수 없는 오류가 발생했습니다.'
-        }
-        
-        toast.error(errorMessage)
-        console.error('Geolocation error:', {
-          code: error.code,
-          message: error.message,
-          errorType: ['PERMISSION_DENIED', 'POSITION_UNAVAILABLE', 'TIMEOUT'][error.code - 1] || 'UNKNOWN'
-        })
+        toast.error('위치 정보를 가져올 수 없습니다.')
       },
       { enableHighAccuracy: true, timeout: 10000 }
     )
@@ -258,333 +164,182 @@ export default function ReportModal() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.title.trim() || !formData.description.trim()) {
-      toast.error('제목과 내용을 모두 입력해주세요.')
+    if (!formData.title.trim() || !formData.description.trim() || !location) {
+      toast.error('필수 정보를 모두 입력해주세요.')
       return
     }
 
-    if (!location) {
-      toast.error('위치를 선택해주세요.')
-      return
-    }
-
-    console.log('🚀 제보 제출 시작')
-    console.log('📍 선택된 location 객체:', location)
-    console.log('📝 현재 formData:', formData)
-    console.log('🎯 실제 사용할 좌표 (formData):', { lat: formData.lat, lng: formData.lng })
-    console.log('🎯 location 객체의 좌표:', { lat: location.lat, lng: location.lng })
-
-    // 장소명과 주소를 조합하여 저장
-    let finalAddress = location.address || formData.address || undefined
-    
-    // placeName이 있고 의미있는 장소명인 경우 조합해서 저장
-    if (location.placeName && 
-        location.placeName !== '현재 위치' && 
-        location.placeName !== '지도에서 선택' &&
-        location.address) {
+    let finalAddress = location.address || formData.address
+    if (location.placeName && location.placeName !== '현재 위치' && location.placeName !== '지도에서 선택') {
       finalAddress = `${location.placeName}, ${location.address}`
-    } else if (location.placeName && !location.address) {
-      finalAddress = location.placeName
     }
-    
-    console.log('🏷️ 장소명:', location.placeName)
-    console.log('📍 주소:', location.address)
-    console.log('💾 최종 저장될 주소:', finalAddress)
 
-    const reportData: CreateReportData = {
+    createReportMutation.mutate({
       title: formData.title,
       description: formData.description,
       category: formData.category,
       location: { lat: location.lat, lng: location.lng },
       address: finalAddress,
       imageUrl: formData.imageUrl || undefined
-    }
-
-    console.log('📤 서버로 전송할 데이터:', reportData)
-    createReportMutation.mutate(reportData)
+    })
   }
-
-  const handleClose = () => {
-    closeReportModal()
-    resetForm()
-  }
-
-  if (!isReportModalOpen) return null
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-      onClick={handleClose}
-    >
-      <div 
-        className="bg-white rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden shadow-2xl border border-gray-300"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* 헤더 */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-300">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
-            {step === 'location' ? (
-              <><MapPin className="w-6 h-6 text-blue-600" /><span>제보 위치 선택</span></>
-            ) : (
-              <><Pencil className="w-6 h-6 text-blue-600" /><span>제보 내용 작성</span></>
-            )}
-          </h2>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={isReportModalOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-h-[85vh] p-0 gap-0">
+        <DialogHeader className="p-6 pb-4 border-b">
+          <DialogTitle className="text-xl">
+            {step === 'location' ? '어디서 발생한 문제인가요?' : '상세 내용을 알려주세요'}
+          </DialogTitle>
+          <DialogDescription>
+            {step === 'location' 
+              ? '정확한 위치를 선택하면 이웃들이 더 쉽게 알 수 있어요.' 
+              : '사진이나 상세한 설명을 추가하면 해결에 도움이 됩니다.'}
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* 진행 표시바 */}
-        <div className="px-6 py-4 bg-blue-50 border-b border-blue-200">
-  <div className="flex items-center justify-center gap-8 max-w-md mx-auto">
-    {/* Step 1 */}
-    <div className="flex flex-col items-center space-y-2">
-      <div
-        className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium
-        ${step === 'location' ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'}`}
-      >
-        1
-      </div>
-      <div className="flex items-center space-x-1 text-sm text-gray-700 font-medium">
-        <MapPin className="w-4 h-4 text-blue-600" />
-        <span>위치 선택</span>
-      </div>
-    </div>
-
-    {/* Divider */}
-    <div className="h-0.5 bg-gray-300 flex-1" />
-
-    {/* Step 2 */}
-    <div className="flex flex-col items-center space-y-2">
-      <div
-        className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium
-        ${step === 'details' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'}`}
-      >
-        2
-      </div>
-      <div className="flex items-center space-x-1 text-sm text-gray-700 font-medium">
-        <Pencil className="w-4 h-4 text-blue-600" />
-        <span>내용 작성</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-        {/* 컨텐츠 */}
-        <div className="p-6 overflow-y-auto max-h-[65vh] bg-gray-50">
+        <div className="p-6">
           {step === 'location' ? (
-            /* 1단계: 위치 선택 */
             <div className="space-y-6">
-              {/* 위치 입력 방법 선택 */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center space-x-2">
-                  <MapPin className="w-4 h-4 text-blue-600" />
-                  <span>위치 선택 방법</span>
-                </h3>
-                <div className="flex space-x-4">
+              {/* 위치 선택 모드 탭 */}
+              <div className="flex gap-2 p-1 bg-muted rounded-lg">
                 <button
                   onClick={() => setIsMapMode(false)}
-                  className={`flex-1 p-3 rounded-lg border-2 transition-all ${
-                    !isMapMode 
-                      ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
+                  className={cn(
+                    "flex-1 py-2 text-sm font-medium rounded-md transition-all",
+                    !isMapMode ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <MapPin className="h-5 w-5 mx-auto mb-1" />
-                  <div className="text-sm font-semibold">주소 검색</div>
+                  주소 검색
                 </button>
                 <button
                   onClick={() => setIsMapMode(true)}
-                  className={`flex-1 p-3 rounded-lg border-2 transition-all ${
-                    isMapMode 
-                      ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
+                  className={cn(
+                    "flex-1 py-2 text-sm font-medium rounded-md transition-all",
+                    isMapMode ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <MapPin className="w-5 h-5 mx-auto mb-1 text-blue-600" />
-                  <div className="text-sm font-semibold">지도에서 선택</div>
+                  지도에서 선택
                 </button>
-                </div>
               </div>
 
-              {!isMapMode ? (
-                /* 주소 검색 모드 */
-                <div className="space-y-4">
-                  <LocationSearch
-                    onLocationSelect={handleLocationSelect}
-                    placeholder="제보할 위치의 주소나 장소명을 검색하세요 (예: 신림역, 옵영로 123)"
-                  />
-                  
-                  <div className="text-center">
-                    <span className="text-gray-600 text-sm font-medium">또는</span>
-                  </div>
-                  
-                  <button
-                    onClick={getCurrentLocation}
-                    className="w-full p-3 border-2 border-dashed border-gray-400 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all"
-                  >
-                    <MapPin className="h-5 w-5 mx-auto mb-1 text-blue-600" />
-                    <div className="text-sm font-semibold text-blue-600">현재 위치 사용</div>
-                  </button>
-                </div>
-              ) : (
-                /* 지도 선택 모드 */
-                <div className="space-y-4">
-                  <div className="text-sm text-gray-700 p-3 bg-blue-50 border border-blue-300 rounded-lg">
-                    💡 지도를 드래그하거나 클릭하여 정확한 위치를 선택하세요
-                  </div>
-                  <LocationPicker
-                    onLocationSelect={handleLocationSelect}
-                    height="350px"
-                    initialCenter={location ? { lat: location.lat, lng: location.lng } : undefined}
-                  />
-                </div>
-              )}
-
-              {/* 선택된 위치 표시 */}
-              {location && (
-                <div className="p-4 bg-blue-50 border border-blue-300 rounded-lg">
-                  <div className="flex items-start space-x-3">
-                    <MapPin className="h-5 w-5 text-blue-600 mt-0.5" />
-                    <div className="flex-1">
-                      <div className="font-medium text-blue-900">
-                        {location.placeName || '선택된 위치'}
-                      </div>
-                      <div className="text-sm text-blue-700 mt-1">
-                        {location.address}
-                      </div>
-                      <div className="text-xs text-blue-600 mt-1">
-                        위도: {location.lat.toFixed(6)}, 경도: {location.lng.toFixed(6)}
-                      </div>
+              <div className="min-h-[300px]">
+                {!isMapMode ? (
+                  <div className="space-y-4">
+                    <LocationSearch onLocationSelect={handleLocationSelect} placeholder="건물명, 도로명, 지번으로 검색" />
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                      <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">또는</span></div>
                     </div>
+                    <Button variant="outline" className="w-full h-12 gap-2" onClick={getCurrentLocation}>
+                      <MapPin className="w-4 h-4 text-primary" /> 현재 위치로 설정
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-lg overflow-hidden border">
+                    <LocationPicker
+                      onLocationSelect={handleLocationSelect}
+                      height="350px"
+                      initialCenter={location ? { lat: location.lat, lng: location.lng } : undefined}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {location && (
+                <div className="bg-primary/5 p-4 rounded-lg flex items-start gap-3 border border-primary/10">
+                  <MapPin className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-primary">{location.placeName || '선택된 위치'}</p>
+                    <p className="text-sm text-muted-foreground">{location.address}</p>
                   </div>
                 </div>
               )}
             </div>
           ) : (
-            /* 2단계: 내용 작성 */
-            <form onSubmit={handleSubmit} className="space-y-8 bg-white p-6 rounded-lg shadow-sm border border-gray-300">
-              {/* 카테고리 선택 */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-3">
-                  📋 제보 유형 선택
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  {categoryOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, category: option.value })}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        formData.category === option.value
-                          ? `border-blue-500 ${option.color}`
-                          : 'border-gray-300 hover:border-blue-300 hover:bg-blue-50'
-                      }`}
-                    >
-                      <div className="text-3xl mb-2">{option.emoji}</div>
-                      <div className="text-sm font-bold">{option.label}</div>
-                    </button>
-                  ))}
+            <div className="space-y-6">
+              {/* 카테고리 그리드 */}
+              <div className="space-y-3">
+                <Label>카테고리</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {categoryOptions.map((opt) => {
+                    const Icon = opt.icon
+                    const isSelected = formData.category === opt.value
+                    
+                    return (
+                      <div
+                        key={opt.value}
+                        onClick={() => setFormData({ ...formData, category: opt.value })}
+                        className={cn(
+                          "cursor-pointer p-4 rounded-xl border-2 transition-all hover:bg-muted/50 flex flex-col items-center text-center gap-2",
+                          isSelected 
+                            ? "border-primary bg-primary/5 text-primary" 
+                            : "border-transparent bg-muted/30 text-muted-foreground hover:border-muted-foreground/20"
+                        )}
+                      >
+                        <Icon className={cn("w-8 h-8", isSelected ? "text-primary" : "text-muted-foreground")} />
+                        <span className="text-xs font-bold">{opt.label}</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 
-              {/* 제목 입력 */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-3">
-                  ✏️ 제목 *
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  maxLength={100}
-                  placeholder="우리 동네 어떤 문제가 있나요?"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 font-medium placeholder:text-gray-400 placeholder:font-normal"
-                  required
-                />
-                <div className="text-xs text-gray-600 mt-2 font-medium">
-                  {formData.title.length}/100자
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>제목</Label>
+                  <Input 
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="예: 가로등이 깜빡거려요"
+                    maxLength={50}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>상세 내용</Label>
+                  <textarea 
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px] resize-none"
+                    placeholder="구체적인 상황을 설명해주세요."
+                    maxLength={500}
+                  />
+                  <div className="text-right text-xs text-muted-foreground">
+                    {formData.description.length}/500
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>사진 첨부 (선택)</Label>
+                  <ImageUpload onImageSelect={(url) => setFormData({ ...formData, imageUrl: url })} currentImage={formData.imageUrl} />
                 </div>
               </div>
-
-              {/* 내용 입력 */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-3">
-                  📝 상세 내용 *
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  maxLength={1000}
-                  rows={5}
-                  placeholder="문제가 언제부터 발생했나요? 어떤 상황인지 자세히 알려주세요."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all text-gray-900 font-medium placeholder:text-gray-400 placeholder:font-normal"
-                  required
-                />
-                <div className="text-xs text-gray-600 mt-2 font-medium">
-                  {formData.description.length}/1000자
-                </div>
-              </div>
-
-              {/* 사진 업로드 */}
-              <ImageUpload 
-                onImageSelect={handleImageSelect}
-                currentImage={formData.imageUrl}
-              />
-            </form>
+            </div>
           )}
         </div>
 
-        {/* 하단 버튼 */}
-        <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-between">
+        <DialogFooter className="p-6 pt-2 border-t bg-muted/10 flex-row gap-2 justify-between sm:justify-between">
           {step === 'location' ? (
             <>
-              <button
-                onClick={handleClose}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => {
-                  console.log('🔄 다음 버튼 클릭, location state:', location)
-                  setStep('details')
-                }}
-                disabled={!location}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                다음 단계 {location ? '✓' : '(위치 선택 필요)'}
-              </button>
+              <Button variant="ghost" onClick={handleClose}>취소</Button>
+              <Button onClick={() => setStep('details')} disabled={!location}>
+                다음 단계 <Check className="w-4 h-4 ml-2" />
+              </Button>
             </>
           ) : (
             <>
-              <button
-                onClick={() => setStep('location')}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                이전
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={createReportMutation.isPending || !formData.title.trim() || !formData.description.trim()}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-              >
-                {createReportMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>등록 중...</span>
-                  </>
-                ) : (
-                  <span>제보 등록</span>
-                )}
-              </button>
+              <Button variant="ghost" onClick={() => setStep('location')}>
+                <ArrowLeft className="w-4 h-4 mr-2" /> 위치 변경
+              </Button>
+              <Button onClick={handleSubmit} disabled={createReportMutation.isPending}>
+                {createReportMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                제보 완료 <Send className="w-4 h-4 ml-2" />
+              </Button>
             </>
           )}
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

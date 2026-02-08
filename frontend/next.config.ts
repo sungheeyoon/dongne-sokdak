@@ -46,45 +46,6 @@ const nextConfig: NextConfig = {
   // React Strict Mode 개발 환경에서 비활성화 (중복 API 호출 방지)
   reactStrictMode: process.env.NODE_ENV !== 'development',
 
-  // 번들 최적화
-  webpack: (config, { dev, isServer }) => {
-    // 프로덕션에서 번들 분석 최적화
-    if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          // 프레임워크 청크 (React, Next.js)
-          framework: {
-            chunks: 'all',
-            name: 'framework',
-            test: /(?:react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
-            priority: 40,
-            enforce: true,
-          },
-          // 라이브러리 청크 (외부 라이브러리)
-          lib: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'commons',
-            priority: 30,
-            minChunks: 1,
-            reuseExistingChunk: true,
-          },
-          // 공통 코드 청크
-          commons: {
-            name: 'commons',
-            minChunks: 2,
-            priority: 20,
-            reuseExistingChunk: true,
-          },
-        },
-      };
-    }
-
-    return config;
-  },
-
   // 개발 환경 설정
   ...(process.env.NODE_ENV === 'development' && {
     allowedDevOrigins: ['172.24.19.106:3000'],

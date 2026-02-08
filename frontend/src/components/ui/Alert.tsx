@@ -3,7 +3,7 @@
 import React from 'react'
 import { clsx } from 'clsx'
 import { X, AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react'
-import { Button } from './Button'
+import { Button } from './button'
 
 export interface AlertProps {
   type?: 'info' | 'success' | 'warning' | 'error'
@@ -94,7 +94,7 @@ export const Alert: React.FC<AlertProps> = ({
           <div className="ml-auto pl-3">
             <Button
               variant="ghost"
-              size="small"
+              size="sm"
               onClick={onDismiss}
               className="p-1 hover:bg-opacity-20"
             >
