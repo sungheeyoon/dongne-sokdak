@@ -6,8 +6,6 @@ from app.core.security import create_access_token
 from app.core.config import settings
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, User
-from app.schemas.social import KakaoAuthRequest, GoogleAuthRequest, SocialLoginResponse
-from app.services.social_auth import SocialAuthService
 from app.db.supabase_client import supabase
 from app.api.deps import get_supabase
 from supabase.client import Client
@@ -123,45 +121,5 @@ async def logout(
             detail=f"로그아웃 중 오류가 발생했습니다: {str(e)}",
         )
 
-@router.post("/social/kakao", response_model=SocialLoginResponse)
-async def login_kakao(
-    request: KakaoAuthRequest,
-) -> Any:
-    """
-    카카오 소셜 로그인
-    프론트엔드에서 전달받은 인가 코드로 로그인 처리
-    """
-    # 1. 인가 코드로 카카오 ID 토큰 발급
-    id_token = await SocialAuthService.get_kakao_token(request.code)
-    
-    # 2. Supabase 로그인
-    auth_result = await SocialAuthService.sign_in_with_id_token("kakao", id_token)
-    
-    return {
-        "access_token": auth_result["access_token"],
-        "token_type": "bearer",
-        "user_id": auth_result["user"].id,
-        "is_new_user": False # Supabase가 처리하므로 정확히 알기 어려움 (추가 로직 필요 시 구현)
-    }
 
-@router.post("/social/google", response_model=SocialLoginResponse)
-async def login_google(
-    request: GoogleAuthRequest,
-) -> Any:
-    """
-    구글 소셜 로그인
-    프론트엔드에서 전달받은 인가 코드로 로그인 처리
-    """
-    # 1. 인가 코드로 구글 ID 토큰 발급
-    id_token = await SocialAuthService.get_google_token(request.code)
-    
-    # 2. Supabase 로그인
-    auth_result = await SocialAuthService.sign_in_with_id_token("google", id_token)
-    
-    return {
-        "access_token": auth_result["access_token"],
-        "token_type": "bearer",
-        "user_id": auth_result["user"].id,
-        "is_new_user": False
-    }
 
