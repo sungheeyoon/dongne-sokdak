@@ -70,30 +70,21 @@ export function useAuth() {
     setLoading(true)
 
     try {
-      // Supabase SDK를 직접 호출하는 대신, 우리 백엔드 서버(FastAPI)로 요청을 보냅니다.
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, nickname })
+      // Supabase 직접 호출 (Frontend Direct Auth)
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: nickname, // 메타데이터에 닉네임 저장 -> Trigger가 Profile 생성
+            nickname: nickname   // 중복 저장 (확실한 처리를 위해)
+          }
+        }
       })
 
-      if (!response.ok) {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || '회원가입 실패');
-        } else {
-          const text = await response.text();
-          console.error("Non-JSON error response:", text);
-          throw new Error(`서버 오류 발생 (${response.status}): ${response.statusText}`);
-        }
+      if (error) {
+        throw error
       }
-
-      const data = await response.json()
-
-      // 회원가입 성공 시, 바로 로그인을 시도할 수 있도록 처리
-      // (백엔드에서 세션을 생성해주지 않으므로, 클라이언트에서 다시 로그인 필요)
-      // 또는 가입 성공 메시지를 보여주고 로그인 페이지로 이동하도록 유도
 
       setLoading(false)
       return data
@@ -123,6 +114,12 @@ export function useAuth() {
       provider: 'kakao',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          // 비즈 앱이 아니어서 이메일 권한을 얻을 수 없는 경우를 위해 
+          // 이메일 스코프를 제외하고 닉네임과 프로필 사진만 요청합니다.
+          // options.scopes 대신 queryParams.scope를 사용하여 강제 오버라이드 시도
+          scope: 'profile_nickname profile_image',
+        },
       },
     })
 
@@ -148,6 +145,24 @@ export function useAuth() {
     }
   }, [])
 
+  const loginWithSocial = useCallback(async (provider: 'kakao' | 'google', code: string) => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+      if (error) throw error
+
+      // 세션 업데이트
+      if (data.session) {
+        setUser(data.session.user)
+      }
+    } catch (error) {
+      console.error('Social login error:', error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }, [setLoading, setUser])
+
   const getToken = useCallback(async (): Promise<string | null> => {
     try {
       const { data: { session }, error } = await supabase.auth.getSession()
@@ -170,6 +185,7 @@ export function useAuth() {
     signUpWithEmail,
     signInWithKakao,
     signInWithGoogle,
+    loginWithSocial,
     signOut,
     getToken
   }
