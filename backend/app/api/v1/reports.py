@@ -173,45 +173,42 @@ async def get_nearby_reports(
     limit: int = 50,
     supabase: Client = Depends(get_supabase)
 ) -> Any:
-    """Get reports near a specific location (Client-side filtering for MVP)."""
+    """Get reports near a specific location (using PostGIS RPC for optimal O(logN) performance)."""
     try:
-        query = supabase.table("reports").select("*")
-        if category:
-            query = query.eq("category", category.value)
-            
-        response = query.execute()
-        all_reports = response.data
+        radius_meters = radius_km * 1000
         
-        nearby_reports = []
-        radius_m = radius_km * 1000
+        rpc_params = {
+            "target_lat": lat,
+            "target_lng": lng,
+            "radius_meters": radius_meters,
+            "category_filter": category.value if category else None,
+            "result_limit": limit
+        }
         
-        for report in all_reports:
+        # FastAPI -> Supabase RPC -> PostGIS
+        response = supabase.rpc("get_reports_within_radius", rpc_params).execute()
+        nearby_reports = response.data
+        
+        # Enrich and format location for client
+        for report in nearby_reports:
             parsed_loc = parse_location(report.get("location"))
             report["location"] = parsed_loc
             
-            # Skip if default/invalid
-            if parsed_loc["lat"] == 37.5665 and parsed_loc["lng"] == 126.9780:
-                 # Check if it's actually default or real Seoul Hall location? 
-                 # For safety, we include it but distance might be far.
-                 pass
-
+            # Since Haversine iteration on all records is gone, we just calculate
+            # distance for the final returned subset (O(limit) instead of O(N))
             dist = calculate_distance(lat, lng, parsed_loc["lat"], parsed_loc["lng"])
+            report["distance"] = dist
+            report["distance_km"] = round(dist / 1000, 2)
             
-            if dist <= radius_m:
-                report["distance"] = dist
-                report["distance_km"] = round(dist / 1000, 2)
-                # Initialize counts to 0 for list view performance (or call enrich if needed)
-                report["vote_count"] = 0
-                report["comment_count"] = 0
-                report["user_voted"] = False
-                nearby_reports.append(report)
+            # Initialize counts to 0 for list view performance
+            report["vote_count"] = 0
+            report["comment_count"] = 0
+            report["user_voted"] = False
                 
-        # Sort by distance
-        nearby_reports.sort(key=lambda x: x.get("distance", float('inf')))
-        return nearby_reports[:limit]
+        return nearby_reports
         
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error fetching nearby reports: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error fetching nearby reports via RPC: {str(e)}")
 
 @router.get("/bounds", response_model=List[Report])
 async def get_reports_in_bounds(
@@ -220,30 +217,33 @@ async def get_reports_in_bounds(
     limit: int = 100,
     supabase: Client = Depends(get_supabase)
 ) -> Any:
-    """Get reports within map bounds."""
+    """Get reports within map bounds (using PostGIS RPC for optimal O(logN) performance)."""
     try:
-        query = supabase.table("reports").select("*")
-        if category:
-            query = query.eq("category", category.value)
-            
-        response = query.execute()
-        bounded_reports = []
+        rpc_params = {
+            "north": north,
+            "south": south,
+            "east": east,
+            "west": west,
+            "category_filter": category.value if category else None,
+            "result_limit": limit
+        }
         
-        for report in response.data:
+        # FastAPI -> Supabase RPC -> PostGIS
+        response = supabase.rpc("get_reports_in_bounds", rpc_params).execute()
+        bounded_reports = response.data
+        
+        for report in bounded_reports:
             loc = parse_location(report.get("location"))
             report["location"] = loc
             
-            if south <= loc["lat"] <= north and west <= loc["lng"] <= east:
-                report["vote_count"] = 0
-                report["comment_count"] = 0
-                report["user_voted"] = False
-                bounded_reports.append(report)
+            report["vote_count"] = 0
+            report["comment_count"] = 0
+            report["user_voted"] = False
                 
-        bounded_reports.sort(key=lambda x: x.get("created_at", ""), reverse=True)
-        return bounded_reports[:limit]
+        return bounded_reports
         
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error fetching bounds reports: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error fetching bounds reports via RPC: {str(e)}")
 
 @router.get("/my-neighborhood", response_model=List[Report])
 async def get_my_neighborhood_reports(
