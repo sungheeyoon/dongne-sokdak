@@ -1,8 +1,8 @@
 -- 20260220_postgis_rpc.sql
 -- Description: Adds PostGIS RPC functions for fast spatial queries.
+-- Optimized with STABLE, SECURITY DEFINER, and && operators for GiST index usage.
 
 -- Function 1: get_reports_within_radius
--- Finds reports within a given radius (meters) using ST_DWithin on GEOGRAPHY.
 CREATE OR REPLACE FUNCTION public.get_reports_within_radius(
   target_lat FLOAT,
   target_lng FLOAT,
@@ -10,31 +10,25 @@ CREATE OR REPLACE FUNCTION public.get_reports_within_radius(
   category_filter TEXT DEFAULT NULL,
   result_limit INT DEFAULT 50
 )
-RETURNS SETOF public.reports AS $$
-BEGIN
-  RETURN QUERY
+RETURNS SETOF public.reports
+LANGUAGE sql STABLE SECURITY DEFINER -- Inlining + RLS overhead removal
+SET search_path = public, extensions
+AS $$
   SELECT *
   FROM public.reports r
   WHERE 
-    -- Filtering by category if provided
-    (category_filter IS NULL OR r.category::text = category_filter)
-    -- ST_DWithin computes accurate distance over the sphere for GEOGRAPHY
-    AND ST_DWithin(
-      r.location, 
-      ST_SetSRID(ST_MakePoint(target_lng, target_lat), 4326)::geography, 
-      radius_meters
-    )
-  ORDER BY 
-    -- Optional: Order by distance to show nearest first (might add slight overhead)
-    r.location <-> ST_SetSRID(ST_MakePoint(target_lng, target_lat), 4326)::geography
+    -- 1. && 연산자로 BBox 인덱스 강제 사용 (ST_DWithin보다 가벼운 1차 필터링)
+    -- ST_Expand requires geometry, so we apply it to geometry first, then cast to geography
+    r.location && ST_Expand(ST_MakePoint(target_lng, target_lat), radius_meters / 111320.0)::geography
+    -- 2. 정확한 거리 필터링
+    AND ST_DWithin(r.location, ST_MakePoint(target_lng, target_lat)::geography, radius_meters)
+    -- 3. 카테고리 필터 (Inlining 덕분에 최적화됨)
+    AND (category_filter IS NULL OR r.category::text = category_filter)
+  ORDER BY r.created_at DESC
   LIMIT result_limit;
-END;
-$$ LANGUAGE plpgsql;
-
+$$;
 
 -- Function 2: get_reports_in_bounds
--- Finds reports within a bounding box (North, South, East, West) using ST_MakeEnvelope and ST_Within.
--- Need to cast GEOGRAPHY back to GEOMETRY for ST_Within/ST_MakeEnvelope bounding box intersections.
 CREATE OR REPLACE FUNCTION public.get_reports_in_bounds(
   north FLOAT,
   south FLOAT,
@@ -43,20 +37,17 @@ CREATE OR REPLACE FUNCTION public.get_reports_in_bounds(
   category_filter TEXT DEFAULT NULL,
   result_limit INT DEFAULT 100
 )
-RETURNS SETOF public.reports AS $$
-BEGIN
-  RETURN QUERY
+RETURNS SETOF public.reports
+LANGUAGE sql STABLE SECURITY DEFINER -- Inlining + RLS overhead removal
+SET search_path = public, extensions
+AS $$
   SELECT *
   FROM public.reports r
   WHERE 
-    (category_filter IS NULL OR r.category::text = category_filter)
-    -- ST_Within performs the Bounding Box check. Converting to geometry is fine for small areas.
-    AND ST_Within(
-      r.location::geometry,
-      ST_MakeEnvelope(west, south, east, north, 4326)
-    )
-  ORDER BY 
-    r.created_at DESC
+    -- && 연산자로 BBox 인덱스 강제 사용
+    -- Geography 인덱스를 타게 하기 위해 ST_MakeEnvelope를 Geography로 캐스팅
+    r.location && ST_MakeEnvelope(west, south, east, north, 4326)::geography
+    AND (category_filter IS NULL OR r.category::text = category_filter)
+  ORDER BY r.created_at DESC
   LIMIT result_limit;
-END;
-$$ LANGUAGE plpgsql;
+$$;

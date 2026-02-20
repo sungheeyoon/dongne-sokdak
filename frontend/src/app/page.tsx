@@ -41,32 +41,33 @@ const categories = [
 ]
 
 export default function Home() {
-  const { openReportModal } = useUIStore()
+  const {
+    openReportModal,
+    searchQuery, setSearchQuery,
+    searchMode, setSearchMode,
+    mapCenter, setMapCenter,
+    searchedLocation, setSearchedLocation,
+    userCurrentLocation, setUserCurrentLocation,
+    currentMapBounds, setCurrentMapBounds,
+    triggerMapSearch, setTriggerMapSearch,
+    useMapBoundsFilter, setUseMapBoundsFilter,
+    selectedMapMarker, setSelectedMapMarker
+  } = useUIStore()
 
   // 행정동 기반 동네 표시명 계산 함수
   const getNeighborhoodDisplayName = (profile: { neighborhood?: { address: string; place_name: string } }) => {
     if (!profile?.neighborhood) return '내 동네'
-    
+
     const adminAddress = formatToAdministrativeAddress(profile.neighborhood.address)
     return adminAddress && adminAddress !== '주소 없음' ? adminAddress : profile.neighborhood.place_name
   }
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [searchQuery, setSearchQuery] = useState<string>('')
-  const [searchMode, setSearchMode] = useState<'location' | 'text'>('location')
-  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null)
-  const [searchedLocation, setSearchedLocation] = useState<{ placeName: string; address: string } | null>(null)
-  const [userCurrentLocation, setUserCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
-  // Location permission status 제거 - 사용하지 않음
-  const [currentMapBounds, setCurrentMapBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null)
-  const [triggerMapSearch, setTriggerMapSearch] = useState(0) // 수동 검색 트리거
-  const [useMapBoundsFilter, setUseMapBoundsFilter] = useState(false) // 맵 영역 필터 (내부 사용)
-  const [selectedMapMarker, setSelectedMapMarker] = useState<{ id: string; location: { lat: number; lng: number }; count: number; reports: Report[] } | null>(null) // 선택된 마커 정보
   const [selectedLocation, setSelectedLocation] = useState<string>('') // 선택된 위치명
 
   // 사용자 정보 및 프로필 가져오기
   const { data: profile } = useMyProfile()
-  
+
   // 내 동네 위치 (로그인된 사용자의 설정된 동네)
   const myNeighborhoodLocation = useMemo(() => {
     return profile?.neighborhood ? {
@@ -76,11 +77,11 @@ export default function Home() {
   }, [profile?.neighborhood])
 
   // 내 동네 제보 데이터 가져오기 (기본 방식)
-  const { 
-    data: allReports = [], 
-    isLoading: isLoadingAllReports, 
+  const {
+    data: allReports = [],
+    isLoading: isLoadingAllReports,
     error: allReportsError,
-    refetch: refetchAllReports 
+    refetch: refetchAllReports
   } = useQuery<Report[], Error>({
     queryKey: ['reports', selectedCategory, searchQuery],
     queryFn: async (): Promise<Report[]> => getReports({
@@ -98,9 +99,9 @@ export default function Home() {
   })
 
   // 현재 맵 영역 기준 제보 데이터 가져오기 (수동 트리거 방식)
-  const { 
-    data: mapBoundsReports = [], 
-    isLoading: isLoadingMapReports, 
+  const {
+    data: mapBoundsReports = [],
+    isLoading: isLoadingMapReports,
     error: mapReportsError,
     refetch: refetchMapReports,
     isFetching: isFetchingMapReports
@@ -127,19 +128,26 @@ export default function Home() {
   })
 
 
-  // 현재 사용 중인 위치 (우선순위: 지역검색 위치 > 내 동네 > 사용자 현재 위치)
+  // 현재 사용 중인 위치 (우선순위: 마지막으로 드래그한 영역 > 지역검색 위치 > 내 동네 > 사용자 현재 위치)
   const activeLocation = useMemo(() => {
-    // 지역 검색으로 설정된 위치가 있으면 그것을 우선 사용
+    // 1. 가장 마지막으로 보고 있던 맵 영역이 있다면, 그 영역의 정중앙을 복구
+    if (useMapBoundsFilter && currentMapBounds) {
+      return {
+        lat: (currentMapBounds.north + currentMapBounds.south) / 2,
+        lng: (currentMapBounds.east + currentMapBounds.west) / 2
+      }
+    }
+    // 2. 지역 검색으로 설정된 위치가 있으면 그것을 우선 사용
     if (mapCenter) {
       return mapCenter
     }
-    // 그 다음은 내 동네, 사용자 현재 위치 순
+    // 3. 그 다음은 내 동네, 사용자 현재 위치 순
     return myNeighborhoodLocation ?? userCurrentLocation ?? null
-  }, [mapCenter, myNeighborhoodLocation, userCurrentLocation])
+  }, [useMapBoundsFilter, currentMapBounds, mapCenter, myNeighborhoodLocation, userCurrentLocation])
 
   // 표시할 제보 결정 (타입 안전하게)
-  const displayReports: Report[] = useMapBoundsFilter 
-    ? (mapBoundsReports ?? []) 
+  const displayReports: Report[] = useMapBoundsFilter
+    ? (mapBoundsReports ?? [])
     : (allReports ?? [])
   const isLoading = useMapBoundsFilter ? isLoadingMapReports : isLoadingAllReports
   const error = useMapBoundsFilter ? mapReportsError : allReportsError
@@ -152,15 +160,15 @@ export default function Home() {
       console.log('🗺️ 위치 선택됨:', location.placeName)
       console.log('📍 좌표:', location.lat, location.lng)
     }
-    
+
     // 1. 지도 중심을 선택된 위치로 설정
     setMapCenter({ lat: location.lat, lng: location.lng })
     setSearchedLocation({ placeName: location.placeName, address: location.address })
     setUserCurrentLocation(null)
-    
+
     // 2. 맵 영역 필터 모드로 변경 (선택된 위치 기준)
     setUseMapBoundsFilter(true)
-    
+
     // 3. 지도 이동 후 해당 위치에서 제보 검색 (즉시 실행)
     setTimeout(() => {
       if (process.env.NODE_ENV === 'development') {
@@ -184,13 +192,28 @@ export default function Home() {
 
   // 맵 영역 변경 핸들러
   const handleMapBoundsChange = useCallback((bounds: { north: number; south: number; east: number; west: number }) => {
-    setCurrentMapBounds(bounds)
-    
-    // 맵 영역 필터가 활성화된 상태에서만 로그 출력 (개발 환경에서만)
-    if (useMapBoundsFilter && process.env.NODE_ENV === 'development') {
-      console.log('🗺️ 맵 영역 변경:', bounds)
-    }
-  }, [useMapBoundsFilter])
+    setCurrentMapBounds(prev => {
+      // Check if the bounds actually changed significantly (tolerance for accidental small drags)
+      // 0.002 degrees is approximately 200 meters. 
+      if (prev &&
+        Math.abs(prev.north - bounds.north) < 0.002 &&
+        Math.abs(prev.south - bounds.south) < 0.002 &&
+        Math.abs(prev.east - bounds.east) < 0.002 &&
+        Math.abs(prev.west - bounds.west) < 0.002) {
+        return prev;
+      }
+      // 맵 이동 시 즉시 바운딩 박스 검색 시작
+      setUseMapBoundsFilter(true)
+
+      // 디바운싱: 지도를 드래그하는 도중에는 계속 호출되지 않고 적당한 타이밍에 갱신
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🗺️ 맵 영역 이동 감지, 자동 갱신:', bounds)
+      }
+      setTriggerMapSearch(t => t + 1)
+
+      return bounds;
+    })
+  }, [])
 
   // 이 지역 재검색 핸들러 (현재 맵 영역 기준)
   const handleRegionSearch = () => {
@@ -201,26 +224,26 @@ export default function Home() {
       alert('지도가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.')
       return
     }
-    
+
     // 현재 맵 중심 좌표 계산
     const currentCenter = {
       lat: (currentMapBounds.north + currentMapBounds.south) / 2,
       lng: (currentMapBounds.east + currentMapBounds.west) / 2
     }
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.log('🔄 이 지역 재검색 시작')
       console.log('📍 현재 맵 중심:', currentCenter)
       console.log('🗺️ 맵 영역:', currentMapBounds)
     }
-    
+
     // 현재 맵 중심을 mapCenter로 설정하여 해당 위치를 고정
     setMapCenter(currentCenter)
-    
+
     // 맵 영역 필터 활성화하여 현재 지역의 제보만 검색
     setUseMapBoundsFilter(true) // 맵 영역 필터 활성화
     setTriggerMapSearch(prev => prev + 1) // 검색 트리거 증가
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.log('✅ 이 지역 재검색 설정 완료 - 맵 영역 기준 제보 검색 시작')
     }
@@ -235,25 +258,25 @@ export default function Home() {
       reports: group?.reports?.length,
       location: group?.location
     })
-    
+
     setSelectedMapMarker(group)
     console.log('✅ Page: setSelectedMapMarker 설정 완료')
-    
+
     // 역지오코딩으로 건물명/도로명 가져오기
     if (typeof window !== 'undefined' && window.kakao && window.kakao.maps) {
       const geocoder = new window.kakao.maps.services.Geocoder()
-      
+
       geocoder.coord2Address(group.location.lng, group.location.lat, (result: { address?: { address_name: string }; road_address?: { road_name: string; building_name: string; address_name: string } }[], status: string) => {
         if (status === window.kakao.maps.services.Status.OK) {
           const addr = result[0]
           let locationName = ''
-          
+
           // 우선순위: 도로명 주소 > 건물명 > 행정동
           if (addr.road_address) {
             // 도로명 주소에서 건물명이나 도로명 추출
             const roadName = addr.road_address.road_name
             const buildingName = addr.road_address.building_name
-            
+
             if (buildingName) {
               locationName = buildingName
             } else if (roadName) {
@@ -266,7 +289,7 @@ export default function Home() {
             const addressParts = addr.address.address_name.split(' ')
             locationName = addressParts.slice(-2).join(' ')
           }
-          
+
           setSelectedLocation(locationName || '선택한 위치')
           console.log('📍 Page: 위치명 설정 완료:', locationName)
         } else {
@@ -278,7 +301,7 @@ export default function Home() {
       setSelectedLocation('선택한 위치')
       console.log('📍 Page: 카카오맵 없어서 기본 위치명 설정')
     }
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.log('🎯 마커 클릭:', group)
     }
@@ -322,7 +345,7 @@ export default function Home() {
       <Header />
       <AuthDialog />
       <ReportModal />
-      
+
       <main className="container mx-auto px-4 py-8">
         {/* Welcome Section */}
         <div className="mb-10 text-center md:text-left">
@@ -340,9 +363,9 @@ export default function Home() {
             <div>
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-primary" />
-                {searchedLocation ? `${searchedLocation.placeName} 주변` : 
-                 myNeighborhoodLocation && profile ? `${getNeighborhoodDisplayName(profile)} 주변` :
-                 '동네 이슈 지도'}
+                {searchedLocation ? `${searchedLocation.placeName} 주변` :
+                  myNeighborhoodLocation && profile ? `${getNeighborhoodDisplayName(profile)} 주변` :
+                    '동네 이슈 지도'}
               </h2>
             </div>
             {(searchedLocation || userCurrentLocation || useMapBoundsFilter) && (
@@ -391,18 +414,13 @@ export default function Home() {
                     onTextSearch={(query) => setSearchQuery(query)}
                     className="flex-1"
                   />
-                  <CurrentRegionButton
-                    onClick={handleRegionSearch}
-                    loading={isFetchingMapReports}
-                    disabled={!currentMapBounds}
-                    className="shrink-0"
-                  />
+                  {/* [이 지역 재검색] 버튼 삭제: 맵 이동시 자동 로딩됨 */}
                 </div>
               </div>
             </div>
-            
-            <MapComponent 
-              reports={displayReports} 
+
+            <MapComponent
+              reports={displayReports}
               height="450px"
               center={activeLocation ?? undefined}
               onBoundsChange={handleMapBoundsChange}
@@ -452,7 +470,7 @@ export default function Home() {
                 총 {displayReports.length}개의 리포트가 발견되었습니다
               </p>
             </div>
-            
+
             <div className="flex flex-wrap gap-1.5 bg-muted/50 p-1.5 rounded-xl border border-muted w-fit">
               {categories.map((category) => (
                 <button
@@ -504,7 +522,7 @@ export default function Home() {
           )}
         </div>
       </main>
-      
+
       {/* localhost 접속 가이드 */}
       <LocalhostGuide />
     </div>

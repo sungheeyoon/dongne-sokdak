@@ -29,8 +29,8 @@ interface MapComponentProps {
   showRegionSearchButton?: boolean // 지역 검색 버튼 표시 여부
 }
 
-export default function MapComponent({ 
-  reports, 
+export default function MapComponent({
+  reports,
   center = { lat: 37.5665, lng: 126.9780 }, // 서울시청 기본값
   zoom = 3, // 동네 단위에 적합한 줌 레벨 (3 = 약 1-2km 범위)
   height = '400px',
@@ -47,21 +47,21 @@ export default function MapComponent({
   const [kakaoLoaded, setKakaoLoaded] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
   const [currentBounds, setCurrentBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null)
-  const [lastSetCenter, setLastSetCenter] = useState<{lat: number, lng: number} | null>(null)
+  const [lastSetCenter, setLastSetCenter] = useState<{ lat: number, lng: number } | null>(null)
 
   // 행정동 기준으로 제보들을 그룹핑
   const groupedReports = useMemo(() => {
     const groups: { [key: string]: GroupedReport } = {}
-    
+
     reports.forEach(report => {
       // 행정동 기반 주소로 변환
       const adminAddress = formatToAdministrativeAddress(report.address || '')
-      
+
       // 행정동 + 정밀한 좌표로 그룹핑 키 생성 (건물 단위)
       const lat = report.location.lat.toFixed(5) // 소수점 5자리로 정밀 그룹핑 (~1m 단위)
       const lng = report.location.lng.toFixed(5)
       const groupKey = `${adminAddress}-${lat},${lng}` // 행정동 + 좌표 조합으로 정확한 그룹핑
-      
+
       if (groups[groupKey]) {
         groups[groupKey].reports.push(report)
         groups[groupKey].count++
@@ -76,18 +76,18 @@ export default function MapComponent({
         }
       }
     })
-    
+
     return Object.values(groups)
   }, [reports])
 
   // 카카오맵 로딩 확인
   useEffect(() => {
     console.log('🗺️ MapComponent 마운트됨')
-    
+
     const initializeKakaoMap = async () => {
       try {
         console.log('🔄 카카오맵 API 로딩 시작...')
-        
+
         // API 키 확인
         const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY
         if (!apiKey) {
@@ -99,17 +99,17 @@ export default function MapComponent({
         // 간단한 대기 로직 - autoload=true이므로 바로 확인
         let attempts = 0
         const maxAttempts = 150 // 15초
-        
+
         const checkKakaoReady = () => {
           attempts++
-          
+
           // 브라우저 환경 확인
           if (typeof window === 'undefined') {
             console.error('❌ 브라우저 환경이 아닙니다')
             setMapError('브라우저 환경이 아닙니다')
             return
           }
-          
+
           // window.kakao 존재 확인
           if (!window.kakao) {
             if (attempts >= maxAttempts) {
@@ -120,7 +120,7 @@ export default function MapComponent({
             setTimeout(checkKakaoReady, 100)
             return
           }
-          
+
           // window.kakao.maps 존재 확인
           if (!window.kakao.maps) {
             if (attempts >= maxAttempts) {
@@ -131,11 +131,11 @@ export default function MapComponent({
             setTimeout(checkKakaoReady, 100)
             return
           }
-          
+
           // autoload=true임에도 불구하고 LatLng가 없다면 수동 로드
           if (!window.kakao.maps.LatLng) {
             console.log('🔄 LatLng 없음, 수동 로드 시도...')
-            
+
             if (typeof window.kakao.maps.load === 'function') {
               try {
                 window.kakao.maps.load(() => {
@@ -163,7 +163,7 @@ export default function MapComponent({
                 console.error('❌ 수동 로드 함수 호출 실패:', loadError)
               }
             }
-            
+
             if (attempts >= maxAttempts) {
               console.error('❌ LatLng 로딩 타임아웃')
               setMapError('카카오맵 LatLng 로딩 실패')
@@ -172,15 +172,15 @@ export default function MapComponent({
             setTimeout(checkKakaoReady, 100)
             return
           }
-          
+
           // 모든 필수 API 확인
           const requiredAPIs = [
             'LatLng', 'Map', 'Marker', 'InfoWindow', 'services'
           ]
-          
+
           const missingAPIs = requiredAPIs.filter((api) => {
-              return !(api in window.kakao.maps)
-            })
+            return !(api in window.kakao.maps)
+          })
           if (missingAPIs.length > 0) {
             if (attempts >= maxAttempts) {
               console.error('❌ 필수 API 로딩 타임아웃, 누락:', missingAPIs)
@@ -193,7 +193,7 @@ export default function MapComponent({
             setTimeout(checkKakaoReady, 100)
             return
           }
-          
+
           // services.Geocoder 확인
           if (!window.kakao.maps.services || !window.kakao.maps.services.Geocoder) {
             if (attempts >= maxAttempts) {
@@ -207,10 +207,10 @@ export default function MapComponent({
             setTimeout(checkKakaoReady, 100)
             return
           }
-          
+
           // 최종 테스트
           console.log('✅ 모든 카카오맵 API 준비 완료!')
-          
+
           try {
             const testLatLng = new window.kakao.maps.LatLng(37.5665, 126.9780)
             console.log('✅ LatLng 생성자 테스트 성공:', testLatLng)
@@ -220,18 +220,18 @@ export default function MapComponent({
             setMapError('카카오맵 LatLng 생성자 오류')
           }
         }
-        
+
         checkKakaoReady()
-        
+
       } catch (error) {
         console.error('❌ 카카오맵 초기화 중 예외 발생:', error)
         setMapError('카카오맵 초기화 오류')
       }
     }
-    
+
     // 페이지 로드 후 약간의 지연을 두고 초기화
     const timer = setTimeout(initializeKakaoMap, 1000)
-    
+
     return () => clearTimeout(timer)
   }, [])
 
@@ -261,21 +261,21 @@ export default function MapComponent({
       const bounds = map.getBounds()
       const swLatLng = bounds.getSouthWest()
       const neLatLng = bounds.getNorthEast()
-      
+
       const newBounds = {
         south: swLatLng.getLat(),
         west: swLatLng.getLng(),
         north: neLatLng.getLat(),
         east: neLatLng.getLng()
       }
-      
+
       // 개발 환경에서만 디버깅
       if (process.env.NODE_ENV === 'development') {
         console.log('🗺️ MapComponent: bounds 변경됨')
       }
-      
+
       setCurrentBounds(newBounds)
-      
+
       // 부모 컴포넌트에 bounds 변경 알림
       if (onBoundsChange) {
         onBoundsChange(newBounds)
@@ -290,18 +290,18 @@ export default function MapComponent({
     if (!map || !center) return
 
     // 새로운 center가 마지막으로 설정한 center와 다른 경우에만 이동 (외부에서 의도적으로 변경한 경우)
-    if (lastSetCenter && 
-        Math.abs(lastSetCenter.lat - center.lat) < 0.0001 && 
-        Math.abs(lastSetCenter.lng - center.lng) < 0.0001) {
+    if (lastSetCenter &&
+      Math.abs(lastSetCenter.lat - center.lat) < 0.0001 &&
+      Math.abs(lastSetCenter.lng - center.lng) < 0.0001) {
       return
     }
 
     console.log('🗺️ 지도 중심 이동:', center)
-    
+
     // 지도 중심 이동
     const moveToCenter = new window.kakao.maps.LatLng(center.lat, center.lng)
     map.setCenter(moveToCenter)
-    
+
     // 마지막 설정된 center 저장
     setLastSetCenter(center)
 
@@ -321,14 +321,9 @@ export default function MapComponent({
       handleMapBoundsChange()
     }
 
-    const handleCenterChanged = () => {
-      handleMapBoundsChange()
-    }
-
     // 카카오맵 이벤트 등록
     window.kakao.maps.event.addListener(map, 'dragend', handleDragEnd)
     window.kakao.maps.event.addListener(map, 'zoom_changed', handleZoomChanged)
-    window.kakao.maps.event.addListener(map, 'center_changed', handleCenterChanged)
 
     // 초기 bounds 설정
     setTimeout(handleMapBoundsChange, 500)
@@ -337,7 +332,6 @@ export default function MapComponent({
       // 이벤트 제거
       window.kakao.maps.event.removeListener(map, 'dragend', handleDragEnd)
       window.kakao.maps.event.removeListener(map, 'zoom_changed', handleZoomChanged)
-      window.kakao.maps.event.removeListener(map, 'center_changed', handleCenterChanged)
     }
   }, [map, handleMapBoundsChange])
 
@@ -351,7 +345,7 @@ export default function MapComponent({
 
     // 역지오코딩으로 행정동 주소 가져오기
     const geocoder = new window.kakao.maps.services.Geocoder()
-    
+
     geocoder.coord2Address(lng, lat, (result: any, status: any) => {
       let address = ''
       if (status === window.kakao.maps.services.Status.OK) {
@@ -364,8 +358,8 @@ export default function MapComponent({
           address = `${guName} ${dong}`
         } else {
           // 기본 주소 사용 후 행정동 형태로 변환
-          const fullAddress = addr.road_address ? 
-            addr.road_address.address_name : 
+          const fullAddress = addr.road_address ?
+            addr.road_address.address_name :
             addr.address.address_name
           address = formatToAdministrativeAddress(fullAddress)
         }
@@ -381,26 +375,26 @@ export default function MapComponent({
   // 그룹 마커 클릭 핸들러
   const handleGroupMarkerClick = (group: GroupedReport) => {
     console.log('🎯 MapComponent: 마커 클릭됨', group)
-    
+
     // 마커를 클릭하면 해당 위치로 맵 중심 부드럽게 이동하고 적당히 줌인
     if (map) {
       const moveLatLng = new window.kakao.maps.LatLng(group.location.lat, group.location.lng)
-      
+
       // 부드러운 이동
       map.panTo(moveLatLng)
-      
+
       // 적당한 줌 레벨로 설정 (너무 과도하지 않게)
       const currentLevel = map.getLevel()
       const targetLevel = Math.max(2, 3) // 레벨 2-3 정도로 적당히 (30-50m 거리)
-      
+
       if (currentLevel > targetLevel) {
         // 부드러운 줌인 (카카오맵 네이티브 기능 사용)
         setTimeout(() => {
-          map.setLevel(targetLevel, {animate: {duration: 500}}) // 500ms 애니메이션
+          map.setLevel(targetLevel, { animate: { duration: 500 } }) // 500ms 애니메이션
         }, 200) // 이동 후 약간 딜레이
       }
     }
-    
+
     // 부모 컴포넌트에 마커 클릭 이벤트 전달
     console.log('📤 MapComponent: onMarkerClick 호출', typeof onMarkerClick, group)
     if (onMarkerClick) {
@@ -418,7 +412,7 @@ export default function MapComponent({
           <div className="text-red-600 text-3xl mb-3">🗺️</div>
           <p className="text-red-800 font-medium mb-2">지도 로드 실패</p>
           <p className="text-red-600 text-sm mb-4 max-w-xs">{mapError}</p>
-          
+
           {/* 디버그 정보 */}
           <details className="text-left mb-4 max-w-sm">
             <summary className="text-xs text-red-700 cursor-pointer mb-2">디버그 정보 보기</summary>
@@ -430,9 +424,9 @@ export default function MapComponent({
               <div>Maps 객체: {typeof window !== 'undefined' && window.kakao?.maps ? '✅' : '❌'}</div>
             </div>
           </details>
-          
+
           <div className="space-y-2">
-            <button 
+            <button
               onClick={() => {
                 setMapError(null)
                 setKakaoLoaded(false)
@@ -486,7 +480,7 @@ export default function MapComponent({
               yAnchor={1}
               xAnchor={0.5}
             >
-              <div 
+              <div
                 onClick={() => handleGroupMarkerClick(group)}
                 className="cursor-pointer transform hover:scale-110 transition-transform duration-200"
                 style={{
@@ -495,9 +489,9 @@ export default function MapComponent({
               >
                 {group.count > 1 ? (
                   // 다중 제보 - 숫자가 있는 원형 마커
-                  <div 
+                  <div
                     className="relative flex items-center justify-center w-8 h-8 rounded-full border-2 border-white shadow-lg text-white font-bold text-sm"
-                    style={{ 
+                    style={{
                       backgroundColor: getMarkerColor(group.primaryCategory),
                       transform: selectedMarkerId === group.id ? 'scale(1.1)' : 'scale(1)'
                     }}
@@ -512,15 +506,15 @@ export default function MapComponent({
                       transform: selectedMarkerId === group.id ? 'scale(1.1)' : 'scale(1)'
                     }}
                   >
-                    <MapPin 
+                    <MapPin
                       className="w-8 h-8"
-                      style={{ 
+                      style={{
                         fill: getMarkerColor(group.primaryCategory),
                         stroke: 'white',
                         strokeWidth: '1',
                       }}
                     />
-                    
+
                   </div>
                 )}
               </div>
@@ -530,7 +524,7 @@ export default function MapComponent({
       </div>
 
 
-      
+
     </div>
   )
 }
