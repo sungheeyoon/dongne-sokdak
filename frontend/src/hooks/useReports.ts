@@ -1,19 +1,71 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { 
-  getReports, 
-  getReport, 
-  createReport, 
+import {
+  getReports,
+  getReportsInBounds,
+  getReport,
+  createReport,
   deleteReport,
   CreateReportData,
   ReportsFilter
 } from '../lib/api/reports'
+import { Report, ReportCategory } from '@/types'
 import { addVote, removeVote, checkUserVote, getVoteCount } from '../lib/api/votes'
 
-// 제보 목록 조회
-export const useReports = (filter?: ReportsFilter) => {
-  return useQuery({
-    queryKey: ['reports', filter],
-    queryFn: () => getReports(filter)
+interface UseReportsParams {
+  mode: 'all' | 'bounds'
+  category: string
+  searchQuery: string
+  bounds: { north: number; south: number; east: number; west: number } | null
+  trigger: number
+}
+
+// 제보 목록 조회 (전략 패턴 적용)
+export function useReports({
+  mode,
+  category,
+  searchQuery,
+  bounds,
+  trigger
+}: UseReportsParams) {
+  return useQuery<Report[], Error>({
+    queryKey: [
+      'reports',
+      mode,
+      category,
+      searchQuery,
+      mode === 'bounds' ? bounds : null,
+      mode === 'bounds' ? trigger : 0
+    ],
+    queryFn: async (): Promise<Report[]> => {
+      const parsedCategory = category === 'all' ? undefined : category as ReportCategory;
+
+      if (mode === 'bounds' && bounds) {
+        return getReportsInBounds({
+          north: bounds.north,
+          south: bounds.south,
+          east: bounds.east,
+          west: bounds.west,
+          category: parsedCategory,
+          search: searchQuery || undefined,
+          limit: 200
+        })
+      }
+
+      return getReports({
+        category: parsedCategory,
+        search: searchQuery || undefined,
+        limit: 100
+      })
+    },
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 1,
+    enabled: mode === 'bounds'
+      ? !!bounds && trigger > 0
+      : !!searchQuery,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000
   })
 }
 
@@ -29,7 +81,7 @@ export const useReport = (id: string) => {
 // 제보 생성
 export const useCreateReport = () => {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: (data: CreateReportData) => createReport(data),
     onSuccess: () => {
@@ -41,7 +93,7 @@ export const useCreateReport = () => {
 // 제보 삭제
 export const useDeleteReport = () => {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: (id: string) => deleteReport(id),
     onSuccess: () => {
@@ -53,7 +105,7 @@ export const useDeleteReport = () => {
 // 공감 토글
 export const useToggleVote = () => {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async ({ reportId, isVoted }: { reportId: string; isVoted: boolean }) => {
       if (isVoted) {

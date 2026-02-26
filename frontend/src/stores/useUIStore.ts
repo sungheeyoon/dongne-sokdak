@@ -7,7 +7,7 @@ interface UIState {
   authMode: 'signin' | 'signup'
 
   // 지도 상태
-  mapCenter: { lat: number; lng: number }
+  mapCenter: { lat: number; lng: number } | null
   mapZoom: number
   selectedLocation: { lat: number; lng: number; address?: string } | null
 
@@ -52,7 +52,7 @@ export const useUIStore = create<UIState>((set) => ({
   isReportModalOpen: false,
   isAuthModalOpen: false,
   authMode: 'signin',
-  mapCenter: { lat: 37.5665, lng: 126.9780 }, // 서울 시청
+  mapCenter: null, // 초기값을 null로 변경하여 사용자 동네가 우선시되게 함
   mapZoom: 13,
   selectedLocation: null,
   activeCategory: null,
@@ -63,20 +63,19 @@ export const useUIStore = create<UIState>((set) => ({
   closeReportModal: () => set({ isReportModalOpen: false, selectedLocation: null }),
   openAuthModal: (mode) => set({ isAuthModalOpen: true, authMode: mode }),
   closeAuthModal: () => set({ isAuthModalOpen: false }),
-  setMapCenter: (center) => set({ mapCenter: center as { lat: number; lng: number } }),
+  setMapCenter: (center) => set({ mapCenter: center ? { lat: center.lat, lng: center.lng } : null }),
   setMapZoom: (zoom) => set({ mapZoom: zoom }),
   setSelectedLocation: (location) => set({ selectedLocation: location }),
   setActiveCategory: (category) => set({ activeCategory: category }),
   setActiveStatus: (status) => set({ activeStatus: status }),
 
-  // 새로운 상태 및 액션 초기화
   searchQuery: '',
   searchMode: 'location',
   searchedLocation: null,
   userCurrentLocation: null,
   currentMapBounds: null,
   triggerMapSearch: 0,
-  useMapBoundsFilter: false,
+  useMapBoundsFilter: true, // 기본값을 true로 변경하여 처음에 무조건 맵 영역 제보를 가져오도록 함
   selectedMapMarker: null,
 
   setSearchQuery: (query) => set({ searchQuery: query }),

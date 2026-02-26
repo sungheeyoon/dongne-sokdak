@@ -293,20 +293,29 @@ export default function MapComponent({
     if (lastSetCenter &&
       Math.abs(lastSetCenter.lat - center.lat) < 0.0001 &&
       Math.abs(lastSetCenter.lng - center.lng) < 0.0001) {
+      // 이미 같은 위치라도 bounds는 업데이트 해준다 (내동네 돌아가기 등의 액션 시 제보 재검색 보장)
+      setTimeout(() => {
+        handleMapBoundsChange()
+      }, 100)
       return
     }
 
     console.log('🗺️ 지도 중심 이동:', center)
 
-    // 지도 중심 이동
+    // 지도 중심 이동 (부드럽게 이동)
     const moveToCenter = new window.kakao.maps.LatLng(center.lat, center.lng)
-    map.setCenter(moveToCenter)
+    map.panTo(moveToCenter)
 
     // 마지막 설정된 center 저장
     setLastSetCenter(center)
 
+    // 중심이 변경되었으므로 bounds도 업데이트 (panTo 애니메이션 시간을 고려해 300ms 정도 후)
+    setTimeout(() => {
+      handleMapBoundsChange()
+    }, 400)
+
     console.log('✅ 지도 이동 완료')
-  }, [center, map])
+  }, [center, map, handleMapBoundsChange])
 
   // 맵 이동 완료 이벤트 등록
   useEffect(() => {
@@ -473,53 +482,60 @@ export default function MapComponent({
           onClick={handleMapClick}
         >
           {/* 그룹화된 마커들 - MapPin 아이콘 사용 */}
-          {groupedReports.map((group) => (
-            <CustomOverlayMap
-              key={group.id}
-              position={{ lat: group.location.lat, lng: group.location.lng }}
-              yAnchor={1}
-              xAnchor={0.5}
-            >
-              <div
-                onClick={() => handleGroupMarkerClick(group)}
-                className="cursor-pointer transform hover:scale-110 transition-transform duration-200"
-                style={{
-                  filter: selectedMarkerId === group.id ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))' : 'none'
-                }}
+          {groupedReports.map((group) => {
+            const isSelected = selectedMarkerId === group.id;
+            return (
+              <CustomOverlayMap
+                key={group.id}
+                position={{ lat: group.location.lat, lng: group.location.lng }}
+                yAnchor={1}
+                xAnchor={0.5}
+                zIndex={isSelected ? 50 : 1}
               >
-                {group.count > 1 ? (
-                  // 다중 제보 - 숫자가 있는 원형 마커
-                  <div
-                    className="relative flex items-center justify-center w-8 h-8 rounded-full border-2 border-white shadow-lg text-white font-bold text-sm"
-                    style={{
-                      backgroundColor: getMarkerColor(group.primaryCategory),
-                      transform: selectedMarkerId === group.id ? 'scale(1.1)' : 'scale(1)'
-                    }}
-                  >
-                    {group.count}
-                  </div>
-                ) : (
-                  // 단일 제보 - MapPin 아이콘 (fill + 가운데 흰 원)
-                  <div
-                    className="relative w-6 h-6 drop-shadow-lg"
-                    style={{
-                      transform: selectedMarkerId === group.id ? 'scale(1.1)' : 'scale(1)'
-                    }}
-                  >
-                    <MapPin
-                      className="w-8 h-8"
-                      style={{
-                        fill: getMarkerColor(group.primaryCategory),
-                        stroke: 'white',
-                        strokeWidth: '1',
-                      }}
-                    />
+                <div
+                  onClick={() => handleGroupMarkerClick(group)}
+                  className={`cursor-pointer transition-all duration-300 ${isSelected ? 'scale-125' : 'hover:scale-110'}`}
+                  style={{
+                    filter: isSelected ? 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))' : 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
+                    transformOrigin: 'bottom center'
+                  }}
+                >
 
-                  </div>
-                )}
-              </div>
-            </CustomOverlayMap>
-          ))}
+                  {group.count > 1 ? (
+                    // 다중 제보 - 숫자가 있는 원형 마커
+                    <div
+                      className={`relative flex items-center justify-center rounded-full text-white font-bold transition-all duration-300 ${isSelected
+                        ? 'w-10 h-10 text-base border-4 border-blue-500 ring-4 ring-blue-500/30'
+                        : 'w-8 h-8 text-sm border-2 border-white'
+                        }`}
+                      style={{
+                        backgroundColor: getMarkerColor(group.primaryCategory),
+                      }}
+                    >
+                      {group.count}
+                    </div>
+                  ) : (
+                    // 단일 제보 - MapPin 아이콘 (fill + 가운데 흰 원)
+                    <div
+                      className={`relative transition-all duration-300 ${isSelected
+                        ? 'w-10 h-10 -translate-y-2'
+                        : 'w-7 h-7'
+                        }`}
+                    >
+                      <MapPin
+                        className="w-full h-full"
+                        style={{
+                          fill: getMarkerColor(group.primaryCategory),
+                          stroke: isSelected ? '#3b82f6' : 'white', // Tailwind colors.blue.500
+                          strokeWidth: isSelected ? '2' : '1.5',
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </CustomOverlayMap>
+            );
+          })}
         </Map>
       </div>
 

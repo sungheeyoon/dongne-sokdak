@@ -30,9 +30,9 @@ const sizeStyles = {
   lg: 'py-4 text-lg'
 }
 
-export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({ 
+export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
   searchMode,
-  onLocationSelect, 
+  onLocationSelect,
   onTextSearch,
   className,
   placeholder,
@@ -48,6 +48,12 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
 
+  // onTextSearch 콜백을 최신 상태로 유지하기 위한 ref
+  const onTextSearchRef = useRef(onTextSearch)
+  useEffect(() => {
+    onTextSearchRef.current = onTextSearch
+  }, [onTextSearch])
+
   // 검색 모드 변경 시 상태 초기화
   useEffect(() => {
     setQuery('')
@@ -55,6 +61,9 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
     setShowResults(false)
     setIsPlaceSelected(false)
     setSelectedPlaceName('')
+
+    // 모드가 바뀔 때 제보 텍스트 검색도 초기화 (호출을 통해 빈 값 전달)
+    onTextSearchRef.current('')
   }, [searchMode])
 
   // 장소 검색 실행 (카카오맵 API)
@@ -65,18 +74,18 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
     }
 
     setIsLoading(true)
-    
+
     try {
       const places = new window.kakao.maps.services.Places()
-      
+
       places.keywordSearch(searchQuery, (data: PlaceResult[], status: any) => {
         if (isPlaceSelected) {
           setIsLoading(false)
           return
         }
-        
+
         setIsLoading(false)
-        
+
         if (status === window.kakao.maps.services.Status.OK) {
           setResults(data.slice(0, 5))
           if (!isPlaceSelected && searchQuery !== selectedPlaceName) {
@@ -127,21 +136,21 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
   const handlePlaceSelect = (place: PlaceResult) => {
     // 행정동 변환 (기존 유틸리티 함수 대신 간단한 변환)
     const adminAddress = place.address_name || place.road_address_name
-    
+
     const location = {
       lat: parseFloat(place.y),
       lng: parseFloat(place.x),
       address: adminAddress,
       placeName: place.place_name
     }
-    
+
     setIsPlaceSelected(true)
     setSelectedPlaceName(place.place_name)
     setShowResults(false)
     setResults([])
     setIsLoading(false)
     setQuery(place.place_name)
-    
+
     searchInputRef.current?.blur()
     onLocationSelect(location)
   }
@@ -154,7 +163,7 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
     setIsPlaceSelected(false)
     setSelectedPlaceName('')
     searchInputRef.current?.focus()
-    
+
     // 텍스트 검색 모드일 때는 빈 검색어로 검색 실행
     if (searchMode === 'text') {
       onTextSearch('')
@@ -175,7 +184,7 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
 
   const getPlaceholder = () => {
     if (placeholder) return placeholder
-    
+
     if (searchMode === 'location') {
       return "동네, 건물명, 지번을 검색하세요"
     } else {
@@ -206,6 +215,11 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
               setIsPlaceSelected(false)
             }
             setQuery(newValue)
+
+            // 사용자가 글자를 모두 지우면 즉시 텍스트 검색 결과도 초기화
+            if (searchMode === 'text' && newValue.trim() === '') {
+              onTextSearch('')
+            }
           }}
           onFocus={() => {
             if (searchMode === 'location' && results.length > 0 && !isPlaceSelected) {
@@ -249,7 +263,7 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
 
       {/* 검색 결과 (위치 검색 모드일 때만) */}
       {searchMode === 'location' && showResults && !disabled && (
-        <div 
+        <div
           ref={resultsRef}
           className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto"
         >

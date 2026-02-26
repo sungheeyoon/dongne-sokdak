@@ -31,6 +31,7 @@ class Profile(Base):
     nickname = Column(String, nullable=False)
     avatar_url = Column(String)
     location = Column(Geography(geometry_type='POINT', srid=4326))
+    neighborhood = Column(JSON, nullable=True)
     
     # RBAC 관련 필드
     role = Column(SQLEnum(UserRole), default=UserRole.USER, nullable=False)

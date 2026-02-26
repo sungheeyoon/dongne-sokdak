@@ -147,7 +147,7 @@ async def get_reports(
         if user_id:
             query = query.eq("user_id", user_id)
         if search:
-            query = query.ilike("title", f"%{search}%")
+            query = query.or_(f"title.ilike.%{search}%,description.ilike.%{search}%")
             
         if limit:
             query = query.limit(limit)
@@ -214,6 +214,7 @@ async def get_nearby_reports(
 async def get_reports_in_bounds(
     north: float, south: float, east: float, west: float,
     category: Optional[ReportCategory] = None,
+    search: Optional[str] = None,
     limit: int = 100,
     supabase: Client = Depends(get_supabase)
 ) -> Any:
@@ -225,12 +226,22 @@ async def get_reports_in_bounds(
             "east": east,
             "west": west,
             "category_filter": category.value if category else None,
-            "result_limit": limit
+            "result_limit": limit if not search else 1000 # Fetch more if searching to filter locally
         }
         
         # FastAPI -> Supabase RPC -> PostGIS
         response = supabase.rpc("get_reports_in_bounds", rpc_params).execute()
         bounded_reports = response.data
+        
+        if search:
+            search_lower = search.lower()
+            filtered_reports = []
+            for r in bounded_reports:
+                title = r.get("title", "")
+                desc = r.get("description", "")
+                if (title and search_lower in title.lower()) or (desc and search_lower in desc.lower()):
+                    filtered_reports.append(r)
+            bounded_reports = filtered_reports[:limit]
         
         for report in bounded_reports:
             loc = parse_location(report.get("location"))
@@ -360,4 +371,51 @@ async def delete_report(
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error deleting report: {str(e)}")
+
+# --- Benchmark Endpoints ---
+
+@router.get("/benchmark/nearby-rest", response_model=List[Report])
+async def get_benchmark_nearby_rest(
+    lat: float,
+    lng: float,
+    radius_km: float = 3.0,
+    category: Optional[ReportCategory] = None,
+    limit: int = 50,
+    supabase: Client = Depends(get_supabase)
+) -> Any:
+    """[V1 Benchmark] Pure REST + Python Haversine calculation (No PostGIS RPC)."""
+    try:
+        # Fetching a large set of rows to simulate pre-RPC memory bottleneck
+        # Note: We limit to 2000 to prevent outright crashing the server, 
+        # but it is enough to show severe performance degradation.
+        query = supabase.table("reports").select("*")
+        if category:
+            query = query.eq("category", category.value)
+            
+        res = query.limit(2000).execute()
+        all_reports = res.data
+        
+        radius_meters = radius_km * 1000
+        nearby_reports = []
+        
+        for report in all_reports:
+            parsed_loc = parse_location(report.get("location"))
+            report["location"] = parsed_loc
+            
+            dist = calculate_distance(lat, lng, parsed_loc["lat"], parsed_loc["lng"])
+            if dist <= radius_meters:
+                report["distance"] = dist
+                report["distance_km"] = round(dist / 1000, 2)
+                report["vote_count"] = 0
+                report["comment_count"] = 0
+                report["user_voted"] = False
+                nearby_reports.append(report)
+                
+        # Sort by distance in python
+        nearby_reports.sort(key=lambda x: x.get("distance", float('inf')))
+        return nearby_reports[:limit]
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Bench error REST: {str(e)}")
+
 

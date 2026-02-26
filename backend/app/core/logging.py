@@ -72,7 +72,7 @@ def log_api_request(request_id: str, method: str, path: str, user_id: str = None
     if os.getenv("ENVIRONMENT", "development") == "development":
         logger = get_logger("api.request")
         logger.info(
-            "API 요청",
+            f"API 요청: {method} {path}",
             extra={
                 "request_id": request_id,
                 "method": method,
