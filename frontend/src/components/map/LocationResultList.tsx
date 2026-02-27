@@ -1,19 +1,19 @@
 import { MapPin } from 'lucide-react'
-import { PlaceResult } from './types'
+import { PlaceSearchResult } from '@/features/map/domain/entities'
 import { getDisplayNeighborhoodName } from '@/lib/utils/neighborhoodUtils'
 
 interface LocationResultListProps {
-  results: PlaceResult[]
+  results: PlaceSearchResult[]
   query: string
   isLoading: boolean
-  onSelect: (place: PlaceResult) => void
+  onSelect: (place: PlaceSearchResult) => void
   className?: string
 }
 
-export default function LocationResultList({ 
-  results, 
-  query, 
-  isLoading, 
+export default function LocationResultList({
+  results,
+  query,
+  isLoading,
   onSelect,
   className = ""
 }: LocationResultListProps) {
@@ -42,12 +42,12 @@ export default function LocationResultList({
     <div className={`py-2 ${className}`}>
       {results.map((place, index) => {
         const displayName = getDisplayNeighborhoodName(
-          place.place_name,
-          place.address_name,
-          place.road_address_name
+          place.placeName,
+          place.address,
+          place.roadAddress
         )
-        const isNeighborhoodDifferent = displayName !== place.place_name
-        
+        const isNeighborhoodDifferent = displayName !== place.placeName
+
         return (
           <button
             key={index}
@@ -59,16 +59,16 @@ export default function LocationResultList({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2">
                   <div className="font-medium text-gray-900 truncate">
-                    {place.place_name}
+                    {place.placeName}
                   </div>
-                  {isNeighborhoodDifferent && (
+                  {isNeighborhoodDifferent && place.categoryName && (
                     <div className="text-xs text-primary bg-blue-50 px-2 py-1 rounded">
-                      {place.category_name.split(' > ').pop()}
+                      {place.categoryName.split(' > ').pop()}
                     </div>
                   )}
                 </div>
                 <div className="text-sm text-gray-600 truncate">
-                  {place.address_name || place.road_address_name}
+                  {place.address || place.roadAddress}
                 </div>
               </div>
             </div>

@@ -3,19 +3,19 @@
 import { useState, useEffect } from 'react'
 import { useUIStore } from '@/shared/stores/useUIStore'
 import { ReportCategory } from '@/types'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createReport, CreateReportData } from '@/lib/api/reports'
+import { useMutateReportViewModel } from '../hooks/useMutateReportViewModel'
 import ImageUpload from './ImageUpload'
-import LocationPicker from './map/LocationPicker'
-import LocationSearch from './map/LocationSearch'
-import { MapPin, Loader2, Search, ArrowLeft, Send, Check, Megaphone, Trash2, Construction, Car, FileText } from 'lucide-react'
+import LocationPicker from '@/components/map/LocationPicker'
+import LocationSearch from '@/components/map/LocationSearch'
+import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
+import { MapPin, Loader2, ArrowLeft, Send, Check, Megaphone, Trash2, Construction, Car, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { 
-  UiDialog as Dialog, 
-  UiDialogContent as DialogContent, 
-  UiDialogHeader as DialogHeader, 
-  UiDialogTitle as DialogTitle, 
-  UiDialogFooter as DialogFooter, 
+import {
+  UiDialog as Dialog,
+  UiDialogContent as DialogContent,
+  UiDialogHeader as DialogHeader,
+  UiDialogTitle as DialogTitle,
+  UiDialogFooter as DialogFooter,
   UiDialogDescription as DialogDescription,
   UiButton as Button,
   UiInput as Input,
@@ -40,9 +40,10 @@ const categoryOptions = [
 ]
 
 export default function ReportModal() {
-  const { isReportModalOpen, closeReportModal, selectedLocation, setSelectedLocation } = useUIStore()
-  const queryClient = useQueryClient()
-  
+  const { isReportModalOpen, closeReportModal, selectedLocation, setSelectedLocation, mapCenter } = useUIStore()
+  const { reverseGeocode } = useLocationViewModel()
+  const { createReport, isCreating } = useMutateReportViewModel()
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -74,21 +75,6 @@ export default function ReportModal() {
       }))
     }
   }, [selectedLocation])
-
-  const createReportMutation = useMutation({
-    mutationFn: (data: CreateReportData) => createReport(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reports'] })
-      queryClient.invalidateQueries({ queryKey: ['my-reports'] })
-      queryClient.invalidateQueries({ queryKey: ['mapBoundsReports'] })
-      
-      handleClose()
-      toast.success('제보가 성공적으로 등록되었습니다!')
-    },
-    onError: (error: any) => {
-      toast.error(`오류 발생: ${error.message}`)
-    }
-  })
 
   const resetForm = () => {
     setFormData({
@@ -135,23 +121,27 @@ export default function ReportModal() {
     }
 
     const loadingToast = toast.loading('현재 위치 확인 중...')
-    
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords
-        const geocoder = new window.kakao.maps.services.Geocoder()
-        
-        geocoder.coord2Address(longitude, latitude, (result: any, status: any) => {
+
+        try {
+          const address = await reverseGeocode({ lat: latitude, lng: longitude })
           toast.dismiss(loadingToast)
-          if (status === window.kakao.maps.services.Status.OK) {
-            const addr = result[0]
-            const address = addr.road_address ? addr.road_address.address_name : addr.address.address_name
+
+          if (address) {
             const locationData = { lat: latitude, lng: longitude, address, placeName: '현재 위치' }
             setLocation(locationData)
             setFormData(prev => ({ ...prev, lat: latitude, lng: longitude, address }))
             toast.success('현재 위치를 가져왔습니다.')
+          } else {
+            toast.error('주소 정보를 찾을 수 없습니다.')
           }
-        })
+        } catch (error) {
+          toast.dismiss(loadingToast)
+          toast.error('주소 정보를 가져오는 중 오류가 발생했습니다.')
+        }
       },
       () => {
         toast.dismiss(loadingToast)
@@ -163,10 +153,20 @@ export default function ReportModal() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!formData.title.trim() || !formData.description.trim() || !location) {
-      toast.error('필수 정보를 모두 입력해주세요.')
-      return
+
+    console.log('🔘 제출 버튼 클릭됨', { title: formData.title, description: formData.description, location });
+
+    if (!formData.title.trim()) {
+      toast.error('제목을 입력해주세요.');
+      return;
+    }
+    if (!formData.description.trim()) {
+      toast.error('상세 내용을 입력해주세요.');
+      return;
+    }
+    if (!location) {
+      toast.error('위치 정보가 필요합니다.');
+      return;
     }
 
     let finalAddress = location.address || formData.address
@@ -174,14 +174,32 @@ export default function ReportModal() {
       finalAddress = `${location.placeName}, ${location.address}`
     }
 
-    createReportMutation.mutate({
-      title: formData.title,
-      description: formData.description,
-      category: formData.category,
-      location: { lat: location.lat, lng: location.lng },
-      address: finalAddress,
-      imageUrl: formData.imageUrl || undefined
-    })
+    try {
+      console.log('📝 제출 데이터:', {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        location: { lat: location.lat, lng: location.lng },
+        address: finalAddress,
+        imageUrl: formData.imageUrl
+      })
+
+      const result = await createReport({
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        location: { lat: location.lat, lng: location.lng },
+        address: finalAddress,
+        imageUrl: formData.imageUrl || undefined
+      })
+
+      console.log('✅ 제보 생성 성공:', result)
+      toast.success('제보가 성공적으로 등록되었습니다!')
+      handleClose()
+    } catch (error: any) {
+      console.error('❌ 제보 생성 실패:', error)
+      toast.error(`오류 발생: ${error.message || '알 수 없는 오류가 발생했습니다.'}`)
+    }
   }
 
   return (
@@ -192,8 +210,8 @@ export default function ReportModal() {
             {step === 'location' ? '어디서 발생한 문제인가요?' : '상세 내용을 알려주세요'}
           </DialogTitle>
           <DialogDescription>
-            {step === 'location' 
-              ? '정확한 위치를 선택하면 이웃들이 더 쉽게 알 수 있어요.' 
+            {step === 'location'
+              ? '정확한 위치를 선택하면 이웃들이 더 쉽게 알 수 있어요.'
               : '사진이나 상세한 설명을 추가하면 해결에 도움이 됩니다.'}
           </DialogDescription>
         </DialogHeader>
@@ -240,7 +258,7 @@ export default function ReportModal() {
                     <LocationPicker
                       onLocationSelect={handleLocationSelect}
                       height="350px"
-                      initialCenter={location ? { lat: location.lat, lng: location.lng } : undefined}
+                      initialCenter={location ? { lat: location.lat, lng: location.lng } : (mapCenter || undefined)}
                     />
                   </div>
                 )}
@@ -258,27 +276,27 @@ export default function ReportModal() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* 카테고리 그리드 */}
-              <div className="space-y-3">
-                <Label>카테고리</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {/* 카테고리 (압축된 형태) */}
+              <div className="space-y-2 mb-2">
+                <Label className="text-sm font-semibold">카테고리</Label>
+                <div className="flex flex-row overflow-x-auto pb-2 gap-2 snap-x scrollbar-hide">
                   {categoryOptions.map((opt) => {
                     const Icon = opt.icon
                     const isSelected = formData.category === opt.value
-                    
+
                     return (
                       <div
                         key={opt.value}
                         onClick={() => setFormData({ ...formData, category: opt.value })}
                         className={cn(
-                          "cursor-pointer p-4 rounded-xl border-2 transition-all hover:bg-muted/50 flex flex-col items-center text-center gap-2",
-                          isSelected 
-                            ? "border-primary bg-primary/5 text-primary" 
-                            : "border-transparent bg-muted/30 text-muted-foreground hover:border-muted-foreground/20"
+                          "cursor-pointer px-4 py-2 min-w-[70px] rounded-full border transition-all flex flex-row items-center justify-center gap-1.5 shrink-0 snap-start",
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground shadow-sm font-medium"
+                            : "border-border bg-muted/30 text-muted-foreground hover:bg-muted font-normal"
                         )}
                       >
-                        <Icon className={cn("w-8 h-8", isSelected ? "text-primary" : "text-muted-foreground")} />
-                        <span className="text-xs font-bold">{opt.label}</span>
+                        <Icon className={cn("w-4 h-4", isSelected ? "text-primary-foreground" : "text-muted-foreground")} />
+                        <span className="text-sm whitespace-nowrap">{opt.label}</span>
                       </div>
                     )
                   })}
@@ -288,17 +306,17 @@ export default function ReportModal() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>제목</Label>
-                  <Input 
+                  <Input
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="예: 가로등이 깜빡거려요"
                     maxLength={50}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label>상세 내용</Label>
-                  <textarea 
+                  <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px] resize-none"
@@ -332,8 +350,8 @@ export default function ReportModal() {
               <Button variant="ghost" onClick={() => setStep('location')}>
                 <ArrowLeft className="w-4 h-4 mr-2" /> 위치 변경
               </Button>
-              <Button onClick={handleSubmit} disabled={createReportMutation.isPending}>
-                {createReportMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              <Button onClick={handleSubmit} disabled={isCreating}>
+                {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 제보 완료 <Send className="w-4 h-4 ml-2" />
               </Button>
             </>

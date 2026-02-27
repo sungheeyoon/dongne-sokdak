@@ -12,15 +12,15 @@ export interface User {
   id: string;
   email: string;
   nickname?: string;
-  avatar_url?: string;
+  avatarUrl?: string;
 }
 
 export interface Profile {
   id: string;
   nickname: string;
-  avatar_url?: string;
+  avatarUrl?: string;
   neighborhood?: {
-    place_name: string;
+    placeName: string;
     address: string;
     lat: number;
     lng: number;
@@ -112,8 +112,8 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
         return adminAddress;
       }
 
-      // 2순위: place_name에서 동/로/가 추출 시도
-      const placeAdminAddress = formatToAdministrativeAddress(profile.neighborhood.place_name);
+      // 2순위: placeName에서 동/로/가 추출 시도
+      const placeAdminAddress = formatToAdministrativeAddress(profile.neighborhood.placeName);
 
       if (placeAdminAddress && placeAdminAddress !== '주소 없음' &&
         (placeAdminAddress.endsWith('동') || placeAdminAddress.endsWith('로') || placeAdminAddress.endsWith('가'))) {
@@ -129,7 +129,7 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
         }
       }
 
-      const placeNameParts = profile.neighborhood.place_name.split(' ');
+      const placeNameParts = profile.neighborhood.placeName.split(' ');
       for (let i = placeNameParts.length - 1; i >= 0; i--) {
         const part = placeNameParts[i];
         if (part.endsWith('동') || part.endsWith('로') || part.endsWith('가')) {
@@ -137,8 +137,8 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
         }
       }
 
-      // 모든 시도가 실패하면 place_name 사용
-      return profile.neighborhood.place_name;
+      // 모든 시도가 실패하면 placeName 사용
+      return profile.neighborhood.placeName;
     };
 
     const calculateDropdownPosition = () => {
@@ -472,9 +472,9 @@ export const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
           >
             <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
               <div className="flex items-center space-x-3">
-                {profile?.avatar_url ? (
+                {profile?.avatarUrl ? (
                   <Image
-                    src={profile.avatar_url}
+                    src={profile.avatarUrl}
                     alt={profile.nickname || user?.email || 'User'}
                     width={32}
                     height={32}

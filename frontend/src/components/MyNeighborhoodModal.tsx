@@ -1,17 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { useMyProfile, useUpdateNeighborhood, useDeleteNeighborhood } from '@/hooks/useProfile'
+import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
 import LocationSearch from '@/components/map/LocationSearch'
 import LocationResultList from '@/components/map/LocationResultList'
-import { PlaceResult } from '@/components/map/types'
+import { PlaceSearchResult } from '@/features/map/domain/entities'
 import { MapPin, Home, Trash2, Search, Crosshair } from 'lucide-react'
 import { NeighborhoodInfo } from '@/types'
-import { formatToAdministrativeAddress, convertPlaceToAdministrativeAddress } from '@/lib/utils/addressUtils'
-import { 
-  UiDialog as Dialog, 
-  UiDialogContent as DialogContent, 
-  UiDialogHeader as DialogHeader, 
+import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
+import {
+  UiDialog as Dialog,
+  UiDialogContent as DialogContent,
+  UiDialogHeader as DialogHeader,
   UiDialogTitle as DialogTitle,
   UiButton as Button,
   UiCard as Card
@@ -23,13 +23,11 @@ interface MyNeighborhoodModalProps {
 }
 
 export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodModalProps) {
-  const { data: profile } = useMyProfile()
-  const updateNeighborhoodMutation = useUpdateNeighborhood()
-  const deleteNeighborhoodMutation = useDeleteNeighborhood()
+  const { profile, updateNeighborhood, isUpdatingNeighborhood, deleteNeighborhood, isDeletingNeighborhood } = useProfileViewModel()
   const [isSelecting, setIsSelecting] = useState(false)
-  
+
   // Search state
-  const [searchResults, setSearchResults] = useState<PlaceResult[]>([])
+  const [searchResults, setSearchResults] = useState<PlaceSearchResult[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
 
@@ -43,41 +41,42 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
   }
 
   // 동네 선택 핸들러 (LocationSearch에서 호출)
-  const handleNeighborhoodSelect = (location: { lat: number; lng: number; address: string; placeName: string }) => {
+  const handleNeighborhoodSelect = async (location: { lat: number; lng: number; address: string; placeName: string }) => {
     const neighborhood: NeighborhoodInfo = {
-      place_name: location.placeName,
+      placeName: location.placeName,
       address: location.address,
       lat: location.lat,
       lng: location.lng
     }
 
-    updateNeighborhoodMutation.mutate(neighborhood, {
-      onSuccess: () => {
-        handleClose()
-      }
-    })
+    try {
+      await updateNeighborhood(neighborhood)
+      handleClose()
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   // 리스트에서 직접 선택 시 핸들러
-  const handlePlaceSelect = (place: PlaceResult) => {
-    const adminAddress = convertPlaceToAdministrativeAddress(place)
+  const handlePlaceSelect = (place: PlaceSearchResult) => {
     const location = {
-      lat: parseFloat(place.y),
-      lng: parseFloat(place.x),
-      address: adminAddress,
-      placeName: place.place_name
+      lat: place.location.lat,
+      lng: place.location.lng,
+      address: place.address,
+      placeName: place.placeName
     }
     handleNeighborhoodSelect(location)
   }
 
   // 내 동네 삭제
-  const handleDeleteNeighborhood = () => {
+  const handleDeleteNeighborhood = async () => {
     if (confirm('내 동네 설정을 삭제하시겠습니까?')) {
-      deleteNeighborhoodMutation.mutate(undefined, {
-        onSuccess: () => {
-          handleClose()
-        }
-      })
+      try {
+        await deleteNeighborhood()
+        handleClose()
+      } catch (err) {
+        console.error(err)
+      }
     }
   }
 
@@ -107,15 +106,15 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
                       {formatToAdministrativeAddress(profile.neighborhood.address)}
                     </h3>
                     <p className="text-sm text-gray-600">
-                      {profile.neighborhood.place_name}
+                      {profile.neighborhood.placeName}
                     </p>
                   </div>
-                  
+
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={handleDeleteNeighborhood}
-                    disabled={deleteNeighborhoodMutation.isPending}
+                    disabled={isDeletingNeighborhood}
                     className="text-red-500 hover:text-red-700 hover:bg-red-50 -mr-2"
                     title="내 동네 삭제"
                   >
@@ -123,17 +122,17 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
                   </Button>
                 </div>
               </Card>
-              
+
               <div className="grid gap-3">
-                <Button 
-                  onClick={() => setIsSelecting(true)} 
+                <Button
+                  onClick={() => setIsSelecting(true)}
                   className="w-full py-6 text-base font-semibold"
                 >
                   <Search className="w-4 h-4 mr-2" />
                   다른 동네로 변경하기
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={handleClose}
                   className="w-full"
                 >
@@ -154,7 +153,7 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
                     {profile?.neighborhood ? '어떤 동네로 변경할까요?' : '우리 동네를 설정해주세요'}
                   </h3>
                   <p className="text-sm text-gray-500">
-                    동네를 설정하면 내 주변의 이웃 소식을<br/>
+                    동네를 설정하면 내 주변의 이웃 소식을<br />
                     더 빠르고 정확하게 확인할 수 있어요.
                   </p>
                 </div>
@@ -169,11 +168,11 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
                   onQueryChange={setSearchQuery}
                   onLoadingChange={setIsSearching}
                 />
-                
+
                 {/* 검색 결과 리스트 (메인 컨텐츠 영역에 렌더링) */}
                 {searchQuery.length >= 2 && (
                   <div className="border rounded-lg overflow-hidden border-gray-200">
-                    <LocationResultList 
+                    <LocationResultList
                       results={searchResults}
                       query={searchQuery}
                       isLoading={isSearching}
@@ -185,8 +184,8 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
 
               {/* 하단 버튼 (검색어가 없을 때만 표시) */}
               {profile?.neighborhood && searchQuery.length < 2 && (
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   onClick={() => setIsSelecting(false)}
                   className="w-full"
                 >
@@ -197,12 +196,12 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
           )}
 
           {/* 로딩 상태 (뮤테이션) */}
-          {(updateNeighborhoodMutation.isPending || deleteNeighborhoodMutation.isPending) && (
+          {(isUpdatingNeighborhood || isDeletingNeighborhood) && (
             <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-50">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
                 <span className="text-sm text-gray-600 font-medium">
-                  {updateNeighborhoodMutation.isPending ? '동네 설정 중...' : '동네 삭제 중...'}
+                  {isUpdatingNeighborhood ? '동네 설정 중...' : '동네 삭제 중...'}
                 </span>
               </div>
             </div>

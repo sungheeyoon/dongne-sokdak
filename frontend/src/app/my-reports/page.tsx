@@ -9,9 +9,10 @@ import Header from '@/components/Header'
 import { UiTabs as Tabs, UiTabsContent as TabsContent, UiTabsList as TabsList, UiTabsTrigger as TabsTrigger } from "@/shared/ui"
 import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
 import ReportDetailModal from "@/shared/ui/ReportDetailModal"
-import ReportModal from '@/components/ReportModal'
-import EditReportModal from '@/components/EditReportModal'
-import ReportCard from '@/components/ReportCard'
+import ReportModal from '@/features/reports/presentation/components/ReportModal'
+import EditReportModal from '@/features/reports/presentation/components/EditReportModal'
+import ReportCard from '@/features/reports/presentation/components/ReportCard'
+import ReportList from '@/features/reports/presentation/components/ReportList'
 
 const statusOptions = [
   { value: 'all', label: '전체' },
@@ -126,35 +127,27 @@ export default function MyReportsPage() {
         </div>
 
         {/* 제보 목록 */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-gray-200 rounded-xl h-64 animate-pulse"></div>
-            ))}
-          </div>
-        ) : reports.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {reports.map((report) => (
-              <ReportCard key={report.id} report={report} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">✨</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              {selectedStatus === 'all' ? '작성한 제보가 없습니다' : `${statusOptions.find(opt => opt.value === selectedStatus)?.label} 제보가 없습니다`}
-            </h3>
-            <p className="text-gray-600 mb-6">
-              새로운 제보를 작성해서 우리 동네를 더 살기 좋게 만들어보세요!
-            </p>
-            <button
-              onClick={() => window.location.href = '/'}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-            >
-              제보 작성하러 가기
-            </button>
-          </div>
-        )}
+        <ReportList
+          reports={reports}
+          isLoading={isLoading}
+          emptyMessage={
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">✨</div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                {selectedStatus === 'all' ? '작성한 제보가 없습니다' : `${statusOptions.find(opt => opt.value === selectedStatus)?.label} 제보가 없습니다`}
+              </h3>
+              <p className="text-gray-600 mb-6">
+                새로운 제보를 작성해서 우리 동네를 더 살기 좋게 만들어보세요!
+              </p>
+              <button
+                onClick={() => window.location.href = '/'}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              >
+                제보 작성하러 가기
+              </button>
+            </div>
+          }
+        />
       </main>
     </div>
   )

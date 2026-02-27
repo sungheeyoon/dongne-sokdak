@@ -1,23 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { useMyProfile } from '@/hooks/useProfile'
+import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
 import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import Header from '@/components/Header'
 import Avatar from '@/components/Avatar'
 import ProfileEditModal from '@/components/ProfileEditModal'
 import { Edit, Calendar, MessageCircle, Heart, FileText, Loader2, Mail, Shield, MapPin } from 'lucide-react'
-import { 
-  UiButton as Button, 
-  UiCard as Card, 
-  UiCardContent as CardContent, 
-  UiCardHeader as CardHeader, 
+import {
+  UiButton as Button,
+  UiCard as Card,
+  UiCardContent as CardContent,
+  UiCardHeader as CardHeader,
   UiCardTitle as CardTitle,
   UiBadge as Badge
 } from '@/shared/ui'
 
 export default function ProfilePage() {
-  const { data: profile, isLoading, error } = useMyProfile()
+  const { profile, isLoading, error } = useProfileViewModel()
   const { user } = useAuthViewModel()
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
@@ -52,7 +52,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20">
       <Header />
-      
+
       <main className="container mx-auto px-4 py-10">
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Profile Header Card */}
@@ -63,13 +63,13 @@ export default function ProfilePage() {
                 <div className="relative group">
                   <div className="rounded-full ring-4 ring-white shadow-lg overflow-hidden bg-white">
                     <Avatar
-                      src={profile.avatar_url}
+                      src={profile.avatarUrl}
                       size="xl"
                       alt={profile.nickname}
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex-1 space-y-2 mb-2">
                   <div className="flex flex-wrap items-center gap-3">
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{profile.nickname}</h1>
@@ -77,18 +77,18 @@ export default function ProfilePage() {
                   <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 font-medium">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="w-4 h-4" />
-                      <span>{formatDate(profile.created_at)} 가입</span>
+                      <span>{formatDate(profile.createdAt)} 가입</span>
                     </div>
                     {profile.neighborhood && (
                       <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
                         <MapPin className="w-3.5 h-3.5" />
-                        {profile.neighborhood.place_name}
+                        {profile.neighborhood.placeName}
                       </div>
                     )}
                   </div>
                 </div>
 
-                <Button 
+                <Button
                   onClick={() => setIsEditModalOpen(true)}
                   variant="outline"
                   className="w-full md:w-auto gap-2 font-medium shadow-sm"
@@ -110,7 +110,7 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">작성한 제보</p>
-                    <p className="text-3xl font-bold text-gray-900">{profile.stats?.report_count || 0}</p>
+                    <p className="text-3xl font-bold text-gray-900">{profile.stats?.reportCount || 0}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -122,7 +122,7 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">작성한 댓글</p>
-                    <p className="text-3xl font-bold text-gray-900">{profile.stats?.comment_count || 0}</p>
+                    <p className="text-3xl font-bold text-gray-900">{profile.stats?.commentCount || 0}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -134,7 +134,7 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">누른 공감</p>
-                    <p className="text-3xl font-bold text-gray-900">{profile.stats?.vote_count || 0}</p>
+                    <p className="text-3xl font-bold text-gray-900">{profile.stats?.voteCount || 0}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -158,7 +158,7 @@ export default function ProfilePage() {
                       {user?.email || '이메일 정보 없음'}
                     </div>
                   </div>
-                  
+
                   <div className="pt-2 border-t border-gray-100">
                     <Button variant="link" className="px-0 h-auto text-gray-500 hover:text-primary font-medium text-sm">
                       비밀번호 변경하기

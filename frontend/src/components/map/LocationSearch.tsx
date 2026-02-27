@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Search, X } from 'lucide-react'
-import { convertPlaceToAdministrativeAddress } from '@/lib/utils/addressUtils'
-import { PlaceResult } from './types'
+import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
+import { PlaceSearchResult } from '@/features/map/domain/entities'
 import LocationResultList from './LocationResultList'
 
 interface LocationSearchProps {
@@ -11,13 +11,13 @@ interface LocationSearchProps {
   placeholder?: string
   className?: string
   showList?: boolean // 내부 리스트 렌더링 여부
-  onResultsChange?: (results: PlaceResult[]) => void // 검색 결과 변경 콜백
+  onResultsChange?: (results: PlaceSearchResult[]) => void // 검색 결과 변경 콜백
   onQueryChange?: (query: string) => void // 검색어 변경 콜백
   onLoadingChange?: (isLoading: boolean) => void // 로딩 상태 변경 콜백
 }
 
-export default function LocationSearch({ 
-  onLocationSelect, 
+export default function LocationSearch({
+  onLocationSelect,
   placeholder = "동네, 건물명, 지번을 검색하세요",
   className = "",
   showList = true,
@@ -26,8 +26,8 @@ export default function LocationSearch({
   onLoadingChange
 }: LocationSearchProps) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<PlaceResult[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [results, setResults] = useState<PlaceSearchResult[]>([])
+  const { searchPlaces: fetchPlaces, isSearching: isLoading } = useLocationViewModel()
   const [showResults, setShowResults] = useState(false)
   const [isPlaceSelected, setIsPlaceSelected] = useState(false)
   const [selectedPlaceName, setSelectedPlaceName] = useState('')
@@ -36,51 +36,41 @@ export default function LocationSearch({
 
   // 검색 실행
   const searchPlaces = async (searchQuery: string) => {
-    if (!searchQuery.trim() || !window.kakao?.maps?.services) {
+    if (!searchQuery.trim()) {
       setResults([])
       onResultsChange?.([])
       return
     }
 
-    setIsLoading(true)
     onLoadingChange?.(true)
-    
+
     try {
-      const places = new window.kakao.maps.services.Places()
-      
-      places.keywordSearch(searchQuery, (data: PlaceResult[], status: any) => {
-        if (isPlaceSelected) {
-          setIsLoading(false)
-          onLoadingChange?.(false)
-          return
-        }
-        
-        setIsLoading(false)
+      const data = await fetchPlaces(searchQuery)
+
+      if (isPlaceSelected) {
         onLoadingChange?.(false)
-        
-        if (status === window.kakao.maps.services.Status.OK) {
-          const newResults = data.slice(0, 15) // 더 많은 결과 표시
-          setResults(newResults)
-          onResultsChange?.(newResults)
-          
-          if (!isPlaceSelected && searchQuery !== selectedPlaceName) {
-            setShowResults(true)
-          }
-        } else if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
-          setResults([])
-          onResultsChange?.([])
-          if (!isPlaceSelected && searchQuery !== selectedPlaceName) {
-            setShowResults(true)
-          }
-        } else {
-          setResults([])
-          onResultsChange?.([])
-          setShowResults(false)
+        return
+      }
+
+      onLoadingChange?.(false)
+
+      if (data && data.length > 0) {
+        const newResults = data.slice(0, 15) // 더 많은 결과 표시
+        setResults(newResults)
+        onResultsChange?.(newResults)
+
+        if (!isPlaceSelected && searchQuery !== selectedPlaceName) {
+          setShowResults(true)
         }
-      })
+      } else {
+        setResults([])
+        onResultsChange?.([])
+        if (!isPlaceSelected && searchQuery !== selectedPlaceName) {
+          setShowResults(true)
+        }
+      }
     } catch (error) {
       console.error('❌ Places API 오류:', error)
-      setIsLoading(false)
       onLoadingChange?.(false)
       setResults([])
       onResultsChange?.([])
@@ -90,7 +80,7 @@ export default function LocationSearch({
   // 디바운스 검색
   useEffect(() => {
     if (isPlaceSelected) return
-    
+
     const timeoutId = setTimeout(() => {
       if (query.length >= 2) {
         searchPlaces(query)
@@ -115,26 +105,26 @@ export default function LocationSearch({
     onQueryChange?.(newValue)
   }
 
-  const handlePlaceSelect = (place: PlaceResult) => {
-    const adminAddress = convertPlaceToAdministrativeAddress(place)
+  const handlePlaceSelect = (place: PlaceSearchResult) => {
+    // 이미 PlaceSearchResult는 클린 아키텍처에 맞게 주소가 변환되어 있음
+    // 그러나 UI 컴포넌트나 호환성 목적에 따라 여전히 필요한 경우 사용 가능한 값을 넘김
     const location = {
-      lat: parseFloat(place.y),
-      lng: parseFloat(place.x),
-      address: adminAddress,
-      placeName: place.place_name
+      lat: place.location.lat,
+      lng: place.location.lng,
+      address: place.address,
+      placeName: place.placeName
     }
-    
+
     setIsPlaceSelected(true)
-    setSelectedPlaceName(place.place_name)
+    setSelectedPlaceName(place.placeName)
     setShowResults(false)
     setResults([])
     onResultsChange?.([]) // 선택 후 결과 초기화
-    setIsLoading(false)
     onLoadingChange?.(false)
-    
-    setQuery(place.place_name)
-    onQueryChange?.(place.place_name)
-    
+
+    setQuery(place.placeName)
+    onQueryChange?.(place.placeName)
+
     searchInputRef.current?.blur()
     onLocationSelect(location)
   }
@@ -199,7 +189,7 @@ export default function LocationSearch({
       </div>
 
       {showList && showResults && (
-        <div 
+        <div
           ref={resultsRef}
           className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto"
         >

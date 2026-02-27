@@ -4,15 +4,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Search, MapPin, X, FileText } from 'lucide-react'
 import { clsx } from 'clsx'
 
-interface PlaceResult {
-  place_name: string
-  address_name: string
-  road_address_name: string
-  x: string // 경도
-  y: string // 위도
-  category_name: string
-  place_url: string
-}
+import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
+import { PlaceSearchResult } from '@/features/map/domain/entities'
 
 export interface UnifiedSearchProps {
   searchMode: 'location' | 'text'
@@ -40,8 +33,8 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
   size = 'md'
 }) => {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<PlaceResult[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [results, setResults] = useState<PlaceSearchResult[]>([])
+  const { searchPlaces: fetchPlaces, isSearching: isLoading } = useLocationViewModel()
   const [showResults, setShowResults] = useState(false)
   const [isPlaceSelected, setIsPlaceSelected] = useState(false)
   const [selectedPlaceName, setSelectedPlaceName] = useState('')
@@ -68,42 +61,31 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
 
   // 장소 검색 실행 (카카오맵 API)
   const searchPlaces = async (searchQuery: string) => {
-    if (!searchQuery.trim() || !window.kakao?.maps?.services || searchMode !== 'location') {
+    if (!searchQuery.trim() || searchMode !== 'location') {
       setResults([])
       return
     }
 
-    setIsLoading(true)
-
     try {
-      const places = new window.kakao.maps.services.Places()
+      const data = await fetchPlaces(searchQuery)
 
-      places.keywordSearch(searchQuery, (data: PlaceResult[], status: any) => {
-        if (isPlaceSelected) {
-          setIsLoading(false)
-          return
+      if (isPlaceSelected) {
+        return
+      }
+
+      if (data && data.length > 0) {
+        setResults(data.slice(0, 5))
+        if (!isPlaceSelected && searchQuery !== selectedPlaceName) {
+          setShowResults(true)
         }
-
-        setIsLoading(false)
-
-        if (status === window.kakao.maps.services.Status.OK) {
-          setResults(data.slice(0, 5))
-          if (!isPlaceSelected && searchQuery !== selectedPlaceName) {
-            setShowResults(true)
-          }
-        } else if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
-          setResults([])
-          if (!isPlaceSelected && searchQuery !== selectedPlaceName) {
-            setShowResults(true)
-          }
-        } else {
-          setResults([])
-          setShowResults(false)
+      } else {
+        setResults([])
+        if (!isPlaceSelected && searchQuery !== selectedPlaceName) {
+          setShowResults(true)
         }
-      })
+      }
     } catch (error) {
       console.error('❌ Places API 오류:', error)
-      setIsLoading(false)
       setResults([])
     }
   }
@@ -133,23 +115,22 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
   }, [query, searchMode, isPlaceSelected])
 
   // 장소 선택 처리
-  const handlePlaceSelect = (place: PlaceResult) => {
-    // 행정동 변환 (기존 유틸리티 함수 대신 간단한 변환)
-    const adminAddress = place.address_name || place.road_address_name
+  const handlePlaceSelect = (place: PlaceSearchResult) => {
+    // 행정동 변환
+    const adminAddress = place.address
 
     const location = {
-      lat: parseFloat(place.y),
-      lng: parseFloat(place.x),
+      lat: place.location.lat,
+      lng: place.location.lng,
       address: adminAddress,
-      placeName: place.place_name
+      placeName: place.placeName
     }
 
     setIsPlaceSelected(true)
-    setSelectedPlaceName(place.place_name)
+    setSelectedPlaceName(place.placeName)
     setShowResults(false)
     setResults([])
-    setIsLoading(false)
-    setQuery(place.place_name)
+    setQuery(place.placeName)
 
     searchInputRef.current?.blur()
     onLocationSelect(location)
@@ -285,16 +266,16 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2">
                         <div className="font-medium text-gray-900 truncate">
-                          {place.place_name}
+                          {place.placeName}
                         </div>
-                        {place.category_name && (
+                        {place.categoryName && (
                           <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                            {place.category_name.split(' > ').pop()}
+                            {place.categoryName.split(' > ').pop()}
                           </div>
                         )}
                       </div>
                       <div className="text-sm text-gray-600 truncate">
-                        {place.address_name || place.road_address_name}
+                        {place.roadAddress || place.address}
                       </div>
                     </div>
                   </div>

@@ -2,16 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { ReportCategory, ReportStatus, Report } from '@/types'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { updateReport, UpdateReportData } from '@/lib/api/reports'
+import { useMutateReportViewModel } from '../hooks/useMutateReportViewModel'
 import ImageUpload from './ImageUpload'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-import { 
-  UiDialog as Dialog, 
-  UiDialogContent as DialogContent, 
-  UiDialogHeader as DialogHeader, 
+import {
+  UiDialog as Dialog,
+  UiDialogContent as DialogContent,
+  UiDialogHeader as DialogHeader,
   UiDialogTitle as DialogTitle,
   UiDialogFooter as DialogFooter,
   UiButton as Button,
@@ -40,8 +39,8 @@ interface EditReportModalProps {
 }
 
 export default function EditReportModal({ report, isOpen, onClose }: EditReportModalProps) {
-  const queryClient = useQueryClient()
-  
+  const { updateReport, isUpdating } = useMutateReportViewModel()
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -63,32 +62,21 @@ export default function EditReportModal({ report, isOpen, onClose }: EditReportM
     }
   }, [report])
 
-  const updateReportMutation = useMutation({
-    mutationFn: (data: UpdateReportData) => updateReport(report!.id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reports'] })
-      queryClient.invalidateQueries({ queryKey: ['report', report!.id] })
-      onClose()
-      toast.success('제보가 수정되었습니다')
-    },
-    onError: (error: any) => {
-      toast.error(`오류 발생: ${error.message}`)
-    }
-  })
-
   const handleImageSelect = (imageUrl: string) => {
     setFormData(prev => ({ ...prev, imageUrl }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.title.trim() || !formData.description.trim()) {
       toast.error('제목과 내용을 입력해주세요')
       return
     }
 
-    const updateData: UpdateReportData = {
+    if (!report) return
+
+    const updateData = {
       title: formData.title,
       description: formData.description,
       category: formData.category,
@@ -96,7 +84,13 @@ export default function EditReportModal({ report, isOpen, onClose }: EditReportM
       imageUrl: formData.imageUrl || undefined
     }
 
-    updateReportMutation.mutate(updateData)
+    try {
+      await updateReport({ id: report.id, data: updateData })
+      onClose()
+      toast.success('제보가 수정되었습니다')
+    } catch (error: any) {
+      toast.error(`오류 발생: ${error.message}`)
+    }
   }
 
   if (!report) return null
@@ -168,7 +162,7 @@ export default function EditReportModal({ report, isOpen, onClose }: EditReportM
 
           <div className="space-y-2">
             <Label>사진 수정</Label>
-            <ImageUpload 
+            <ImageUpload
               onImageSelect={handleImageSelect}
               currentImage={formData.imageUrl}
             />
@@ -178,8 +172,8 @@ export default function EditReportModal({ report, isOpen, onClose }: EditReportM
             <Button type="button" variant="outline" onClick={onClose}>
               취소
             </Button>
-            <Button type="submit" disabled={updateReportMutation.isPending}>
-              {updateReportMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={isUpdating}>
+              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               수정 완료
             </Button>
           </DialogFooter>

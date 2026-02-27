@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from './useAuth';
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel';
 import { createApiUrl } from '../lib/api/config';
 
 export interface ReportManagement {
@@ -8,7 +8,7 @@ export interface ReportManagement {
   description: string;
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
   category: 'NOISE' | 'TRASH' | 'FACILITY' | 'TRAFFIC' | 'OTHER';
-  user_id: string;
+  userId: string;
   user_nickname: string;
   user_email: string;
   address: string | null;
@@ -48,7 +48,7 @@ export interface ReportFilters {
 }
 
 export function useReportManagement() {
-  const { getToken } = useAuth();
+  const { getToken } = useAuthViewModel();
   const [reports, setReports] = useState<ReportManagement[]>([]);
   const [selectedReport, setSelectedReport] = useState<ReportDetail | null>(null);
   const [loading, setLoading] = useState(false);

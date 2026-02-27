@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from './useAuth';
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel';
 import { createApiUrl, authenticatedRequest } from '../lib/api/config';
 
 export interface AdminStats {
@@ -54,7 +54,7 @@ export interface AdminInfo {
 }
 
 export function useAdmin() {
-  const { user } = useAuth();
+  const { user } = useAuthViewModel();
   const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<UserManagement[]>([]);
   const [activities, setActivities] = useState<AdminActivity[]>([]);
@@ -196,7 +196,7 @@ export function useAdmin() {
       setError(null);
       const result = await apiRequest('/admin/users/bulk-action', {
         method: 'POST',
-        body: JSON.stringify({ user_ids: userIds, action, reason }),
+        body: JSON.stringify({ userIds: userIds, action, reason }),
       });
       // 사용자 목록 새로고침
       await fetchUsers();

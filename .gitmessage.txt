@@ -1,0 +1,18 @@
+refactor: 클린 아키텍처 마이그레이션 완료 (Phase 3~7) 및 제보 UX 개선
+
+- 구조 재편 (Feature-Sliced Design)
+  - profile, admin, reports, map 도메인을 features 폴더로 분리
+  - UI 컴포넌트(ReportModal, Comments 등)를 각 Feature의 Presentation 계층으로 이동
+  - 상태 및 API 호출 로직을 순수 함수형 ViewModel Hook으로 추상화
+  - 비즈니스 로직(Domain 계층)과 데이터 접근 로직(Data 계층) 분리 및 캡슐화
+
+- 버그 수정 및 기능 개선
+  - 지도 바운드 필터링 고도화 (Phase 6): Data 계층 맵핑을 수정하여 위치 영역 내 제보만 불러오도록 API 연동 정상화
+  - 제보 모달 UX 개선 (Phase 7):
+    - 위치 선택 픽커 초기 화면을 현재 유저가 보던 맵 중심으로 연동
+    - 카테고리 그리드를 1줄 가로 스크롤 형태로 압축
+    - 제보 제출 실패 시 에러 토스트가 뜨도록 예외 처리 추가
+
+- 기타 정리
+  - tsc 검증 통과를 위한 Type 불일치 수정
+  - PLAN_FRONTEND_CLEAN_ARCH.md 문서 업데이트 완료

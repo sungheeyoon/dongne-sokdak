@@ -3,16 +3,17 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useUIStore } from '@/shared/stores/useUIStore'
 import Header from '@/components/Header'
-import ReportCard from '@/components/ReportCard'
+import ReportCard from '@/features/reports/presentation/components/ReportCard'
 import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
-import ReportModal from '@/components/ReportModal'
+import ReportModal from '@/features/reports/presentation/components/ReportModal'
 import dynamic from 'next/dynamic'
 import { ReportCategory, Report } from '@/types'
-import { useMyProfile } from '@/hooks/useProfile'
+import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
 import { useMapController } from '@/hooks/useMapController'
 import { getActiveLocation } from '@/lib/map/getActiveLocation'
-import { useReports } from '@/hooks/useReports'
-import { reverseGeocode } from '@/lib/map/reverseGeocode'
+import { useReportsViewModel } from '@/features/reports/presentation/hooks/useReportsViewModel'
+import ReportList from '@/features/reports/presentation/components/ReportList'
+import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
 import UnifiedSearch from '@/components/UnifiedSearch'
 import { MapPin, FileText, X } from 'lucide-react'
 import LoadingSpinner, { CardSkeleton } from '@/shared/ui/LoadingSpinner'
@@ -63,18 +64,18 @@ export default function Home() {
   } = useMapController()
 
   // 행정동 기반 동네 표시명 계산 함수
-  const getNeighborhoodDisplayName = (profile: { neighborhood?: { address: string; place_name: string } }) => {
+  const getNeighborhoodDisplayName = (profile: { neighborhood?: { address: string; placeName: string } }) => {
     if (!profile?.neighborhood) return '내 동네'
 
     const adminAddress = formatToAdministrativeAddress(profile.neighborhood.address)
-    return adminAddress && adminAddress !== '주소 없음' ? adminAddress : profile.neighborhood.place_name
+    return adminAddress && adminAddress !== '주소 없음' ? adminAddress : profile.neighborhood.placeName
   }
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedLocation, setSelectedLocation] = useState<string>('') // 선택된 위치명
 
-  // 사용자 정보 및 프로필 가져오기
-  const { data: profile, isLoading: isLoadingProfile } = useMyProfile()
+  const { profile, isLoading: isLoadingProfile } = useProfileViewModel()
+  const { reverseGeocode } = useLocationViewModel()
 
   // 내 동네 위치 (로그인된 사용자의 설정된 동네)
   const myNeighborhoodLocation = useMemo(() => {
@@ -84,7 +85,7 @@ export default function Home() {
     } : null
   }, [profile?.neighborhood])
 
-  const { data: displayReports = [], isLoading, error, refetch } = useReports({
+  const { reports: displayReports = [], isLoading, error, refetch } = useReportsViewModel({
     mode: (searchMode === 'text' && searchQuery) ? 'all' : (useMapBoundsFilter ? 'bounds' : 'all'),
     category: selectedCategory,
     searchQuery,
@@ -126,8 +127,8 @@ export default function Home() {
   // 마커 클릭 핸들러
   const handleMarkerClick = async (group: { id: string; location: { lat: number; lng: number }; count: number; reports: Report[] }) => {
     setSelectedMapMarker(group)
-    const name = await reverseGeocode(group.location.lat, group.location.lng)
-    setSelectedLocation(name)
+    const name = await reverseGeocode({ lat: group.location.lat, lng: group.location.lng })
+    setSelectedLocation(name || '선택한 위치')
   }
 
   // selectedMapMarker 상태 변화 디버깅
@@ -146,7 +147,7 @@ export default function Home() {
   useEffect(() => {
     if (searchMode === 'text' && !searchQuery && !useMapBoundsFilter) {
       setUseMapBoundsFilter(true)
-      setTriggerMapSearch(prev => prev + 1)
+      setTriggerMapSearch((prev: number) => prev + 1)
     }
   }, [searchQuery, searchMode, useMapBoundsFilter, setUseMapBoundsFilter, setTriggerMapSearch])
 
@@ -246,7 +247,7 @@ export default function Home() {
                     className="flex-1"
                   />
                   <RefreshSearchButton
-                    onClick={() => setTriggerMapSearch(prev => prev + 1)}
+                    onClick={() => setTriggerMapSearch((prev: number) => prev + 1)}
                     loading={isLoading}
                     className="md:w-auto h-[42px]"
                   />
@@ -291,7 +292,7 @@ export default function Home() {
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {selectedMapMarker.reports.map((report) => (
+                  {selectedMapMarker.reports.map((report: Report) => (
                     <ReportCard key={report.id} report={report} />
                   ))}
                 </div>
@@ -318,7 +319,7 @@ export default function Home() {
                   key={category.value}
                   onClick={() => {
                     setSelectedCategory(category.value)
-                    if (useMapBoundsFilter) setTriggerMapSearch(prev => prev + 1)
+                    if (useMapBoundsFilter) setTriggerMapSearch((prev: number) => prev + 1)
                   }}
                   className={cn(
                     "px-4 py-2 rounded-lg text-xs md:text-sm font-bold transition-all",
@@ -333,34 +334,24 @@ export default function Home() {
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <CardSkeleton key={i} />
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayReports.map((report) => (
-                <ReportCard key={report.id} report={report} />
-              ))}
-            </div>
-          )}
-
-          {!isLoading && displayReports.length === 0 && (
-            <Card className="p-12 text-center border-dashed">
-              <div className="max-w-xs mx-auto space-y-4">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
-                  <FileText className="h-8 w-8 text-muted-foreground" />
+          <ReportList
+            reports={displayReports}
+            isLoading={isLoading}
+            emptyMessage={
+              <Card className="p-12 text-center border-dashed">
+                <div className="max-w-xs mx-auto space-y-4">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
+                    <FileText className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-bold">제보가 없습니다</h3>
+                  <p className="text-muted-foreground">
+                    {useMapBoundsFilter ? '이 지역엔 아직 등록된 제보가 없네요. 첫 번째 제보자가 되어보세요!' : '검색 결과가 없습니다.'}
+                  </p>
+                  <Button onClick={openReportModal} className="w-full">첫 제보 작성하기</Button>
                 </div>
-                <h3 className="text-lg font-bold">제보가 없습니다</h3>
-                <p className="text-muted-foreground">
-                  {useMapBoundsFilter ? '이 지역엔 아직 등록된 제보가 없네요. 첫 번째 제보자가 되어보세요!' : '검색 결과가 없습니다.'}
-                </p>
-                <Button onClick={openReportModal} className="w-full">첫 제보 작성하기</Button>
-              </div>
-            </Card>
-          )}
+              </Card>
+            }
+          />
         </div>
       </main>
 

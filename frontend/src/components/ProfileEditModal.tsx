@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useMyProfile, useUpdateProfile, useUpdateAvatar } from '@/hooks/useProfile'
+import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
 import Avatar from './Avatar'
 import { X, Save, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -12,10 +12,8 @@ interface ProfileEditModalProps {
 }
 
 export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalProps) {
-  const { data: profile, isLoading } = useMyProfile()
-  const updateProfile = useUpdateProfile()
-  const updateAvatar = useUpdateAvatar()
-  
+  const { profile, isLoading, updateProfile, isUpdatingProfile, updateAvatar, isUpdatingAvatar } = useProfileViewModel()
+
   const [nickname, setNickname] = useState('')
   const [isUploading, setIsUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -49,7 +47,7 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
       alert('파일 크기는 5MB 이하여야 합니다.')
       return
     }
-    
+
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
     if (!allowedTypes.includes(file.type)) {
       alert('지원하지 않는 파일 형식입니다. (JPEG, PNG, WebP, GIF만 가능)')
@@ -69,54 +67,54 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
 
   // 실제 업로드 함수
   const uploadAvatarFile = async (file: File): Promise<string> => {
-    if (!profile?.user_id) {
+    if (!profile?.userId) {
       throw new Error('사용자 정보를 찾을 수 없습니다.')
     }
 
     // 현재 사용자 인증 상태 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    console.log('👤 현재 사용자:', { 
-      userId: user?.id, 
-      profileUserId: profile?.user_id,
+    console.log('👤 현재 사용자:', {
+      userId: user?.id,
+      profileUserId: profile?.userId,
       authError,
-      isAuthenticated: !!user 
+      isAuthenticated: !!user
     })
-    
+
     if (!user) {
       throw new Error('사용자 인증이 필요합니다.')
     }
-    
+
     // 파일명 생성 (고정된 이름으로 덮어쓰기 가능하게)
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}/avatar.${fileExt}`
-    
+
     console.log('📁 업로드 정보:', {
       fileName,
       fileSize: file.size,
       fileType: file.type,
       bucket: 'avatars'
     })
-    
+
     // 버킷 존재 확인
     const { data: buckets, error: bucketError } = await supabase.storage.listBuckets()
-    console.log('🪣 사용 가능한 버킷들:', buckets?.map(b => ({name: b.name, public: b.public})))
-    
+    console.log('🪣 사용 가능한 버킷들:', buckets?.map(b => ({ name: b.name, public: b.public })))
+
     if (bucketError) {
       console.error('❌ 버킷 조회 오류:', bucketError)
     }
-    
+
     // 기존 아바타 파일 삭제 (있는 경우)
     console.log('🗑️ 기존 아바타 파일 삭제 시도...')
     const { error: deleteError } = await supabase.storage
       .from('avatars')
       .remove([fileName])
-    
+
     if (deleteError) {
       console.log('ℹ️  기존 파일 없음 또는 삭제 실패 (무시됨):', deleteError.message)
     } else {
       console.log('✅ 기존 파일 삭제 완료')
     }
-    
+
     // Supabase Storage에 업로드
     console.log('☁️ Supabase Storage 업로드 시작...')
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -126,8 +124,8 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
         upsert: true  // 덮어쓰기 허용
       })
 
-    console.log('📤 업로드 결과:', { 
-      uploadData, 
+    console.log('📤 업로드 결과:', {
+      uploadData,
       uploadError,
       errorDetails: uploadError ? {
         message: uploadError.message,
@@ -171,20 +169,16 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
       setIsUploading(true)
 
       // 1. 선택된 아바타 파일이 있으면 먼저 업로드
-      let avatarUrl = profile?.avatar_url
       if (selectedFile) {
         console.log('🔄 아바타 업로드 중...')
-        avatarUrl = await uploadAvatarFile(selectedFile)
-        
-        // 아바타 URL을 백엔드에 저장
-        await updateAvatar.mutateAsync(avatarUrl)
+        await updateAvatar(selectedFile)
         console.log('✅ 아바타 업데이트 완료!')
       }
 
       // 2. 닉네임 업데이트 (변경되었을 경우만)
       if (nickname.trim() !== profile?.nickname) {
         console.log('🔄 닉네임 업데이트 중...')
-        await updateProfile.mutateAsync({ nickname: nickname.trim() })
+        await updateProfile({ nickname: nickname.trim() })
         console.log('✅ 닉네임 업데이트 완료!')
       }
 
@@ -195,7 +189,7 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
         setPreviewUrl(null)
       }
       onClose()
-      
+
     } catch (error) {
       console.error('❌ 프로필 저장 오류:', error)
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
@@ -219,11 +213,11 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
   }
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white rounded-lg p-6 w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
@@ -247,7 +241,7 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
             {/* 아바타 */}
             <div className="flex flex-col items-center">
               <Avatar
-                src={previewUrl || profile?.avatar_url}
+                src={previewUrl || profile?.avatarUrl}
                 size="xl"
                 editable
                 onImageSelect={handleAvatarSelect}
@@ -282,15 +276,15 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
             {/* 저장 버튼 */}
             <button
               onClick={handleSave}
-              disabled={updateProfile.isPending || isUploading}
+              disabled={isUpdatingProfile || isUpdatingAvatar || isUploading}
               className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {(updateProfile.isPending || isUploading) ? (
+              {(isUpdatingProfile || isUpdatingAvatar || isUploading) ? (
                 <Loader2 className="animate-spin mr-2" size={16} />
               ) : (
                 <Save className="mr-2" size={16} />
               )}
-              {isUploading ? '저장 중...' : '저장'}
+              {(isUpdatingProfile || isUpdatingAvatar || isUploading) ? '저장 중...' : '저장'}
             </button>
           </div>
         )}

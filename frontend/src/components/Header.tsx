@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useUIStore } from '@/shared/stores/useUIStore'
 import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
-import { useMyProfile } from '@/hooks/useProfile'
-import { useAdmin } from '@/hooks/useAdmin'
+import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
+import { useAdminViewModel } from '@/features/admin/presentation/hooks/useAdminViewModel'
 import { useRouter } from 'next/navigation'
 import Avatar from './Avatar'
 import MyNeighborhoodModal from './MyNeighborhoodModal'
@@ -15,8 +15,8 @@ import { cn } from '@/lib/utils'
 export default function Header() {
   const { openAuthModal, openReportModal } = useUIStore()
   const { user, signOut } = useAuthViewModel()
-  const { data: profile } = useMyProfile()
-  const { isAdmin, adminInfo } = useAdmin()
+  const { profile } = useProfileViewModel()
+  const { isAdmin, adminInfo } = useAdminViewModel()
   const router = useRouter()
   const [isNeighborhoodModalOpen, setIsNeighborhoodModalOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -40,19 +40,19 @@ export default function Header() {
   const getNeighborhoodDisplayName = () => {
     if (!profile?.neighborhood) return '내 동네 설정'
     const adminAddress = formatToAdministrativeAddress(profile.neighborhood.address)
-    return (adminAddress && adminAddress !== '주소 없음') ? adminAddress : (profile.neighborhood.place_name || '내 동네')
+    return (adminAddress && adminAddress !== '주소 없음') ? adminAddress : (profile.neighborhood.placeName || '내 동네')
   }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo Section */}
-        <div 
-          className="flex items-center gap-2 cursor-pointer transition-opacity hover:opacity-80" 
+        <div
+          className="flex items-center gap-2 cursor-pointer transition-opacity hover:opacity-80"
           onClick={() => router.push('/')}
         >
-          <Image 
-            src="/images/title.png" 
+          <Image
+            src="/images/title.png"
             alt="동네속닥"
             width={120}
             height={32}
@@ -60,7 +60,7 @@ export default function Header() {
             priority
           />
         </div>
-        
+
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-2">
           {user ? (
@@ -101,12 +101,12 @@ export default function Header() {
                   <User className="h-4 w-4 text-muted-foreground" />
                   <ChevronDown className={cn("h-3 w-3 transition-transform duration-200", isProfileDropdownOpen && "rotate-180")} />
                 </UiButton>
-                
+
                 {isProfileDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-56 animate-in fade-in zoom-in-95 rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-black/5">
                     <div className="px-3 py-3 border-b border-muted">
                       <div className="flex items-center gap-3">
-                        <Avatar src={profile?.avatar_url} size="sm" />
+                        <Avatar src={profile?.avatarUrl} size="sm" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate">{profile?.nickname || '사용자'}</p>
                           <p className="text-xs text-muted-foreground truncate">{user.email}</p>
@@ -120,7 +120,7 @@ export default function Header() {
                       >
                         <User className="h-4 w-4" /> 프로필 설정
                       </button>
-                      <button 
+                      <button
                         onClick={() => { signOut(); setIsProfileDropdownOpen(false) }}
                         className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 rounded-md transition-colors"
                       >

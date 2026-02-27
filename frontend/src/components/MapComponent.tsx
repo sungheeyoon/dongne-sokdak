@@ -6,6 +6,7 @@ import { MapPin } from 'lucide-react'
 import { Report } from '@/types'
 import { formatToAdministrativeAddress, isSameAdministrativeArea } from '@/lib/utils/addressUtils'
 import { getMarkerColor } from '@/lib/utils/mapMarkerUtils'
+import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
 
 interface GroupedReport {
   id: string
@@ -48,6 +49,7 @@ export default function MapComponent({
   const [mapError, setMapError] = useState<string | null>(null)
   const [currentBounds, setCurrentBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null)
   const [lastSetCenter, setLastSetCenter] = useState<{ lat: number, lng: number } | null>(null)
+  const { reverseGeocode } = useLocationViewModel()
 
   // 행정동 기준으로 제보들을 그룹핑
   const groupedReports = useMemo(() => {
@@ -353,29 +355,13 @@ export default function MapComponent({
     const lng = latLng.getLng()
 
     // 역지오코딩으로 행정동 주소 가져오기
-    const geocoder = new window.kakao.maps.services.Geocoder()
-
-    geocoder.coord2Address(lng, lat, (result: any, status: any) => {
-      let address = ''
-      if (status === window.kakao.maps.services.Status.OK) {
-        const addr = result[0]
-        // 행정동 우선 표시
-        if (addr.address && addr.address.region_3depth_name) {
-          const gu = addr.address.region_2depth_name
-          const dong = addr.address.region_3depth_name
-          const guName = gu.includes('구') ? gu : `${gu}구`
-          address = `${guName} ${dong}`
-        } else {
-          // 기본 주소 사용 후 행정동 형태로 변환
-          const fullAddress = addr.road_address ?
-            addr.road_address.address_name :
-            addr.address.address_name
-          address = formatToAdministrativeAddress(fullAddress)
-        }
-      }
-
+    try {
+      const address = await reverseGeocode({ lat, lng })
       onLocationSelect({ lat, lng, address })
-    })
+    } catch (error) {
+      console.error('Failed to reverse geocode on map click', error)
+      onLocationSelect({ lat, lng, address: '' })
+    }
   }
 
   // 마커 관련 함수들은 공통 유틸리티로 이동됨

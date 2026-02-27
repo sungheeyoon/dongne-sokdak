@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAdmin, UserManagement as UserData } from '../../hooks/useAdmin';
+import { useAdminViewModel, UserManagement as UserData } from '../../features/admin/presentation/hooks/useAdminViewModel';
 import { getRoleLabel as getRoleDisplay, getRoleBadgeColor } from '../../lib/constants/status';
 import { 
   Users, Search, Filter, RefreshCw, Check, X, 
@@ -19,11 +19,11 @@ export default function UserManagement() {
     error,
     isAdmin,
     isSuperAdmin,
-  } = useAdmin();
+  } = useAdminViewModel();
 
   const [filters, setFilters] = useState({
     role: '',
-    is_active: '',
+    isActive: '',
     search: '',
   });
 
@@ -42,7 +42,7 @@ export default function UserManagement() {
     // 필터 적용
     const params: any = {};
     if (newFilters.role) params.role = newFilters.role;
-    if (newFilters.is_active) params.is_active = newFilters.is_active === 'true';
+    if (newFilters.isActive) params.isActive = newFilters.isActive === 'true';
     if (newFilters.search) params.search = newFilters.search;
     
     fetchUsers(params);
@@ -132,7 +132,7 @@ export default function UserManagement() {
                 활성 상태
               </label>
               <select
-                value={filters.is_active}
+                value={filters.isActive}
                 onChange={(e) => handleFilterChange('is_active', e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
@@ -160,7 +160,7 @@ export default function UserManagement() {
             <div className="flex items-end">
               <button
                 onClick={() => {
-                  setFilters({ role: '', is_active: '', search: '' });
+                  setFilters({ role: '', isActive: '', search: '' });
                   fetchUsers();
                 }}
                 className="w-full bg-gradient-to-r from-gray-500 to-gray-600 text-white py-2 rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 font-medium flex items-center justify-center"
@@ -287,30 +287,30 @@ export default function UserManagement() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                         }`}>
-                          {user.is_active ? '활성' : '비활성'}
+                          {user.isActive ? '활성' : '비활성'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : '없음'}
+                        {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : '없음'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {user.login_count}
+                        {user.loginCount}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(user.created_at).toLocaleDateString()}
+                        {new Date(user.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
-                          onClick={() => handleToggleActive(user.id, !user.is_active)}
+                          onClick={() => handleToggleActive(user.id, !user.isActive)}
                           className={`flex items-center px-3 py-1 rounded-lg font-medium transition-all duration-200 ${
-                            user.is_active
+                            user.isActive
                               ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
                               : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
                           }`}
                         >
-                          {user.is_active ? (
+                          {user.isActive ? (
                             <>
                               <UserX className="w-4 h-4 mr-1" />
                               비활성화

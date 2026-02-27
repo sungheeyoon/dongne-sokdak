@@ -2,12 +2,14 @@
 
 import React, { useState } from 'react'
 import {
-  UiButton as Button, UiInput as Input, UiAlert as Alert, UiBadge as Badge, UiForm as Form, 
+  UiButton as Button, UiInput as Input, UiAlert as Alert, UiBadge as Badge, UiForm as Form,
   BaseModal, ReportDetailModal,
   UnifiedSearch, RegionSearchButton, CurrentRegionButton, RefreshSearchButton,
   demoReports, demoGroupedReports, demoUsers
 } from '../index'
-import { OriginalAuthModal } from './OriginalAuthModal'
+import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
+import ReportModal from '@/features/reports/presentation/components/ReportModal'
+import EditReportModal from '@/features/reports/presentation/components/EditReportModal'
 import { ReportCard as UIReportCard } from '../ReportCard'
 import { Mail, Lock, User, Search, Home, Settings, Bell, MapPin } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -45,19 +47,19 @@ export const UIShowcase: React.FC = () => {
             </h1>
           </div>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            중앙화된 UI 컴포넌트 라이브러리입니다. 모든 컴포넌트는 <code className="bg-gray-200 px-2 py-1 rounded">/components/ui</code>에서 
+            중앙화된 UI 컴포넌트 라이브러리입니다. 모든 컴포넌트는 <code className="bg-gray-200 px-2 py-1 rounded">/components/ui</code>에서
             중앙 관리되며, 일관된 디자인 시스템을 따릅니다.
           </p>
           <div className="flex justify-center space-x-4">
-            <Button 
-              variant="default" 
+            <Button
+              variant="default"
               onClick={() => router.push('/')}
               className="flex items-center"
             >
               <Home className="w-4 h-4 mr-2" />
               메인 페이지로
             </Button>
-            <Button 
+            <Button
               variant="outline"
               onClick={() => window.open('https://github.com/sungheeyoon/dongne-sokdak', '_blank')}
             >
@@ -75,7 +77,7 @@ export const UIShowcase: React.FC = () => {
             <h2 className="text-3xl font-bold text-gray-900">버튼 컴포넌트</h2>
             <Badge variant="default" className="ml-4">Button</Badge>
           </div>
-          
+
           <div className="bg-white rounded-xl p-8 shadow-sm border">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div>
@@ -91,7 +93,7 @@ export const UIShowcase: React.FC = () => {
                   <Button variant="destructive" className="w-full">Destructive</Button>
                 </div>
               </div>
-              
+
               <div>
                 <h3 className="text-lg font-semibold mb-4 flex items-center">
                   <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
@@ -103,7 +105,7 @@ export const UIShowcase: React.FC = () => {
                   <Button size="lg" className="w-full">Large (lg)</Button>
                 </div>
               </div>
-              
+
               <div>
                 <h3 className="text-lg font-semibold mb-4 flex items-center">
                   <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
@@ -130,7 +132,7 @@ export const UIShowcase: React.FC = () => {
             <h2 className="text-3xl font-bold text-gray-900">입력 컴포넌트</h2>
             <Badge variant="default" className="ml-4">Input</Badge>
           </div>
-          
+
           <div className="bg-white rounded-xl p-8 shadow-sm border">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-6">
@@ -146,7 +148,7 @@ export const UIShowcase: React.FC = () => {
                   />
                   {inputError && <p className="text-xs text-red-500 mt-1">{inputError}</p>}
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium mb-1">이메일</label>
                   <Input
@@ -155,7 +157,7 @@ export const UIShowcase: React.FC = () => {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium mb-1">비활성화된 입력</label>
@@ -180,12 +182,12 @@ export const UIShowcase: React.FC = () => {
             <h2 className="text-3xl font-bold text-gray-900">배지 & 알림</h2>
             <Badge variant="secondary" className="ml-4">Badge / Alert</Badge>
           </div>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* 배지 */}
             <div className="bg-white rounded-xl p-6 shadow-sm border">
               <h3 className="text-xl font-semibold mb-6">배지 컴포넌트</h3>
-              
+
               <div className="space-y-6">
                 <div>
                   <h4 className="font-medium mb-3">기본 스타일</h4>
@@ -196,7 +198,7 @@ export const UIShowcase: React.FC = () => {
                     <Badge variant="outline">Outline</Badge>
                   </div>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium mb-3">제보 카테고리용 예시</h4>
                   <div className="flex flex-wrap gap-2">
@@ -212,26 +214,26 @@ export const UIShowcase: React.FC = () => {
             {/* 알림 */}
             <div className="bg-white rounded-xl p-6 shadow-sm border">
               <h3 className="text-xl font-semibold mb-6">알림 컴포넌트</h3>
-              
+
               <div className="space-y-4">
                 <Alert
                   type="info"
                   title="정보"
                   message="새로운 제보가 등록되었습니다."
                 />
-                
+
                 <Alert
                   type="success"
                   title="성공"
                   message="제보가 성공적으로 처리되었습니다."
                 />
-                
+
                 <Alert
                   type="warning"
                   title="주의"
                   message="이 제보는 검토가 필요합니다."
                 />
-                
+
                 <Alert
                   type="error"
                   title="오류"
@@ -253,7 +255,7 @@ export const UIShowcase: React.FC = () => {
             <h2 className="text-3xl font-bold text-gray-900">모달 시스템</h2>
             <Badge variant="outline" className="ml-4">Modal</Badge>
           </div>
-          
+
           <div className="bg-white rounded-xl p-8 shadow-sm border">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
@@ -263,8 +265,8 @@ export const UIShowcase: React.FC = () => {
                   <p className="text-sm text-gray-600 mb-4">
                     로그인/회원가입 통합 모달
                   </p>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => setShowAuthModal(true)}
                   >
@@ -272,7 +274,7 @@ export const UIShowcase: React.FC = () => {
                   </Button>
                 </div>
               </div>
-              
+
               <div className="text-center">
                 <div className="p-6 border-2 border-dashed border-gray-300 rounded-lg mb-4">
                   <Bell className="w-12 h-12 text-gray-400 mx-auto mb-2" />
@@ -280,8 +282,8 @@ export const UIShowcase: React.FC = () => {
                   <p className="text-sm text-gray-600 mb-4">
                     마커 클릭시 제보 목록 표시
                   </p>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => setShowReportModal(true)}
                   >
@@ -289,7 +291,7 @@ export const UIShowcase: React.FC = () => {
                   </Button>
                 </div>
               </div>
-              
+
               <div className="text-center">
                 <div className="p-6 border-2 border-dashed border-gray-300 rounded-lg mb-4">
                   <Home className="w-12 h-12 text-gray-400 mx-auto mb-2" />
@@ -297,8 +299,8 @@ export const UIShowcase: React.FC = () => {
                   <p className="text-sm text-gray-600 mb-4">
                     범용 베이스 모달
                   </p>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => setShowBaseModal(true)}
                   >
@@ -319,12 +321,12 @@ export const UIShowcase: React.FC = () => {
             <h2 className="text-3xl font-bold text-gray-900">검색 시스템</h2>
             <Badge variant="default" className="ml-4">Search</Badge>
           </div>
-          
+
           <div className="space-y-8">
             {/* 통합 검색 */}
             <div className="bg-white rounded-xl p-8 shadow-sm border">
               <h3 className="text-xl font-semibold mb-6">통합 검색 (UnifiedSearch)</h3>
-              
+
               <div className="space-y-6">
                 <div>
                   <h4 className="font-medium mb-3">위치 검색 모드</h4>
@@ -334,15 +336,15 @@ export const UIShowcase: React.FC = () => {
                       console.log('위치 선택:', location)
                       alert(`선택된 위치: ${location.placeName}`)
                     }}
-                    onTextSearch={() => {}}
+                    onTextSearch={() => { }}
                   />
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium mb-3">제보 검색 모드</h4>
                   <UnifiedSearch
                     searchMode="text"
-                    onLocationSelect={() => {}}
+                    onLocationSelect={() => { }}
                     onTextSearch={(query) => {
                       console.log('텍스트 검색:', query)
                       alert(`검색어: ${query}`)
@@ -355,7 +357,7 @@ export const UIShowcase: React.FC = () => {
             {/* 지역 검색 버튼들 */}
             <div className="bg-white rounded-xl p-8 shadow-sm border">
               <h3 className="text-xl font-semibold mb-6">지역 검색 버튼들</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <h4 className="font-medium mb-3">현재 지역 검색</h4>
@@ -364,16 +366,16 @@ export const UIShowcase: React.FC = () => {
                       onClick={() => alert('현재 지역 검색!')}
                     />
                     <CurrentRegionButton
-                      onClick={() => {}}
+                      onClick={() => { }}
                       loading={true}
                     />
                     <CurrentRegionButton
-                      onClick={() => {}}
+                      onClick={() => { }}
                       disabled={true}
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium mb-3">재검색 버튼</h4>
                   <div className="space-y-3">
@@ -381,12 +383,12 @@ export const UIShowcase: React.FC = () => {
                       onClick={() => alert('재검색!')}
                     />
                     <RefreshSearchButton
-                      onClick={() => {}}
+                      onClick={() => { }}
                       loading={true}
                       size="sm"
                     />
                     <RefreshSearchButton
-                      onClick={() => {}}
+                      onClick={() => { }}
                       size="lg"
                     />
                   </div>
@@ -405,7 +407,7 @@ export const UIShowcase: React.FC = () => {
             <h2 className="text-3xl font-bold text-gray-900">제보 카드</h2>
             <Badge variant="secondary" className="ml-4">ReportCard</Badge>
           </div>
-          
+
           <div className="bg-white rounded-xl p-8 shadow-sm border">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* 컴팩트 카드들 */}
@@ -429,7 +431,7 @@ export const UIShowcase: React.FC = () => {
         <section className="mb-16">
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-8 text-white">
             <h2 className="text-3xl font-bold mb-6">🚀 중앙화된 UI 시스템</h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
                 <h3 className="text-xl font-semibold mb-4">✨ 주요 특징</h3>
@@ -442,7 +444,7 @@ export const UIShowcase: React.FC = () => {
                   <li>• 재사용 가능한 컴포넌트 아키텍처</li>
                 </ul>
               </div>
-              
+
               <div>
                 <h3 className="text-xl font-semibold mb-4">📦 사용 방법</h3>
                 <div className="bg-black/20 rounded-lg p-4 text-sm font-mono">
@@ -459,12 +461,7 @@ export const UIShowcase: React.FC = () => {
       </div>
 
       {/* 모달들 */}
-      <OriginalAuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        mode={authMode}
-        onModeChange={setAuthMode}
-      />
+      {/* <AuthDialog /> - managed globally by useUIStore */}
 
       <ReportDetailModal
         isOpen={showReportModal}
@@ -486,10 +483,10 @@ export const UIShowcase: React.FC = () => {
       >
         <div className="space-y-4">
           <p className="text-gray-700">
-            이것은 기본 BaseModal 컴포넌트입니다. 
+            이것은 기본 BaseModal 컴포넌트입니다.
             다양한 용도로 확장해서 사용할 수 있습니다.
           </p>
-          
+
           <div className="p-4 bg-blue-50 rounded-lg">
             <h4 className="font-medium text-blue-900 mb-2">주요 기능</h4>
             <ul className="text-sm text-blue-800 space-y-1">

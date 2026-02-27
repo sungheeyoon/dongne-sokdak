@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { getNearbyReports, getMyNeighborhoodReports } from '@/lib/api/reports'
 import { ReportCategory } from '@/types'
-import { useAuth } from './useAuth'
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 
 // 근처 제보 조회 훅
 export const useNearbyReports = (params: {
@@ -27,7 +27,7 @@ export const useMyNeighborhoodReports = (params?: {
   category?: ReportCategory
   limit?: number
 }) => {
-  const { user } = useAuth()
+  const { user } = useAuthViewModel()
   
   return useQuery({
     queryKey: ['reports', 'my-neighborhood', params],

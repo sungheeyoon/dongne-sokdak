@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAdmin } from '../../hooks/useAdmin';
+import { useAdminViewModel } from '../../features/admin/presentation/hooks/useAdminViewModel';
 import SimpleCharts from './SimpleCharts';
 import { 
   Users, UserCheck, Crown, Shield, UserPlus, RotateCcw, 
@@ -41,7 +41,7 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, bgColor, icon
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { adminStats, adminInfo, fetchAdminStats, loading, error, isAdmin } = useAdmin();
+  const { adminStats, adminInfo, fetchAdminStats, loading, error, isAdmin } = useAdminViewModel();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
@@ -140,7 +140,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
             title="전체 사용자"
-            value={adminStats?.total_users || 0}
+            value={adminStats?.totalUsers || 0}
             icon={<Users className="w-7 h-7 text-white" />}
             bgColor="bg-gradient-to-br from-blue-50 to-blue-100"
             iconColor="bg-blue-500"
@@ -149,7 +149,7 @@ export default function AdminDashboard() {
           />
           <StatsCard
             title="활성 사용자"
-            value={adminStats?.active_users || 0}
+            value={adminStats?.activeUsers || 0}
             icon={<UserCheck className="w-7 h-7 text-white" />}
             bgColor="bg-gradient-to-br from-emerald-50 to-emerald-100"
             iconColor="bg-emerald-500"
@@ -158,7 +158,7 @@ export default function AdminDashboard() {
           />
           <StatsCard
             title="관리자"
-            value={adminStats?.admin_count || 0}
+            value={adminStats?.adminCount || 0}
             icon={<Crown className="w-7 h-7 text-white" />}
             bgColor="bg-gradient-to-br from-purple-50 to-purple-100"
             iconColor="bg-purple-500"
@@ -167,7 +167,7 @@ export default function AdminDashboard() {
           />
           <StatsCard
             title="중간관리자"
-            value={adminStats?.moderator_count || 0}
+            value={adminStats?.moderatorCount || 0}
             icon={<Shield className="w-7 h-7 text-white" />}
             bgColor="bg-gradient-to-br from-amber-50 to-amber-100"
             iconColor="bg-amber-500"
@@ -191,7 +191,7 @@ export default function AdminDashboard() {
                 <UserPlus className="w-6 h-6 text-blue-600" />
               </div>
               <p className="text-sm font-medium text-gray-600 mb-1">신규 가입</p>
-              <p className="text-2xl font-bold text-blue-600">{adminStats?.today_users || 0}</p>
+              <p className="text-2xl font-bold text-blue-600">{adminStats?.todayUsers || 0}</p>
             </div>
             <div 
               className="text-center cursor-pointer hover:bg-emerald-50 p-4 rounded-xl transition-all duration-200 hover:scale-105"
@@ -201,7 +201,7 @@ export default function AdminDashboard() {
                 <RotateCcw className="w-6 h-6 text-emerald-600" />
               </div>
               <p className="text-sm font-medium text-gray-600 mb-1">최근 로그인</p>
-              <p className="text-2xl font-bold text-emerald-600">{adminStats?.recent_logins || 0}</p>
+              <p className="text-2xl font-bold text-emerald-600">{adminStats?.recentLogins || 0}</p>
             </div>
             <div 
               className="text-center cursor-pointer hover:bg-red-50 p-4 rounded-xl transition-all duration-200 hover:scale-105"
@@ -211,21 +211,21 @@ export default function AdminDashboard() {
                 <FileText className="w-6 h-6 text-red-600" />
               </div>
               <p className="text-sm font-medium text-gray-600 mb-1">제보 접수</p>
-              <p className="text-2xl font-bold text-red-600">{adminStats?.today_reports || 0}</p>
+              <p className="text-2xl font-bold text-red-600">{adminStats?.todayReports || 0}</p>
             </div>
             <div className="text-center p-4 hover:bg-purple-50 rounded-xl transition-all duration-200">
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <MessageCircle className="w-6 h-6 text-purple-600" />
               </div>
               <p className="text-sm font-medium text-gray-600 mb-1">댓글 작성</p>
-              <p className="text-2xl font-bold text-purple-600">{adminStats?.today_comments || 0}</p>
+              <p className="text-2xl font-bold text-purple-600">{adminStats?.todayComments || 0}</p>
             </div>
             <div className="text-center p-4 hover:bg-orange-50 rounded-xl transition-all duration-200">
               <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <ThumbsUp className="w-6 h-6 text-orange-600" />
               </div>
               <p className="text-sm font-medium text-gray-600 mb-1">투표 참여</p>
-              <p className="text-2xl font-bold text-orange-600">{adminStats?.today_votes || 0}</p>
+              <p className="text-2xl font-bold text-orange-600">{adminStats?.todayVotes || 0}</p>
             </div>
             <div 
               className="text-center cursor-pointer hover:bg-indigo-50 p-4 rounded-xl transition-all duration-200 hover:scale-105"
@@ -235,7 +235,7 @@ export default function AdminDashboard() {
                 <Zap className="w-6 h-6 text-indigo-600" />
               </div>
               <p className="text-sm font-medium text-gray-600 mb-1">관리자 활동</p>
-              <p className="text-2xl font-bold text-indigo-600">{adminStats?.today_admin_actions || 0}</p>
+              <p className="text-2xl font-bold text-indigo-600">{adminStats?.todayAdminActions || 0}</p>
             </div>
           </div>
         </div>
@@ -256,7 +256,7 @@ export default function AdminDashboard() {
                   <AlertTriangle className="w-5 h-5 text-red-500 mr-3" />
                   <span className="font-medium text-gray-700">미처리 제보</span>
                 </div>
-                <span className="font-bold text-red-600 text-xl">{adminStats?.open_reports || 0}</span>
+                <span className="font-bold text-red-600 text-xl">{adminStats?.openReports || 0}</span>
               </div>
               <div 
                 className="flex justify-between items-center cursor-pointer hover:bg-emerald-50 p-4 rounded-lg transition-all duration-200"
@@ -266,7 +266,7 @@ export default function AdminDashboard() {
                   <CheckCircle className="w-5 h-5 text-emerald-500 mr-3" />
                   <span className="font-medium text-gray-700">처리 완료</span>
                 </div>
-                <span className="font-bold text-emerald-600 text-xl">{adminStats?.resolved_reports || 0}</span>
+                <span className="font-bold text-emerald-600 text-xl">{adminStats?.resolvedReports || 0}</span>
               </div>
               <div className="pt-4 border-t">
                 <button 

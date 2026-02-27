@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AdminStats } from '../../hooks/useAdmin';
+import { AdminStats } from '../../features/admin/presentation/hooks/useAdminViewModel';
 
 interface SimpleChartsProps {
   stats: AdminStats;
@@ -21,8 +21,8 @@ export default function SimpleCharts({ stats, onRefresh }: SimpleChartsProps) {
       days.push(date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }));
       
       // 더미 데이터 생성
-      users.push(Math.floor(Math.random() * 10) + Math.max(stats.today_users, 1));
-      reports.push(Math.floor(Math.random() * 5) + Math.max(stats.today_reports, 1));
+      users.push(Math.floor(Math.random() * 10) + Math.max(stats.todayUsers, 1));
+      reports.push(Math.floor(Math.random() * 5) + Math.max(stats.todayReports, 1));
     }
     
     return { days, users, reports };
@@ -33,8 +33,8 @@ export default function SimpleCharts({ stats, onRefresh }: SimpleChartsProps) {
 
   // 제보 상태 데이터
   const reportData = [
-    { label: '미처리', value: stats.open_reports, color: 'bg-red-500' },
-    { label: '완료', value: stats.resolved_reports, color: 'bg-green-500' },
+    { label: '미처리', value: stats.openReports, color: 'bg-red-500' },
+    { label: '완료', value: stats.resolvedReports, color: 'bg-green-500' },
   ];
   const totalReports = reportData.reduce((sum, item) => sum + item.value, 0);
 
@@ -215,7 +215,7 @@ export default function SimpleCharts({ stats, onRefresh }: SimpleChartsProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-blue-50 rounded-lg">
             <div className="text-2xl font-bold text-blue-600">
-              {((stats.active_users / Math.max(stats.total_users, 1)) * 100).toFixed(1)}%
+              {((stats.activeUsers / Math.max(stats.totalUsers, 1)) * 100).toFixed(1)}%
             </div>
             <div className="text-sm text-blue-700">활성 사용자 비율</div>
           </div>
@@ -223,7 +223,7 @@ export default function SimpleCharts({ stats, onRefresh }: SimpleChartsProps) {
           <div className="text-center p-4 bg-green-50 rounded-lg">
             <div className="text-2xl font-bold text-green-600">
               {totalReports > 0 
-                ? ((stats.resolved_reports / totalReports) * 100).toFixed(1)
+                ? ((stats.resolvedReports / totalReports) * 100).toFixed(1)
                 : 0}%
             </div>
             <div className="text-sm text-green-700">제보 해결률</div>
@@ -231,14 +231,14 @@ export default function SimpleCharts({ stats, onRefresh }: SimpleChartsProps) {
           
           <div className="text-center p-4 bg-purple-50 rounded-lg">
             <div className="text-2xl font-bold text-purple-600">
-              {stats.today_comments + stats.today_votes}
+              {stats.todayComments + stats.todayVotes}
             </div>
             <div className="text-sm text-purple-700">오늘 상호작용</div>
           </div>
           
           <div className="text-center p-4 bg-indigo-50 rounded-lg">
             <div className="text-2xl font-bold text-indigo-600">
-              {stats.today_admin_actions}
+              {stats.todayAdminActions}
             </div>
             <div className="text-sm text-indigo-700">관리자 활동</div>
           </div>
@@ -250,15 +250,15 @@ export default function SimpleCharts({ stats, onRefresh }: SimpleChartsProps) {
         <h3 className="text-lg font-semibold mb-4">📊 오늘의 성과 요약</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div>
-            <div className="text-3xl font-bold">{stats.today_users}</div>
+            <div className="text-3xl font-bold">{stats.todayUsers}</div>
             <div className="text-sm opacity-90">신규 사용자</div>
           </div>
           <div>
-            <div className="text-3xl font-bold">{stats.today_reports}</div>
+            <div className="text-3xl font-bold">{stats.todayReports}</div>
             <div className="text-sm opacity-90">새 제보</div>
           </div>
           <div>
-            <div className="text-3xl font-bold">{stats.today_admin_actions}</div>
+            <div className="text-3xl font-bold">{stats.todayAdminActions}</div>
             <div className="text-sm opacity-90">관리 작업</div>
           </div>
         </div>
@@ -266,9 +266,9 @@ export default function SimpleCharts({ stats, onRefresh }: SimpleChartsProps) {
         <div className="mt-4 p-3 bg-white bg-opacity-10 rounded-lg">
           <div className="text-sm">
             💡 <strong>관리 팁:</strong> 
-            {stats.open_reports > 10 
+            {stats.openReports > 10 
               ? " 미처리 제보가 많습니다. 우선순위를 정해 처리해보세요."
-              : stats.today_reports > 5 
+              : stats.todayReports > 5 
               ? " 오늘 제보가 활발합니다. 빠른 응답을 유지해주세요."
               : " 안정적으로 운영되고 있습니다. 좋은 상태를 유지하세요!"}
           </div>

@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { Map, MapMarker } from 'react-kakao-maps-sdk'
 import { MapPin, Navigation } from 'lucide-react'
+import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
 
 interface LocationPickerProps {
   onLocationSelect: (location: { lat: number; lng: number; address: string }) => void
@@ -11,8 +12,8 @@ interface LocationPickerProps {
   className?: string
 }
 
-export default function LocationPicker({ 
-  onLocationSelect, 
+export default function LocationPicker({
+  onLocationSelect,
   initialCenter = { lat: 37.5665, lng: 126.9780 },
   height = '300px',
   className = ""
@@ -23,14 +24,16 @@ export default function LocationPicker({
   const [centerMarkerImage, setCenterMarkerImage] = useState<string>('')
   const [kakaoReady, setKakaoReady] = useState(false)
 
+  const { reverseGeocode } = useLocationViewModel()
+
   // 카카오맵 API 준비 상태 확인
   useEffect(() => {
     const checkKakaoReady = () => {
-      if (typeof window !== 'undefined' && 
-          window.kakao && 
-          window.kakao.maps && 
-          window.kakao.maps.LatLng &&
-          window.kakao.maps.services) {
+      if (typeof window !== 'undefined' &&
+        window.kakao &&
+        window.kakao.maps &&
+        window.kakao.maps.LatLng &&
+        window.kakao.maps.services) {
         setKakaoReady(true)
         // 아이콘 파일로 마커 이미지 설정
         setCenterMarkerImage('/icon.png')
@@ -40,7 +43,7 @@ export default function LocationPicker({
         setTimeout(checkKakaoReady, 100)
       }
     }
-    
+
     checkKakaoReady()
   }, [])
 
@@ -75,7 +78,7 @@ export default function LocationPicker({
         // 에러 무시 - 로고 숨기기는 필수가 아님
       }
     }
-    
+
     // 지도 로드 후 로고 숨기기
     setTimeout(hideKakaoLogo, 100)
 
@@ -88,24 +91,13 @@ export default function LocationPicker({
 
   // 주소 가져오기 (역지오코딩)
   const getAddressFromCoords = useCallback(async (lat: number, lng: number) => {
-    if (!window.kakao?.maps?.services) return '주소 정보 없음'
-
-    return new Promise<string>((resolve) => {
-      const geocoder = new window.kakao.maps.services.Geocoder()
-      
-      geocoder.coord2Address(lng, lat, (result: any, status: any) => {
-        if (status === window.kakao.maps.services.Status.OK) {
-          const addr = result[0]
-          const address = addr.road_address ? 
-            addr.road_address.address_name : 
-            addr.address.address_name
-          resolve(address)
-        } else {
-          resolve('주소 정보 없음')
-        }
-      })
-    })
-  }, [])
+    try {
+      const address = await reverseGeocode({ lat, lng })
+      return address || '주소 정보 없음'
+    } catch {
+      return '주소 정보 없음'
+    }
+  }, [reverseGeocode])
 
   // 지도 클릭 이벤트
   const handleMapClick = useCallback(async (event: any) => {
@@ -113,14 +105,14 @@ export default function LocationPicker({
     if (!kakaoReady) {
       return
     }
-    
+
     // 안전한 객체 체크 (에러 로그 제거)
     if (!event || !event.latLng) {
       return // 조용히 무시
     }
 
     const { latLng } = event
-    
+
     // latLng 객체 메서드 체크 (에러 로그 제거)
     if (typeof latLng.getLat !== 'function' || typeof latLng.getLng !== 'function') {
       return // 조용히 무시
@@ -128,7 +120,7 @@ export default function LocationPicker({
 
     const lat = latLng.getLat()
     const lng = latLng.getLng()
-    
+
     setSelectedLocation({ lat, lng })
 
     try {
@@ -150,11 +142,11 @@ export default function LocationPicker({
       async (position) => {
         const lat = position.coords.latitude
         const lng = position.coords.longitude
-        
+
         // 지도 중심 이동
         const moveLatLon = new window.kakao.maps.LatLng(lat, lng)
         map.setCenter(moveLatLon)
-        
+
         // 위치 설정 및 주소 가져오기
         setSelectedLocation({ lat, lng })
 
@@ -225,7 +217,7 @@ export default function LocationPicker({
               }}
             />
           )}
-          
+
           {/* 선택된 위치 마커 (클릭한 위치) */}
           {selectedLocation && (
             <MapMarker
@@ -240,7 +232,7 @@ export default function LocationPicker({
         </Map>
 
         {/* 컨트롤 버튼들 */}
-        <div 
+        <div
           className="absolute top-4 right-4 space-y-2"
           style={{ zIndex: 1000 }}
         >
@@ -256,7 +248,7 @@ export default function LocationPicker({
         </div>
 
         {/* 하단 버튼 - 항상 활성화, 높은 z-index */}
-        <div 
+        <div
           className="absolute bottom-4 left-1/2 transform -translate-x-1/2"
           style={{ zIndex: 1000 }}
         >

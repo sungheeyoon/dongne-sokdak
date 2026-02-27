@@ -6,22 +6,22 @@ import { getReport, deleteReport } from '@/lib/api/reports'
 import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import Header from '@/components/Header'
 import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
-import ReportModal from '@/components/ReportModal'
-import EditReportModal from '@/components/EditReportModal'
-import Comments from '@/components/Comments'
-import VoteButton from '@/components/VoteButton'
-import { ReportCategory, ReportStatus } from '@/types'
+import ReportModal from '@/features/reports/presentation/components/ReportModal'
+import EditReportModal from '@/features/reports/presentation/components/EditReportModal'
+import Comments from '@/features/reports/presentation/components/Comments'
+import VoteButton from '@/features/reports/presentation/components/VoteButton'
+import { Report, ReportCategory, ReportStatus } from '@/types'
 import dynamic from 'next/dynamic'
 import { useState } from 'react'
 import { parseReportLocation } from '@/lib/utils/locationDisplayUtils'
 import { Pencil, Trash2, ArrowLeft, MapPin } from 'lucide-react'
-import { 
+import {
   UiButton as Button,
   UiCard as Card,
   UiBadge as Badge,
-  UiDialog as Dialog, 
-  UiDialogContent as DialogContent, 
-  UiDialogHeader as DialogHeader, 
+  UiDialog as Dialog,
+  UiDialogContent as DialogContent,
+  UiDialogHeader as DialogHeader,
   UiDialogTitle as DialogTitle,
   UiDialogFooter as DialogFooter,
   UiDialogDescription as DialogDescription
@@ -129,15 +129,15 @@ export default function ReportDetailPage() {
       <Header />
       <AuthDialog />
       <ReportModal />
-      <EditReportModal 
+      <EditReportModal
         report={report || null}
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
       />
-      
+
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Navigation */}
-        <button 
+        <button
           onClick={() => router.push('/')}
           className="flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
         >
@@ -152,8 +152,8 @@ export default function ReportDetailPage() {
               <div className="flex-1 space-y-3">
                 <div className="flex items-center gap-2">
                   <Badge variant={
-                    report.status === ReportStatus.OPEN ? 'destructive' : 
-                    report.status === ReportStatus.IN_PROGRESS ? 'secondary' : 'default'
+                    report.status === ReportStatus.OPEN ? 'destructive' :
+                      report.status === ReportStatus.IN_PROGRESS ? 'secondary' : 'default'
                   }>
                     {statusLabels[report.status]}
                   </Badge>
@@ -166,7 +166,7 @@ export default function ReportDetailPage() {
                   {formatDate(report.createdAt)}
                 </div>
               </div>
-              
+
               {isOwner && (
                 <div className="flex gap-2 w-full md:w-auto">
                   <Button
@@ -192,9 +192,9 @@ export default function ReportDetailPage() {
             {/* 이미지 섹션 */}
             {report.imageUrl && (
               <div className="mt-6 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
-                <img 
-                  src={report.imageUrl} 
-                  alt="제보 이미지" 
+                <img
+                  src={report.imageUrl}
+                  alt="제보 이미지"
                   className="w-full max-h-[500px] object-contain bg-gray-50"
                 />
               </div>
@@ -218,7 +218,7 @@ export default function ReportDetailPage() {
               <span className="w-1.5 h-6 bg-red-500 rounded-full mr-3"></span>
               위치 정보
             </h2>
-            
+
             <div className="grid md:grid-cols-3 gap-6">
               {/* 주소 정보 */}
               <div className="md:col-span-1 bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-fit">
@@ -234,14 +234,14 @@ export default function ReportDetailPage() {
                   </div>
                 </div>
               </div>
-              
+
               {/* 지도 */}
               <div className="md:col-span-2 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                <MapComponent 
-                  reports={[report]} 
+                <MapComponent
+                  reports={[report]}
                   center={report.location}
                   zoom={3}
-                  height="300px" 
+                  height="300px"
                 />
               </div>
             </div>
@@ -265,7 +265,7 @@ export default function ReportDetailPage() {
           <DialogHeader>
             <DialogTitle>제보 삭제</DialogTitle>
             <DialogDescription>
-              정말로 이 제보를 삭제하시겠습니까?<br/>
+              정말로 이 제보를 삭제하시겠습니까?<br />
               삭제된 데이터는 복구할 수 없습니다.
             </DialogDescription>
           </DialogHeader>
