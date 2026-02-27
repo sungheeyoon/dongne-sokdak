@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useUIStore } from '@/shared/stores/useUIStore'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import { useMyProfile } from '@/hooks/useProfile'
 import { useAdmin } from '@/hooks/useAdmin'
 import { useRouter } from 'next/navigation'
@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 
 export default function Header() {
   const { openAuthModal, openReportModal } = useUIStore()
-  const { user, signOut } = useAuth()
+  const { user, signOut } = useAuthViewModel()
   const { data: profile } = useMyProfile()
   const { isAdmin, adminInfo } = useAdmin()
   const router = useRouter()

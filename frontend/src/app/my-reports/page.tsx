@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import { getReports } from '@/lib/api/reports'
 import { Report, ReportStatus } from '@/types'
 import Header from '@/components/Header'
 import { UiTabs as Tabs, UiTabsContent as TabsContent, UiTabsList as TabsList, UiTabsTrigger as TabsTrigger } from "@/shared/ui"
-import { AuthDialog } from '@/components/auth/AuthDialog'
+import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
 import ReportDetailModal from "@/shared/ui/ReportDetailModal"
 import ReportModal from '@/components/ReportModal'
 import EditReportModal from '@/components/EditReportModal'
@@ -21,7 +21,7 @@ const statusOptions = [
 ]
 
 export default function MyReportsPage() {
-  const { user } = useAuth()
+  const { user } = useAuthViewModel()
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [editingReport, setEditingReport] = useState<Report | null>(null)
 

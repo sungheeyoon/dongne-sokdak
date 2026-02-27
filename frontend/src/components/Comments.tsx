@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getCommentsByReportId, createComment, deleteComment, updateComment } from '@/lib/api/comments'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import { Comment } from '@/types'
 
 interface CommentsProps {
@@ -19,7 +19,7 @@ interface CommentItemProps {
 }
 
 function CommentItem({ comment, reportId, reportAuthorId, isReply = false }: CommentItemProps) {
-  const { user } = useAuth()
+  const { user } = useAuthViewModel()
   const queryClient = useQueryClient()
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(comment.content)
@@ -283,7 +283,7 @@ function CommentItem({ comment, reportId, reportAuthorId, isReply = false }: Com
 }
 
 export default function Comments({ reportId, reportAuthorId }: CommentsProps) {
-  const { user } = useAuth()
+  const { user } = useAuthViewModel()
   const queryClient = useQueryClient()
   const [newComment, setNewComment] = useState('')
 

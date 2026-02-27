@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import LoadingSpinner from '@/shared/ui/LoadingSpinner'
 
 interface PageProps {
@@ -12,7 +12,7 @@ interface PageProps {
 export default function SocialCallbackPage({ params }: PageProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { loginWithSocial } = useAuth()
+  const { loginWithSocial } = useAuthViewModel()
   const [error, setError] = useState<string | null>(null)
   
   // Unwrap params using React.use()

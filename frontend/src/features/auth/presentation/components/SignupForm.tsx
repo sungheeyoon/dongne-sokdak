@@ -6,14 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Loader2, Mail, CheckCircle } from "lucide-react"
 
-import { 
-  UiButton as Button, 
-  UiInput as Input, 
-  UiForm as Form, 
-  UiFormControl as FormControl, 
-  UiFormField as FormField, 
-  UiFormItem as FormItem, 
-  UiFormLabel as FormLabel, 
+import {
+  UiButton as Button,
+  UiInput as Input,
+  UiForm as Form,
+  UiFormControl as FormControl,
+  UiFormField as FormField,
+  UiFormItem as FormItem,
+  UiFormLabel as FormLabel,
   UiFormMessage as FormMessage,
   UiDialog as Dialog,
   UiDialogContent as DialogContent,
@@ -22,7 +22,7 @@ import {
   UiDialogDescription as DialogDescription,
   UiDialogFooter as DialogFooter
 } from "@/shared/ui"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuthViewModel } from "../hooks/useAuthViewModel"
 
 const signupSchema = z.object({
   email: z.string().email("올바른 이메일 형식을 입력해주세요."),
@@ -41,7 +41,7 @@ interface SignupFormProps {
 }
 
 export function SignupForm({ onSuccess }: SignupFormProps) {
-  const { signUpWithEmail } = useAuth()
+  const { signUp } = useAuthViewModel()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
@@ -59,9 +59,9 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
   async function onSubmit(data: SignupValues) {
     setIsLoading(true)
     setError(null)
-    
+
     try {
-      await signUpWithEmail(data.email, data.password, data.nickname)
+      await signUp({ email: data.email, password: data.password, nickname: data.nickname })
       setShowSuccessDialog(true)
     } catch (err: any) {
       setError(err.message || "회원가입에 실패했습니다.")
@@ -130,7 +130,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
               </FormItem>
             )}
           />
-          
+
           {error && (
             <div className="text-sm text-red-500 bg-red-50 p-3 rounded-md flex items-center">
               <span className="mr-2">⚠️</span> {error}
@@ -157,7 +157,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 text-sm text-muted-foreground">
-            메일함에서 인증 링크를 클릭하시면<br/>회원가입이 완료됩니다.
+            메일함에서 인증 링크를 클릭하시면<br />회원가입이 완료됩니다.
           </div>
           <DialogFooter className="sm:justify-center">
             <Button onClick={handleSuccessDialogClose} className="w-full sm:w-auto min-w-[120px]">

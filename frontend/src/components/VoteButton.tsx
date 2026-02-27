@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { addVote, removeVote, checkUserVote, getVoteCount } from '@/lib/api/votes'
 import { ThumbsUp } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 
 interface VoteButtonProps {
   reportId: string
@@ -11,7 +11,7 @@ interface VoteButtonProps {
 }
 
 export default function VoteButton({ reportId, initialCount = 0 }: VoteButtonProps) {
-  const { user } = useAuth()
+  const { user } = useAuthViewModel()
   const queryClient = useQueryClient()
 
   const { data: userVoted = false } = useQuery({

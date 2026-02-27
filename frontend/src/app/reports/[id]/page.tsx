@@ -3,9 +3,9 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getReport, deleteReport } from '@/lib/api/reports'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import Header from '@/components/Header'
-import { AuthDialog } from '@/components/auth/AuthDialog'
+import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
 import ReportModal from '@/components/ReportModal'
 import EditReportModal from '@/components/EditReportModal'
 import Comments from '@/components/Comments'
@@ -49,7 +49,7 @@ const statusLabels = {
 export default function ReportDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { user } = useAuth()
+  const { user } = useAuthViewModel()
   const queryClient = useQueryClient()
   const reportId = params.id as string
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)

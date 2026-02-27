@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useMyProfile } from '@/hooks/useProfile'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import Header from '@/components/Header'
 import Avatar from '@/components/Avatar'
 import ProfileEditModal from '@/components/ProfileEditModal'
@@ -18,7 +18,7 @@ import {
 
 export default function ProfilePage() {
   const { data: profile, isLoading, error } = useMyProfile()
-  const { user } = useAuth()
+  const { user } = useAuthViewModel()
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   if (isLoading) {

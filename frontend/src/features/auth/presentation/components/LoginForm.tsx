@@ -10,7 +10,7 @@ import { UiButton as Button } from "@/shared/ui"
 import { UiInput as Input } from "@/shared/ui"
 import { UiSocialButton } from "@/shared/ui"
 import { UiForm as Form, UiFormControl as FormControl, UiFormField as FormField, UiFormItem as FormItem, UiFormLabel as FormLabel, UiFormMessage as FormMessage } from "@/shared/ui"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuthViewModel } from "../hooks/useAuthViewModel"
 import { useRouter } from "next/navigation"
 
 const loginSchema = z.object({
@@ -25,7 +25,7 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ onSuccess }: LoginFormProps) {
-  const { signInWithEmail, signInWithKakao, signInWithGoogle } = useAuth()
+  const { signIn, signInWithKakao, signInWithGoogle } = useAuthViewModel()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -41,9 +41,9 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   async function onSubmit(data: LoginValues) {
     setIsLoading(true)
     setError(null)
-    
+
     try {
-      await signInWithEmail(data.email, data.password)
+      await signIn({ email: data.email, password: data.password })
       if (onSuccess) onSuccess()
       router.refresh() // 상태 갱신
     } catch (err: any) {
@@ -83,7 +83,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               </FormItem>
             )}
           />
-          
+
           {error && (
             <div className="text-sm text-red-500 bg-red-50 p-3 rounded-md">
               {error}
@@ -96,7 +96,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </Button>
         </form>
       </Form>
-      
+
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />
@@ -107,16 +107,16 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </span>
         </div>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-3">
-        <UiSocialButton 
-          provider="kakao" 
-          disabled={isLoading} 
+        <UiSocialButton
+          provider="kakao"
+          disabled={isLoading}
           onClick={signInWithKakao}
         />
-        <UiSocialButton 
-          provider="google" 
-          disabled={isLoading} 
+        <UiSocialButton
+          provider="google"
+          disabled={isLoading}
           onClick={signInWithGoogle}
         />
       </div>

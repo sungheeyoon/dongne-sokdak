@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import { ReactNode } from 'react'
 
 interface AuthProviderProps {
@@ -8,7 +8,7 @@ interface AuthProviderProps {
 }
 
 export default function AuthProvider({ children }: AuthProviderProps) {
-  const { initialized } = useAuth()
+  const { initialized } = useAuthViewModel()
 
   // 인증 상태 초기화 전까지 로딩 표시
   if (!initialized) {
