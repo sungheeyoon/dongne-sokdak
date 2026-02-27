@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
-import { Button } from './button';
+import { Button } from './UiButton';
 
 export interface NavItem {
   label: string;
@@ -26,12 +26,12 @@ const defaultNavItems: NavItem[] = [
 ];
 
 export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
-  ({ 
+  ({
     items = defaultNavItems,
     showMobileMenu = true,
     className,
     onLogoClick,
-    ...props 
+    ...props
   }, ref) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -141,16 +141,16 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
               'duration-[var(--transition-slow)]',
               'ease-in-out',
               'overflow-hidden',
-              isMobileMenuOpen 
-                ? 'max-h-screen opacity-100' 
+              isMobileMenuOpen
+                ? 'max-h-screen opacity-100'
                 : 'max-h-0 opacity-0'
             )}
           >
             <div className="px-2 pt-2 pb-3 space-y-1 bg-[rgb(var(--primary-white))] border-t border-gray-200">
               {items.map((item, index) => (
-                <MobileNavLink 
-                  key={index} 
-                  item={item} 
+                <MobileNavLink
+                  key={index}
+                  item={item}
                   onClick={() => setIsMobileMenuOpen(false)}
                 />
               ))}
@@ -220,17 +220,17 @@ const MobileNavLink: React.FC<{ item: NavItem; onClick: () => void }> = ({ item,
         'font-medium',
         'transition-colors',
         'duration-[var(--transition-fast)]',
-        item.external 
+        item.external
           ? [
-              'text-[rgb(var(--primary-blue))]',
-              'underline',
-              'hover:text-[rgb(var(--primary-pink))]',
-            ]
+            'text-[rgb(var(--primary-blue))]',
+            'underline',
+            'hover:text-[rgb(var(--primary-pink))]',
+          ]
           : [
-              '',
-              'hover:bg-[rgba(var(--primary-dark-brown),_0.1)]',
-              'no-underline',
-            ]
+            '',
+            'hover:bg-[rgba(var(--primary-dark-brown),_0.1)]',
+            'no-underline',
+          ]
       )}
       target={item.external ? '_blank' : undefined}
       rel={item.external ? 'noopener noreferrer' : undefined}

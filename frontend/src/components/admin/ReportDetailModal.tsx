@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useReportManagement, ReportDetail } from '../../hooks/useReportManagement';
-import MarkerIcon from '@/components/ui/MarkerIcon';
+import MarkerIcon from '@/shared/ui/MarkerIcon';
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils';
 
 interface ReportDetailModalProps {

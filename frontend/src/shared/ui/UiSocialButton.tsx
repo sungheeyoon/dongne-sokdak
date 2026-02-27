@@ -1,5 +1,5 @@
 import * as React from "react"
-import { UiButton } from "@/components/ui"
+import { UiButton } from "@/shared/ui"
 
 interface UiSocialButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   provider: 'kakao' | 'google'

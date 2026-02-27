@@ -21,7 +21,7 @@ import {
   UiDialogTitle as DialogTitle,
   UiDialogDescription as DialogDescription,
   UiDialogFooter as DialogFooter
-} from "@/components/ui"
+} from "@/shared/ui"
 import { useAuth } from "@/hooks/useAuth"
 
 const signupSchema = z.object({

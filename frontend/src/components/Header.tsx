@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useUIStore } from '@/stores/useUIStore'
+import { useUIStore } from '@/shared/stores/useUIStore'
 import { useAuth } from '@/hooks/useAuth'
 import { useMyProfile } from '@/hooks/useProfile'
 import { useAdmin } from '@/hooks/useAdmin'
@@ -9,7 +9,7 @@ import MyNeighborhoodModal from './MyNeighborhoodModal'
 import { Home, Settings, User, LogOut, ChevronDown, Pencil, Bell, Menu, X } from 'lucide-react'
 import Image from 'next/image'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
-import { UiButton } from '@/components/ui'
+import { UiButton } from '@/shared/ui'
 import { cn } from '@/lib/utils'
 
 export default function Header() {

@@ -1,6 +1,6 @@
 'use client'
 
-import { UnifiedSearch as UIUnifiedSearch } from '@/components/ui'
+import { UnifiedSearch as UIUnifiedSearch } from '@/shared/ui'
 import { getDisplayNeighborhoodName } from '@/lib/utils/neighborhoodUtils'
 import { convertPlaceToAdministrativeAddress } from '@/lib/utils/addressUtils'
 

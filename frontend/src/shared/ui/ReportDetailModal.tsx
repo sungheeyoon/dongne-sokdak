@@ -2,9 +2,9 @@
 
 import React from 'react'
 import { MapPin, Calendar, User, MessageCircle, ThumbsUp, Tag } from 'lucide-react'
-import { BaseModal } from './BaseModal'
-import { Button } from './button'
-import { Badge } from './badge'
+import { BaseModal } from './UiBaseModal'
+import { Button } from './UiButton'
+import { Badge } from './UiBadge'
 import { Report } from '@/types'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 
@@ -51,7 +51,7 @@ const SingleReport: React.FC<SingleReportProps> = ({ report, onReportClick }) =>
   }
 
   return (
-    <div 
+    <div
       className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300"
       onClick={handleClick}
     >
@@ -66,7 +66,7 @@ const SingleReport: React.FC<SingleReportProps> = ({ report, onReportClick }) =>
             />
           </div>
         )}
-        
+
         {/* 제보 내용 */}
         <div className="flex-1 min-w-0">
           {/* 헤더 */}
@@ -79,7 +79,7 @@ const SingleReport: React.FC<SingleReportProps> = ({ report, onReportClick }) =>
                 <Tag className="w-3 h-3 mr-1" />
                 {getCategoryLabel(report.category)}
               </Badge>
-              
+
               <span className="text-xs text-gray-500">
                 {new Date(report.createdAt).toLocaleDateString('ko-KR', {
                   month: 'short',
@@ -90,24 +90,24 @@ const SingleReport: React.FC<SingleReportProps> = ({ report, onReportClick }) =>
               </span>
             </div>
           </div>
-          
+
           {/* 제목 */}
           <h4 className="font-semibold text-gray-900 mb-2 line-clamp-1">
             {report.title}
           </h4>
-          
+
           {/* 설명 */}
           <p className="text-gray-600 text-sm mb-3 line-clamp-2">
             {report.description}
           </p>
-          
+
           {/* 위치 및 통계 */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center text-xs text-gray-500">
               <MapPin className="w-3 h-3 mr-1" />
               <span className="truncate">{formatToAdministrativeAddress(report.address || '')}</span>
             </div>
-            
+
             <div className="flex items-center space-x-3 text-xs text-gray-500">
               <span className="flex items-center">
                 <ThumbsUp className="w-3 h-3 mr-1" />

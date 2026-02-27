@@ -434,7 +434,7 @@ export const UIShowcase: React.FC = () => {
               <div>
                 <h3 className="text-xl font-semibold mb-4">✨ 주요 특징</h3>
                 <ul className="space-y-2 text-sm opacity-90">
-                  <li>• <code className="bg-white/20 px-2 py-1 rounded">@/components/ui</code>에서 중앙 관리</li>
+                  <li>• <code className="bg-white/20 px-2 py-1 rounded">@/shared/ui</code>에서 중앙 관리</li>
                   <li>• TypeScript 완전 지원</li>
                   <li>• Tailwind CSS 기반 스타일링</li>
                   <li>• forwardRef 및 접근성 지원</li>
@@ -450,7 +450,7 @@ export const UIShowcase: React.FC = () => {
                   <div className="text-yellow-300">import {`{`}</div>
                   <div className="text-white ml-2">UiButton, UiInput, UiAlert,</div>
                   <div className="text-white ml-2">BaseModal, UiBadge, UiForm</div>
-                  <div className="text-yellow-300">{`}`} from &apos;@/components/ui&apos;</div>
+                  <div className="text-yellow-300">{`}`} from &apos;@/shared/ui&apos;</div>
                 </div>
               </div>
             </div>

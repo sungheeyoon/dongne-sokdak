@@ -6,7 +6,9 @@ import { useAuth } from '@/hooks/useAuth'
 import { getReports } from '@/lib/api/reports'
 import { Report, ReportStatus } from '@/types'
 import Header from '@/components/Header'
+import { UiTabs as Tabs, UiTabsContent as TabsContent, UiTabsList as TabsList, UiTabsTrigger as TabsTrigger } from "@/shared/ui"
 import { AuthDialog } from '@/components/auth/AuthDialog'
+import ReportDetailModal from "@/shared/ui/ReportDetailModal"
 import ReportModal from '@/components/ReportModal'
 import EditReportModal from '@/components/EditReportModal'
 import ReportCard from '@/components/ReportCard'
@@ -23,10 +25,10 @@ export default function MyReportsPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [editingReport, setEditingReport] = useState<Report | null>(null)
 
-  const { 
-    data: reports = [], 
-    isLoading, 
-    error 
+  const {
+    data: reports = [],
+    isLoading,
+    error
   } = useQuery({
     queryKey: ['my-reports', user?.id, selectedStatus],
     queryFn: () => getReports({
@@ -70,7 +72,7 @@ export default function MyReportsPage() {
           <div className="text-center py-12">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">내 제보 목록</h1>
             <p className="text-red-500 mb-4">데이터를 불러오는 중 오류가 발생했습니다.</p>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
             >
@@ -87,12 +89,12 @@ export default function MyReportsPage() {
       <Header />
       <AuthDialog />
       <ReportModal />
-      <EditReportModal 
+      <EditReportModal
         report={editingReport}
         isOpen={!!editingReport}
         onClose={() => setEditingReport(null)}
       />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">내 제보 목록</h1>
@@ -108,11 +110,10 @@ export default function MyReportsPage() {
                 <button
                   key={option.value}
                   onClick={() => setSelectedStatus(option.value)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all border ${
-                    selectedStatus === option.value
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all border ${selectedStatus === option.value
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                    }`}
                 >
                   {option.label}
                 </button>

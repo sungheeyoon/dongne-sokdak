@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { clsx } from 'clsx';
 import { X } from 'lucide-react';
-import { Button } from './button';
+import { Button } from './UiButton';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -19,7 +19,7 @@ export interface ModalProps {
 }
 
 export const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
-  ({ 
+  ({
     isOpen,
     onClose,
     title,
@@ -30,7 +30,7 @@ export const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
     closeOnEscape = true,
     className,
     overlayClassName,
-    ...props 
+    ...props
   }, ref) => {
     // ESC 키로 모달 닫기
     useEffect(() => {

@@ -17,7 +17,7 @@ import {
   UiButton as Button,
   UiInput as Input,
   UiLabel as Label
-} from "@/components/ui"
+} from "@/shared/ui"
 
 const categoryOptions = [
   { value: ReportCategory.NOISE, label: '소음' },

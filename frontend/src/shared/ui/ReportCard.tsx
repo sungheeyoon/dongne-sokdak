@@ -4,7 +4,7 @@ import React from 'react';
 import { MapPin, ThumbsUp, MessageCircle, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils';
-import { UiCard as Card, UiCardContent as CardContent, UiCardFooter as CardFooter, UiCardHeader as CardHeader, UiBadge as Badge } from '@/components/ui';
+import { UiCard as Card, UiCardContent as CardContent, UiCardFooter as CardFooter, UiCardHeader as CardHeader, UiBadge as Badge } from '@/shared/ui';
 import { cn } from '@/lib/utils';
 
 export interface ReportCardProps {

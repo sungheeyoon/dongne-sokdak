@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { clsx } from 'clsx';
-import { Button } from './button';
+import { Button } from './UiButton';
 
 export interface HeroSectionProps {
   title: string;
@@ -15,7 +15,7 @@ export interface HeroSectionProps {
 }
 
 export const HeroSection = React.forwardRef<HTMLDivElement, HeroSectionProps>(
-  ({ 
+  ({
     title,
     subtitle,
     buttonText,
@@ -23,7 +23,7 @@ export const HeroSection = React.forwardRef<HTMLDivElement, HeroSectionProps>(
     backgroundImage,
     className,
     children,
-    ...props 
+    ...props
   }, ref) => {
     const baseStyles = [
       // Structure from theme
@@ -44,7 +44,7 @@ export const HeroSection = React.forwardRef<HTMLDivElement, HeroSectionProps>(
       'bg-no-repeat',
     ];
 
-    const backgroundImageStyle = backgroundImage 
+    const backgroundImageStyle = backgroundImage
       ? { backgroundImage: `url(${backgroundImage})` }
       : {};
 
@@ -75,7 +75,7 @@ export const HeroSection = React.forwardRef<HTMLDivElement, HeroSectionProps>(
                 'font-medium',
                 'leading-tight',
                 'mb-0',
-                backgroundImage 
+                backgroundImage
                   ? 'text-[rgb(var(--primary-white))]'
                   : ''
               )}>
@@ -90,7 +90,7 @@ export const HeroSection = React.forwardRef<HTMLDivElement, HeroSectionProps>(
                   'lg:text-2xl',
                   'leading-relaxed',
                   'max-w-2xl',
-                  backgroundImage 
+                  backgroundImage
                     ? 'text-[rgba(var(--primary-white),_0.9)]'
                     : 'text-[rgba(var(--primary-dark-brown),_0.8)]'
                 )}>

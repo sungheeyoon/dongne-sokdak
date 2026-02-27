@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useUIStore } from '@/stores/useUIStore';
+import { useUIStore } from '@/shared/stores/useUIStore';
 
 export function useMapController() {
     const {

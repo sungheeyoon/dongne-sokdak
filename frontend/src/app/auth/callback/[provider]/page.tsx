@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import LoadingSpinner from '@/shared/ui/LoadingSpinner'
 
 interface PageProps {
   params: Promise<{ provider: string }>

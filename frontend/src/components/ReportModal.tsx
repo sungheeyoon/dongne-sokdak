@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUIStore } from '@/stores/useUIStore'
+import { useUIStore } from '@/shared/stores/useUIStore'
 import { ReportCategory } from '@/types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createReport, CreateReportData } from '@/lib/api/reports'
@@ -21,7 +21,7 @@ import {
   UiInput as Input,
   UiCard as Card,
   UiLabel as Label
-} from '@/components/ui'
+} from '@/shared/ui'
 import { cn } from '@/lib/utils'
 
 interface LocationData {

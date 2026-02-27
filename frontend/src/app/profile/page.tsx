@@ -14,7 +14,7 @@ import {
   UiCardHeader as CardHeader, 
   UiCardTitle as CardTitle,
   UiBadge as Badge
-} from '@/components/ui'
+} from '@/shared/ui'
 
 export default function ProfilePage() {
   const { data: profile, isLoading, error } = useMyProfile()

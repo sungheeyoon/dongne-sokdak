@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react'
 import { clsx } from 'clsx'
 import { X } from 'lucide-react'
-import { Button } from './button'
+import { Button } from './UiButton'
 
 export interface BaseModalProps {
   isOpen: boolean
@@ -23,7 +23,7 @@ export interface BaseModalProps {
 }
 
 export const BaseModal = React.forwardRef<HTMLDivElement, BaseModalProps>(
-  ({ 
+  ({
     isOpen,
     onClose,
     title,
@@ -38,7 +38,7 @@ export const BaseModal = React.forwardRef<HTMLDivElement, BaseModalProps>(
     contentClassName,
     footerClassName,
     footer,
-    ...props 
+    ...props
   }, ref) => {
     // ESC 키로 모달 닫기
     useEffect(() => {

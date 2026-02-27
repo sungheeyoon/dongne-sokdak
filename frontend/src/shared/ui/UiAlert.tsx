@@ -3,7 +3,7 @@
 import React from 'react'
 import { clsx } from 'clsx'
 import { X, AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react'
-import { Button } from './button'
+import { Button } from './UiButton'
 
 export interface AlertProps {
   type?: 'info' | 'success' | 'warning' | 'error'
@@ -71,18 +71,18 @@ export const Alert: React.FC<AlertProps> = ({
         <div className="flex-shrink-0">
           <IconComponent className={clsx('h-5 w-5', styles.icon)} />
         </div>
-        
+
         <div className="ml-3 flex-1">
           {title && (
             <h3 className={clsx('font-semibold text-sm mb-1', styles.title)}>
               {title}
             </h3>
           )}
-          
+
           <div className={clsx('text-sm', styles.message)}>
             {message}
           </div>
-          
+
           {children && (
             <div className="mt-2">
               {children}

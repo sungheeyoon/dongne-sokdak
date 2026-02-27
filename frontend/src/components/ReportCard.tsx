@@ -2,7 +2,7 @@
 
 import { Report } from '@/types'
 import { useRouter } from 'next/navigation'
-import { ReportCard as UIReportCard } from '@/components/ui/ReportCard'
+import { ReportCard as UIReportCard } from '@/shared/ui/ReportCard'
 import { useBreakpoint } from '@/hooks/useBreakpoint'
 
 interface ReportCardProps {

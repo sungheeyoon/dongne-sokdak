@@ -15,7 +15,7 @@ import {
   UiDialogTitle as DialogTitle,
   UiButton as Button,
   UiCard as Card
-} from '@/components/ui'
+} from '@/shared/ui'
 
 interface MyNeighborhoodModalProps {
   isOpen: boolean

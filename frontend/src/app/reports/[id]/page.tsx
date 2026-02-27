@@ -25,7 +25,7 @@ import {
   UiDialogTitle as DialogTitle,
   UiDialogFooter as DialogFooter,
   UiDialogDescription as DialogDescription
-} from "@/components/ui"
+} from "@/shared/ui"
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), {
   ssr: false,

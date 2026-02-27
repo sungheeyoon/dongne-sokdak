@@ -1,21 +1,23 @@
 'use client'
 
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  UiDialog,
+  UiDialogContent,
+  UiDialogDescription,
+  UiDialogHeader,
+  UiDialogTitle,
+  UiDialogTrigger,
+} from "@/shared/ui"
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
+  UiTabs,
+  UiTabsContent,
+  UiTabsList,
+  UiTabsTrigger,
+  UiButton
+} from "@/shared/ui"
 import { LoginForm } from "./LoginForm"
 import { SignupForm } from "./SignupForm"
-import { useUIStore } from "@/stores/useUIStore"
+import { useUIStore } from "@/shared/stores/useUIStore"
 
 export function AuthDialog() {
   const { isAuthModalOpen, authMode, closeAuthModal, openAuthModal } = useUIStore()
@@ -26,30 +28,30 @@ export function AuthDialog() {
   }
 
   return (
-    <Dialog open={isAuthModalOpen} onOpenChange={(open) => !open && closeAuthModal()}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-center">동네속닥</DialogTitle>
-          <DialogDescription className="text-center">
-            우리 동네 이야기를 시작해보세요.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <Tabs value={authMode} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="signin">로그인</TabsTrigger>
-            <TabsTrigger value="signup">회원가입</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="signin">
+    <UiDialog open={isAuthModalOpen} onOpenChange={(open) => !open && closeAuthModal()}>
+      <UiDialogContent className="sm:max-w-md w-[320px] rounded-xl sm:rounded-xl">
+        <UiDialogHeader className="mb-4">
+          <UiDialogTitle className="text-xl font-bold text-center">동네 속닥</UiDialogTitle>
+          <UiDialogDescription className="text-center">
+            {authMode === 'signin' ? '로그인하고 동네 이야기를 나눠보세요' : '회원가입하고 동네 소식에 참여하세요'}
+          </UiDialogDescription>
+        </UiDialogHeader>
+
+        <UiTabs value={authMode} onValueChange={handleTabChange} className="w-full">
+          <UiTabsList className="grid w-full grid-cols-2 mb-6">
+            <UiTabsTrigger value="signin">로그인</UiTabsTrigger>
+            <UiTabsTrigger value="signup">회원가입</UiTabsTrigger>
+          </UiTabsList>
+
+          <UiTabsContent value="signin" className="space-y-4">
             <LoginForm onSuccess={closeAuthModal} />
-          </TabsContent>
-          
-          <TabsContent value="signup">
+          </UiTabsContent>
+
+          <UiTabsContent value="signup" className="space-y-4">
             <SignupForm onSuccess={closeAuthModal} />
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+          </UiTabsContent>
+        </UiTabs>
+      </UiDialogContent>
+    </UiDialog>
   )
 }
