@@ -1,29 +1,31 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useUIStore } from '@/shared/stores/useUIStore'
 import Header from '@/components/Header'
 import ReportCard from '@/features/reports/presentation/components/ReportCard'
 import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
+import { Report as ReportType } from '@/types'
 import ReportModal from '@/features/reports/presentation/components/ReportModal'
 import dynamic from 'next/dynamic'
-import { ReportCategory, Report } from '@/types'
+import { ReportCategory } from '@/types'
 import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
 import { useMapController } from '@/hooks/useMapController'
 import { getActiveLocation } from '@/lib/map/getActiveLocation'
-import { useReportsViewModel } from '@/features/reports/presentation/hooks/useReportsViewModel'
+import { useMapReportsViewModel, useListReportsViewModel } from '@/features/reports/presentation/hooks/useReportsViewModel'
 import ReportList from '@/features/reports/presentation/components/ReportList'
 import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
 import UnifiedSearch from '@/components/UnifiedSearch'
 import { MapPin, FileText, X } from 'lucide-react'
-import LoadingSpinner, { CardSkeleton } from '@/shared/ui/LoadingSpinner'
+import LoadingSpinner from '@/shared/ui/LoadingSpinner'
 import ErrorDisplay from '@/shared/ui/ErrorDisplay'
 import LocalhostGuide from '@/shared/ui/LocalhostGuide'
-import MarkerIcon from '@/shared/ui/MarkerIcon'
-import { CurrentRegionButton, RefreshSearchButton } from '@/shared/ui'
+import { RefreshSearchButton } from '@/shared/ui'
 import { UiButton as Button, UiCard as Card } from '@/shared/ui'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 import { cn } from '@/lib/utils'
+import { toast } from 'react-hot-toast'
+// LocationReportItem은 존재하지 않거나 경로가 다름, 어차피 안쓰이므로 제거
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), {
   ssr: false,
@@ -52,6 +54,7 @@ export default function Home() {
 
   const {
     mapCenter,
+    mapZoom,
     searchedLocation,
     userCurrentLocation,
     currentMapBounds,
@@ -61,6 +64,7 @@ export default function Home() {
     handleMapBoundsChange,
     resetToMyNeighborhood,
     handleLocationSearch,
+    setMapZoom
   } = useMapController()
 
   // 행정동 기반 동네 표시명 계산 함수
@@ -75,7 +79,7 @@ export default function Home() {
   const [selectedLocation, setSelectedLocation] = useState<string>('') // 선택된 위치명
 
   const { profile, isLoading: isLoadingProfile } = useProfileViewModel()
-  const { reverseGeocode } = useLocationViewModel()
+  const { reverseGeocode, searchPlaces, isSearching } = useLocationViewModel()
 
   // 내 동네 위치 (로그인된 사용자의 설정된 동네)
   const myNeighborhoodLocation = useMemo(() => {
@@ -85,13 +89,52 @@ export default function Home() {
     } : null
   }, [profile?.neighborhood])
 
-  const { reports: displayReports = [], isLoading, error, refetch } = useReportsViewModel({
+  // Pagination 상태
+  const [paginationPage, setPaginationPage] = useState<number>(1)
+
+  // 상단 지도 마커용 경량/대량 데이터 페칭 (페이지네이션 없음)
+  const { reports: mapReports = [], isLoading: isMapLoading, currentLimit: mapLimit } = useMapReportsViewModel({
     mode: (searchMode === 'text' && searchQuery) ? 'all' : (useMapBoundsFilter ? 'bounds' : 'all'),
     category: selectedCategory,
     searchQuery,
     bounds: currentMapBounds,
-    trigger: triggerMapSearch
+    trigger: triggerMapSearch,
+    zoom: mapZoom
   })
+
+  // 하단 리스트용 상세/소량 페이징 데이터 페칭
+  const {
+    reports: listReports = [],
+    totalCount,
+    totalPages,
+    currentPage,
+    isLoading: isListLoading,
+    error,
+    refetch
+  } = useListReportsViewModel({
+    mode: (searchMode === 'text' && searchQuery) ? 'all' : (useMapBoundsFilter ? 'bounds' : 'all'),
+    category: selectedCategory,
+    searchQuery,
+    bounds: currentMapBounds,
+    trigger: triggerMapSearch,
+    page: paginationPage
+  })
+
+  // 필터, 범위 조건 등이 변경되면 무조건 페이지 리셋
+  useEffect(() => {
+    setPaginationPage(1)
+  }, [currentMapBounds, selectedCategory, searchQuery, triggerMapSearch, searchMode, useMapBoundsFilter])
+
+  // 제보 데이터 최대치 도달 시 토스트 경고 표시 (UX 피드백)
+  useEffect(() => {
+    if (mapReports.length > 0 && mapLimit && mapReports.length >= mapLimit) {
+      toast('지도를 확대하시면 더 자세한 위치의 제보를 볼 수 있어요.', {
+        id: 'map-limit-toast',
+        icon: 'ℹ️',
+        duration: 4000
+      })
+    }
+  }, [mapReports.length, mapLimit])
 
 
   // 첫 로드 여부를 추적하여 초기 내 동네 이동을 1회 보장
@@ -125,9 +168,9 @@ export default function Home() {
   }, [myNeighborhoodLocation, isInitialLoadDone])
 
   // 마커 클릭 핸들러
-  const handleMarkerClick = async (group: { id: string; location: { lat: number; lng: number }; count: number; reports: Report[] }) => {
-    setSelectedMapMarker(group)
-    const name = await reverseGeocode({ lat: group.location.lat, lng: group.location.lng })
+  const handleMarkerClick = async (report: ReportType) => {
+    setSelectedMapMarker(report)
+    const name = await reverseGeocode({ lat: report.location.lat, lng: report.location.lng })
     setSelectedLocation(name || '선택한 위치')
   }
 
@@ -135,10 +178,10 @@ export default function Home() {
   useEffect(() => {
     console.log('🔄 Page: selectedMapMarker 상태 변화:', selectedMapMarker)
     if (selectedMapMarker) {
+      const markerData = selectedMapMarker as any;
       console.log('📊 Page: selectedMapMarker 상세:', {
-        id: selectedMapMarker.id,
-        count: selectedMapMarker.count,
-        reports: selectedMapMarker.reports?.map((r: { id: string; title: string }) => ({ id: r.id, title: r.title }))
+        id: markerData.id,
+        title: markerData.title
       })
     }
   }, [selectedMapMarker])
@@ -244,11 +287,13 @@ export default function Home() {
                     searchMode={searchMode}
                     onLocationSelect={handleLocationSearch}
                     onTextSearch={(query) => setSearchQuery(query)}
+                    searchPlaces={searchPlaces}
+                    isSearching={isSearching}
                     className="flex-1"
                   />
                   <RefreshSearchButton
                     onClick={() => setTriggerMapSearch((prev: number) => prev + 1)}
-                    loading={isLoading}
+                    loading={isMapLoading || isListLoading}
                     className="md:w-auto h-[42px]"
                   />
                 </div>
@@ -261,12 +306,13 @@ export default function Home() {
               </div>
             ) : (
               <MapComponent
-                reports={displayReports}
+                reports={mapReports}
                 height="450px"
                 center={activeLocation ?? undefined}
                 onBoundsChange={handleMapBoundsChange}
-                onMarkerClick={handleMarkerClick}
-                selectedMarkerId={selectedMapMarker?.id}
+                onZoomChange={setMapZoom}
+                onMarkerClick={handleMarkerClick as any}
+                selectedMarkerId={(selectedMapMarker as any)?.id}
               />
             )}
           </Card>
@@ -283,7 +329,7 @@ export default function Home() {
                     {selectedLocation}
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    이 지점에 <span className="font-bold text-foreground">{selectedMapMarker.count}개</span>의 제보가 있습니다
+                    이 지점의 단일 제보입니다
                   </p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => setSelectedMapMarker(null)}>
@@ -291,10 +337,10 @@ export default function Home() {
                 </Button>
               </div>
               <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {selectedMapMarker.reports.map((report: Report) => (
-                    <ReportCard key={report.id} report={report} />
-                  ))}
+                <div className="flex justify-center md:justify-start w-full">
+                  <div className="w-full md:w-1/2 lg:w-1/3">
+                    <ReportCard report={selectedMapMarker as any} />
+                  </div>
                 </div>
               </div>
             </Card>
@@ -309,7 +355,7 @@ export default function Home() {
                 {searchQuery ? `'${searchQuery}' 검색 결과` : (useMapBoundsFilter ? '현재 지역 이슈' : '실시간 동네 제보')}
               </h2>
               <p className="text-muted-foreground text-sm mt-1">
-                총 {displayReports.length}개의 리포트가 발견되었습니다
+                총 {totalCount}개의 리포트가 발견되었습니다
               </p>
             </div>
 
@@ -335,8 +381,11 @@ export default function Home() {
           </div>
 
           <ReportList
-            reports={displayReports}
-            isLoading={isLoading}
+            reports={listReports}
+            isLoading={isListLoading}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setPaginationPage}
             emptyMessage={
               <Card className="p-12 text-center border-dashed">
                 <div className="max-w-xs mx-auto space-y-4">

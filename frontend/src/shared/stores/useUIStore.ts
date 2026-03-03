@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { Report } from '@/types'
 
 interface UIState {
   // 모달 상태
@@ -23,7 +24,7 @@ interface UIState {
   currentMapBounds: { north: number; south: number; east: number; west: number } | null
   triggerMapSearch: number
   useMapBoundsFilter: boolean
-  selectedMapMarker: { id: string; location: { lat: number; lng: number }; count: number; reports: any[] } | null
+  selectedMapMarker: Report | null
 
   // 액션들
   openReportModal: () => void
@@ -44,7 +45,7 @@ interface UIState {
   setCurrentMapBounds: (bounds: { north: number; south: number; east: number; west: number } | null | ((prev: any) => any)) => void
   setTriggerMapSearch: (trigger: number | ((prev: number) => number)) => void
   setUseMapBoundsFilter: (use: boolean) => void
-  setSelectedMapMarker: (marker: { id: string; location: { lat: number; lng: number }; count: number; reports: any[] } | null) => void
+  setSelectedMapMarker: (marker: Report | null) => void
 }
 
 export const useUIStore = create<UIState>((set) => ({

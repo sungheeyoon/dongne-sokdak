@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, TypeVar, Generic
 from pydantic import BaseModel, Field
 from uuid import UUID
 from datetime import datetime
@@ -53,3 +53,12 @@ class Report(ReportBase):
 
 class ReportInDB(Report):
     pass
+
+T = TypeVar('T')
+
+class PaginatedReportResponse(BaseModel, Generic[T]):
+    items: List[T]
+    totalCount: int
+    totalPages: int
+    page: int
+    limit: int

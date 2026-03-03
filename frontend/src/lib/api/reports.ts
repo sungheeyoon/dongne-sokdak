@@ -23,8 +23,16 @@ export interface ReportsFilter {
   status?: ReportStatus
   userId?: string  // 사용자별 제보 조회 추가
   search?: string  // 검색 기능 추가
+  page?: number
   limit?: number
-  offset?: number
+}
+
+export interface PaginatedReportResponse {
+  items: Report[]
+  totalCount: number
+  totalPages: number
+  page: number
+  limit: number
 }
 
 // 제보 생성 (인증 포함)
@@ -52,9 +60,10 @@ export const createReport = async (data: CreateReportData): Promise<Report> => {
 }
 
 // 제보 목록 조회
-export const getReports = async (filter: ReportsFilter = {}): Promise<Report[]> => {
+export const getReports = async (filter: ReportsFilter = {}): Promise<PaginatedReportResponse> => {
   const params = new URLSearchParams()
 
+  if (filter.page) params.append('page', filter.page.toString())
   if (filter.limit) params.append('limit', filter.limit.toString())
   if (filter.category) params.append('category', filter.category)
   if (filter.status) params.append('status', filter.status)
@@ -64,10 +73,16 @@ export const getReports = async (filter: ReportsFilter = {}): Promise<Report[]> 
   const url = createApiUrl('/reports/') + (params.toString() ? `?${params.toString()}` : '') // 슬래시 추가!
   console.log('🔗 Request URL:', url)
 
-  const response = await apiRequest(url)
+  const response = await apiRequest(url) as any
   console.log('📊 Response data:', response)
 
-  return (response as any[]).map(transformReportData)
+  return {
+    items: (response.items || []).map(transformReportData),
+    totalCount: response.totalCount || 0,
+    totalPages: response.totalPages || 1,
+    page: response.page || 1,
+    limit: response.limit || 100
+  }
 }
 
 // 데이터 변환 헬퍼 함수
@@ -142,8 +157,9 @@ export const getReportsInBounds = async (params: {
   west: number
   category?: ReportCategory
   search?: string
+  page?: number
   limit?: number
-}): Promise<Report[]> => {
+}): Promise<PaginatedReportResponse> => {
   const searchParams = new URLSearchParams()
 
   searchParams.append('north', params.north.toString())
@@ -152,15 +168,22 @@ export const getReportsInBounds = async (params: {
   searchParams.append('west', params.west.toString())
   if (params.category) searchParams.append('category', params.category)
   if (params.search) searchParams.append('search', params.search)
+  if (params.page) searchParams.append('page', params.page.toString())
   if (params.limit) searchParams.append('limit', params.limit.toString())
 
   const url = createApiUrl(`/reports/bounds?${searchParams.toString()}`)
   console.log('🗺️ Map bounds reports request:', url)
 
-  const response = await apiRequest(url)
-  console.log('📊 Map bounds reports response:', (response as any[]).length, 'reports')
+  const response = await apiRequest(url) as any
+  console.log('📊 Map bounds reports response items:', response.items?.length, 'reports')
 
-  return (response as any[]).map(transformReportData)
+  return {
+    items: (response.items || []).map(transformReportData),
+    totalCount: response.totalCount || 0,
+    totalPages: response.totalPages || 1,
+    page: response.page || 1,
+    limit: response.limit || 100
+  }
 }
 
 // 근처 제보 조회 (기존 방식 - 호환성 유지)
@@ -169,42 +192,58 @@ export const getNearbyReports = async (params: {
   lng: number
   radius_km?: number
   category?: ReportCategory
+  page?: number
   limit?: number
-}): Promise<Report[]> => {
+}): Promise<PaginatedReportResponse> => {
   const searchParams = new URLSearchParams()
 
   searchParams.append('lat', params.lat.toString())
   searchParams.append('lng', params.lng.toString())
   if (params.radius_km) searchParams.append('radius_km', params.radius_km.toString())
   if (params.category) searchParams.append('category', params.category)
+  if (params.page) searchParams.append('page', params.page.toString())
   if (params.limit) searchParams.append('limit', params.limit.toString())
 
   const url = createApiUrl(`/reports/nearby?${searchParams.toString()}`)
   console.log('📍 Nearby reports request:', url)
 
-  const response = await apiRequest(url)
-  console.log('📊 Nearby reports response:', (response as any[]).length, 'reports')
+  const response = await apiRequest(url) as any
+  console.log('📊 Nearby reports response items:', response.items?.length, 'reports')
 
-  return (response as any[]).map(transformReportData)
+  return {
+    items: (response.items || []).map(transformReportData),
+    totalCount: response.totalCount || 0,
+    totalPages: response.totalPages || 1,
+    page: response.page || 1,
+    limit: response.limit || 50
+  }
 }
 
 // 내 동네 기준 제보 조회 (새로 추가된 API)
 export const getMyNeighborhoodReports = async (params?: {
   radius_km?: number
   category?: ReportCategory
+  page?: number
   limit?: number
-}): Promise<Report[]> => {
+}): Promise<PaginatedReportResponse> => {
   const searchParams = new URLSearchParams()
 
   if (params?.radius_km) searchParams.append('radius_km', params.radius_km.toString())
   if (params?.category) searchParams.append('category', params.category)
+  if (params?.page) searchParams.append('page', params.page.toString())
   if (params?.limit) searchParams.append('limit', params.limit.toString())
 
   const url = createApiUrl(`/reports/my-neighborhood?${searchParams.toString()}`)
   console.log('🏠 My neighborhood reports request:', url)
 
-  const response = await authenticatedRequest(url)
-  console.log('📊 My neighborhood reports response:', (response as any[]).length, 'reports')
+  const response = await authenticatedRequest(url) as any
+  console.log('📊 My neighborhood reports response:', response.items?.length, 'reports')
 
-  return (response as any[]).map(transformReportData)
+  return {
+    items: (response.items || []).map(transformReportData),
+    totalCount: response.totalCount || 0,
+    totalPages: response.totalPages || 1,
+    page: response.page || 1,
+    limit: response.limit || 50
+  }
 }

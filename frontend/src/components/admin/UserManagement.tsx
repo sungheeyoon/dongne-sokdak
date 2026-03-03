@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAdminViewModel, UserManagement as UserData } from '../../features/admin/presentation/hooks/useAdminViewModel';
+import { useAdminViewModel } from '../../features/admin/presentation/hooks/useAdminViewModel';
 import { getRoleLabel as getRoleDisplay, getRoleBadgeColor } from '../../lib/constants/status';
-import { 
-  Users, Search, Filter, RefreshCw, Check, X, 
-  UserCheck, UserX, Crown, Shield, User 
+import {
+  Users, Search, Filter, RefreshCw,
+  UserCheck, UserX, Crown
 } from 'lucide-react';
 
 
@@ -38,13 +38,13 @@ export default function UserManagement() {
   const handleFilterChange = (key: string, value: string) => {
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
-    
+
     // 필터 적용
     const params: any = {};
     if (newFilters.role) params.role = newFilters.role;
     if (newFilters.isActive) params.isActive = newFilters.isActive === 'true';
     if (newFilters.search) params.search = newFilters.search;
-    
+
     fetchUsers(params);
   };
 
@@ -286,9 +286,8 @@ export default function UserManagement() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
                           {user.isActive ? '활성' : '비활성'}
                         </span>
                       </td>
@@ -304,11 +303,10 @@ export default function UserManagement() {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
                           onClick={() => handleToggleActive(user.id, !user.isActive)}
-                          className={`flex items-center px-3 py-1 rounded-lg font-medium transition-all duration-200 ${
-                            user.isActive
+                          className={`flex items-center px-3 py-1 rounded-lg font-medium transition-all duration-200 ${user.isActive
                               ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
                               : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
-                          }`}
+                            }`}
                         >
                           {user.isActive ? (
                             <>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
 import Avatar from './Avatar'
 import { X, Save, Loader2 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+
 
 interface ProfileEditModalProps {
   isOpen: boolean
@@ -63,100 +63,6 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
     const newPreviewUrl = URL.createObjectURL(file)
     setSelectedFile(file)
     setPreviewUrl(newPreviewUrl)
-  }
-
-  // 실제 업로드 함수
-  const uploadAvatarFile = async (file: File): Promise<string> => {
-    if (!profile?.userId) {
-      throw new Error('사용자 정보를 찾을 수 없습니다.')
-    }
-
-    // 현재 사용자 인증 상태 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    console.log('👤 현재 사용자:', {
-      userId: user?.id,
-      profileUserId: profile?.userId,
-      authError,
-      isAuthenticated: !!user
-    })
-
-    if (!user) {
-      throw new Error('사용자 인증이 필요합니다.')
-    }
-
-    // 파일명 생성 (고정된 이름으로 덮어쓰기 가능하게)
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${user.id}/avatar.${fileExt}`
-
-    console.log('📁 업로드 정보:', {
-      fileName,
-      fileSize: file.size,
-      fileType: file.type,
-      bucket: 'avatars'
-    })
-
-    // 버킷 존재 확인
-    const { data: buckets, error: bucketError } = await supabase.storage.listBuckets()
-    console.log('🪣 사용 가능한 버킷들:', buckets?.map(b => ({ name: b.name, public: b.public })))
-
-    if (bucketError) {
-      console.error('❌ 버킷 조회 오류:', bucketError)
-    }
-
-    // 기존 아바타 파일 삭제 (있는 경우)
-    console.log('🗑️ 기존 아바타 파일 삭제 시도...')
-    const { error: deleteError } = await supabase.storage
-      .from('avatars')
-      .remove([fileName])
-
-    if (deleteError) {
-      console.log('ℹ️  기존 파일 없음 또는 삭제 실패 (무시됨):', deleteError.message)
-    } else {
-      console.log('✅ 기존 파일 삭제 완료')
-    }
-
-    // Supabase Storage에 업로드
-    console.log('☁️ Supabase Storage 업로드 시작...')
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: true  // 덮어쓰기 허용
-      })
-
-    console.log('📤 업로드 결과:', {
-      uploadData,
-      uploadError,
-      errorDetails: uploadError ? {
-        message: uploadError.message,
-        name: uploadError.name,
-        cause: uploadError.cause,
-        stack: uploadError.stack
-      } : null
-    })
-
-    if (uploadError) {
-      console.error('❌ 업로드 에러 상세:', {
-        message: uploadError.message,
-        error: uploadError,
-        stringified: JSON.stringify(uploadError, null, 2)
-      })
-      throw new Error(`업로드 실패: ${uploadError.message}`)
-    }
-
-    // 공개 URL 생성
-    console.log('🔗 공개 URL 생성 중...')
-    const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(fileName)
-
-    console.log('🌐 생성된 공개 URL:', publicUrl)
-
-    if (!publicUrl) {
-      throw new Error('공개 URL 생성에 실패했습니다.')
-    }
-
-    return publicUrl
   }
 
   const handleSave = async () => {

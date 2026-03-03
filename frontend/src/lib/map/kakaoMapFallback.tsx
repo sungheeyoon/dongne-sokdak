@@ -3,12 +3,10 @@
 import { useEffect, useState } from 'react'
 
 // 카카오맵 대신 사용할 수 있는 임시 지도 컴포넌트
-export default function KakaoMapFallback({ 
-  reports, 
+export default function KakaoMapFallback({
+  reports,
   height = '400px',
-  center,
   onLocationSelect,
-  onBoundsChange,
   showRegionSearchButton = true,
   onRegionSearch,
   isSearching = false
@@ -22,15 +20,15 @@ export default function KakaoMapFallback({
 
   const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onLocationSelect) return
-    
+
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    
+
     // 대략적인 좌표 계산 (서울 기준)
     const lat = 37.5665 + (rect.height / 2 - y) * 0.001
     const lng = 126.9780 + (x - rect.width / 2) * 0.001
-    
+
     onLocationSelect({ lat, lng, address: '임시 주소' })
   }
 
@@ -47,8 +45,8 @@ export default function KakaoMapFallback({
 
   return (
     <div className="relative" style={{ height }}>
-      <div 
-        style={{ height }} 
+      <div
+        style={{ height }}
         className="rounded-lg overflow-hidden border-2 border-gray-200 bg-green-50 flex items-center justify-center cursor-pointer"
         onClick={handleMapClick}
       >
@@ -63,7 +61,7 @@ export default function KakaoMapFallback({
           <p className="text-blue-600 text-sm">
             📍 클릭하여 위치를 선택할 수 있습니다
           </p>
-          
+
           {/* 마커 표시 */}
           <div className="mt-6 grid grid-cols-3 gap-4 text-xs">
             {reports.slice(0, 6).map((report: any, index: number) => (
@@ -82,11 +80,10 @@ export default function KakaoMapFallback({
           <button
             onClick={onRegionSearch}
             disabled={isSearching}
-            className={`px-3 md:px-4 py-2 rounded-lg font-medium shadow-lg transition-all flex items-center space-x-1 md:space-x-2 text-sm touch-manipulation ${
-              isSearching 
+            className={`px-3 md:px-4 py-2 rounded-lg font-medium shadow-lg transition-all flex items-center space-x-1 md:space-x-2 text-sm touch-manipulation ${isSearching
                 ? 'bg-gray-400 text-white cursor-not-allowed'
                 : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl active:scale-95'
-            }`}
+              }`}
           >
             {isSearching ? (
               <>

@@ -1,0 +1,15 @@
+feat: 제보 목록 서버 사이드 페이지네이션 전면 적용 및 지도 마커 로직 개선
+
+- Backend (API & Database)
+  - `get_reports`, `get_nearby_reports`, `get_reports_in_bounds` 등 모든 제보 조회 API에 `page` 및 `limit` 기반 페이지네이션 지원 추가
+  - 응답 스키마를 `PaginatedReportResponse` 구조(`items`, `totalCount`, `totalPages` 포함)로 일괄 변경
+  - 거리 및 바운드 기준 조회를 위한 Supabase RPC 함수 업데이트 및 카운트용 신규 RPC 추가 (마이그레이션 SQL 적용)
+
+- Frontend (UI & State)
+  - 메인 페이지 리스트 뷰 및 '내 제보' 페이지에 서버 사이드 페이지네이션 연동 완료
+  - 지도용 데이터(`useMapReportsViewModel`)와 리스트용 데이터(`useListReportsViewModel`) 뷰모델 분리 
+  - `MapComponent.tsx`의 기존 클라이언트 사이드 마커 속성 그룹화 로직을 제거하고 단일 제보 데이터 기준으로 구조 단순화 및 줌(`onZoomChange`) 제어 로직 추가
+
+- Chore & Fixes
+  - ESLint 설정(`eslint.config.mjs`)에서 circular structure 에러를 유발하던 `import` 플러그인 제거
+  - 불필요해진 `.gitmessage.txt` 파일 삭제

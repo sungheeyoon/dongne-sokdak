@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Map, MapMarker } from 'react-kakao-maps-sdk'
 import { MapPin, Navigation } from 'lucide-react'
 import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'

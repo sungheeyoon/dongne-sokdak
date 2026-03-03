@@ -6,14 +6,12 @@ import {
   UiDialogDescription,
   UiDialogHeader,
   UiDialogTitle,
-  UiDialogTrigger,
 } from "@/shared/ui"
 import {
   UiTabs,
   UiTabsContent,
   UiTabsList,
-  UiTabsTrigger,
-  UiButton
+  UiTabsTrigger
 } from "@/shared/ui"
 import { LoginForm } from "./LoginForm"
 import { SignupForm } from "./SignupForm"

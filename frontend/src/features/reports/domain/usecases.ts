@@ -1,10 +1,10 @@
-import { Report, ReportsFilter, Comment } from './entities'
+import { Report, ReportsFilter, Comment, PaginatedReports } from './entities'
 import { ReportRepository, CommentRepository, VoteRepository, ImageRepository } from './repositories'
 
 export class ReportUseCases {
     constructor(private repository: ReportRepository) { }
 
-    async getReports(filter?: ReportsFilter): Promise<Report[]> {
+    async getReports(filter?: ReportsFilter): Promise<PaginatedReports> {
         return this.repository.getReports(filter)
     }
 
@@ -15,8 +15,9 @@ export class ReportUseCases {
         west: number
         category?: any
         search?: string
+        page?: number
         limit?: number
-    }): Promise<Report[]> {
+    }): Promise<PaginatedReports> {
         return this.repository.getReportsInBounds(params)
     }
 
@@ -24,8 +25,8 @@ export class ReportUseCases {
         return this.repository.getReportById(id)
     }
 
-    async getMyNeighborhoodReports(radiusKm?: number, category?: string, limit?: number): Promise<Report[]> {
-        return this.repository.getMyNeighborhoodReports(radiusKm, category, limit)
+    async getMyNeighborhoodReports(radiusKm?: number, category?: string, page?: number, limit?: number): Promise<PaginatedReports> {
+        return this.repository.getMyNeighborhoodReports(radiusKm, category, page, limit)
     }
 }
 

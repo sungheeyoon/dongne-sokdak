@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Any, List, Optional, Dict
 from uuid import UUID
 from app.schemas.report import (
-    Report, ReportCreate, ReportUpdate, ReportCategory, ReportStatus
+    Report, ReportCreate, ReportUpdate, ReportCategory, ReportStatus, PaginatedReportResponse
 )
 from app.api.deps import get_current_active_user, get_supabase
 from app.utils.wkb_parser import convert_wkb_to_location
@@ -125,9 +125,9 @@ async def create_report(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error creating report: {str(e)}")
 
-@router.get("/", response_model=List[Report])
+@router.get("/", response_model=PaginatedReportResponse[Report])
 async def get_reports(
-    skip: int = 0,
+    page: int = Query(1, ge=1),
     limit: int = 100,
     category: Optional[ReportCategory] = None,
     status: Optional[ReportStatus] = None,
@@ -138,7 +138,7 @@ async def get_reports(
 ) -> Any:
     """List reports with filtering and search."""
     try:
-        query = supabase.table("reports").select("*").order("created_at", desc=True)
+        query = supabase.table("reports").select("*", count="exact").order("created_at", desc=True)
         
         if category:
             query = query.eq("category", category.value)
@@ -149,25 +149,35 @@ async def get_reports(
         if search:
             query = query.or_(f"title.ilike.%{search}%,description.ilike.%{search}%")
             
-        if limit:
-            query = query.limit(limit)
+        offset = (page - 1) * limit
+        query = query.range(offset, offset + limit - 1)
             
         response = query.execute()
         reports = response.data
+        total_count = response.count or 0
+        total_pages = math.ceil(total_count / limit) if limit > 0 else 1
         
         # Enrich data
-        result = [enrich_report_data(r, supabase, current_user_id) for r in reports]
-        return result
+        items = [enrich_report_data(r, supabase, current_user_id) for r in reports]
+        return {
+            "items": items,
+            "totalCount": total_count,
+            "totalPages": total_pages,
+            "page": page,
+            "limit": limit
+        }
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Query error: {str(e)}")
 
-@router.get("/nearby", response_model=List[Report])
+@router.get("/nearby", response_model=PaginatedReportResponse[Report])
 async def get_nearby_reports(
     lat: float,
     lng: float,
     radius_km: float = 3.0,
     category: Optional[ReportCategory] = None,
+    search: Optional[str] = None,
+    page: int = Query(1, ge=1),
     limit: int = 50,
     supabase: Client = Depends(get_supabase)
 ) -> Any:
@@ -175,11 +185,30 @@ async def get_nearby_reports(
     try:
         radius_meters = radius_km * 1000
         
+        # 1. Count Total
+        count_params = {
+            "target_lat": lat,
+            "target_lng": lng,
+            "radius_meters": radius_meters,
+            "category_filter": category.value if category else None,
+            "search_query": search
+        }
+        try:
+            count_res = supabase.rpc("count_reports_within_radius", count_params).execute()
+            total_count = count_res.data if count_res.data is not None else 0
+        except Exception as e:
+            # Fallback for old schema
+            total_count = 0
+
+        # 2. Fetch Page
+        offset = (page - 1) * limit
         rpc_params = {
             "target_lat": lat,
             "target_lng": lng,
             "radius_meters": radius_meters,
             "category_filter": category.value if category else None,
+            "search_query": search,
+            "result_offset": offset,
             "result_limit": limit
         }
         
@@ -205,43 +234,55 @@ async def get_nearby_reports(
         
         # Sort by computed distance in Python (O(limit log limit), which is < 1ms for 50 items)
         nearby_reports.sort(key=lambda x: x.get("distance", float('inf')))        
-        return nearby_reports
+        
+        total_pages = math.ceil(total_count / limit) if limit > 0 else 1
+        return {
+            "items": nearby_reports,
+            "totalCount": total_count,
+            "totalPages": total_pages,
+            "page": page,
+            "limit": limit
+        }
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error fetching nearby reports via RPC: {str(e)}")
 
-@router.get("/bounds", response_model=List[Report])
+@router.get("/bounds", response_model=PaginatedReportResponse[Report])
 async def get_reports_in_bounds(
     north: float, south: float, east: float, west: float,
     category: Optional[ReportCategory] = None,
     search: Optional[str] = None,
+    page: int = Query(1, ge=1),
     limit: int = 100,
     supabase: Client = Depends(get_supabase)
 ) -> Any:
     """Get reports within map bounds (using PostGIS RPC for optimal O(logN) performance)."""
     try:
-        rpc_params = {
-            "north": north,
-            "south": south,
-            "east": east,
-            "west": west,
+        # 1. Count Total
+        count_params = {
+            "north": north, "south": south, "east": east, "west": west,
             "category_filter": category.value if category else None,
-            "result_limit": limit if not search else 1000 # Fetch more if searching to filter locally
+            "search_query": search
+        }
+        try:
+            count_res = supabase.rpc("count_reports_in_bounds", count_params).execute()
+            total_count = count_res.data if count_res.data is not None else 0
+        except Exception as e:
+            total_count = 0
+            
+        # 2. Fetch Page
+        offset = (page - 1) * limit
+        rpc_params = {
+            "north": north, "south": south, "east": east, "west": west,
+            "category_filter": category.value if category else None,
+            "search_query": search,
+            "result_offset": offset,
+            "result_limit": limit
         }
         
         # FastAPI -> Supabase RPC -> PostGIS
         response = supabase.rpc("get_reports_in_bounds", rpc_params).execute()
         bounded_reports = response.data
-        
-        if search:
-            search_lower = search.lower()
-            filtered_reports = []
-            for r in bounded_reports:
-                title = r.get("title", "")
-                desc = r.get("description", "")
-                if (title and search_lower in title.lower()) or (desc and search_lower in desc.lower()):
-                    filtered_reports.append(r)
-            bounded_reports = filtered_reports[:limit]
         
         for report in bounded_reports:
             loc = parse_location(report.get("location"))
@@ -251,15 +292,24 @@ async def get_reports_in_bounds(
             report["comment_count"] = 0
             report["user_voted"] = False
                 
-        return bounded_reports
+        total_pages = math.ceil(total_count / limit) if limit > 0 else 1
+        return {
+            "items": bounded_reports,
+            "totalCount": total_count,
+            "totalPages": total_pages,
+            "page": page,
+            "limit": limit
+        }
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error fetching bounds reports via RPC: {str(e)}")
 
-@router.get("/my-neighborhood", response_model=List[Report])
+@router.get("/my-neighborhood", response_model=PaginatedReportResponse[Report])
 async def get_my_neighborhood_reports(
     radius_km: float = 3.0,
     category: Optional[ReportCategory] = None,
+    search: Optional[str] = None,
+    page: int = Query(1, ge=1),
     limit: int = 50,
     current_user_id: str = Depends(get_current_active_user),
     supabase: Client = Depends(get_supabase)
@@ -282,6 +332,8 @@ async def get_my_neighborhood_reports(
             lng=neighborhood["lng"], 
             radius_km=radius_km, 
             category=category, 
+            search=search,
+            page=page,
             limit=limit, 
             supabase=supabase
         )

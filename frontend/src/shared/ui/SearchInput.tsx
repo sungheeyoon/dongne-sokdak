@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { clsx } from 'clsx';
-import { Search, MapPin, X, FileText, Loader2 } from 'lucide-react';
+import { MapPin, X, FileText, Loader2 } from 'lucide-react';
 
 export interface SearchResult {
   id: string;
@@ -28,7 +28,7 @@ export interface SearchInputProps {
 }
 
 export const SearchInput = React.forwardRef<HTMLDivElement, SearchInputProps>(
-  ({ 
+  ({
     mode,
     placeholder,
     results = [],
@@ -39,7 +39,7 @@ export const SearchInput = React.forwardRef<HTMLDivElement, SearchInputProps>(
     onClear,
     onModeChange,
     className,
-    ...props 
+    ...props
   }, ref) => {
     const [query, setQuery] = useState('');
     const [currentMode, setCurrentMode] = useState<'location' | 'text'>(
@@ -111,7 +111,7 @@ export const SearchInput = React.forwardRef<HTMLDivElement, SearchInputProps>(
 
     const getPlaceholder = () => {
       if (placeholder) return placeholder;
-      return currentMode === 'location' 
+      return currentMode === 'location'
         ? "동네, 건물명, 지번을 검색하세요"
         : "제보 제목이나 내용으로 검색...";
     };
@@ -154,7 +154,7 @@ export const SearchInput = React.forwardRef<HTMLDivElement, SearchInputProps>(
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Icon className="h-5 w-5 text-[rgb(var(--primary-blue))]" />
           </div>
-          
+
           <input
             ref={inputRef}
             type="text"
@@ -176,7 +176,7 @@ export const SearchInput = React.forwardRef<HTMLDivElement, SearchInputProps>(
             )}
             placeholder={getPlaceholder()}
           />
-          
+
           <div className="absolute inset-y-0 right-0 flex items-center">
             {query && (
               <button
@@ -187,7 +187,7 @@ export const SearchInput = React.forwardRef<HTMLDivElement, SearchInputProps>(
                 <X className="h-4 w-4" />
               </button>
             )}
-            
+
             {currentMode === 'text' && (
               <button
                 type="submit"
@@ -202,7 +202,7 @@ export const SearchInput = React.forwardRef<HTMLDivElement, SearchInputProps>(
                 검색
               </button>
             )}
-            
+
             {currentMode === 'location' && isLoading && (
               <div className="pr-3">
                 <Loader2 className="h-5 w-5 text-[rgb(var(--primary-blue))] animate-spin" />
@@ -213,7 +213,7 @@ export const SearchInput = React.forwardRef<HTMLDivElement, SearchInputProps>(
 
         {/* Search Results */}
         {currentMode === 'location' && isResultsVisible && (
-          <div 
+          <div
             ref={resultsRef}
             className={clsx(
               'absolute top-full left-0 right-0 mt-1',

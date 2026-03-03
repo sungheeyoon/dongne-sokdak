@@ -4,6 +4,7 @@ import { useUIStore } from '@/shared/stores/useUIStore';
 export function useMapController() {
     const {
         mapCenter, setMapCenter,
+        mapZoom, setMapZoom,
         currentMapBounds, setCurrentMapBounds,
         searchedLocation, setSearchedLocation,
         userCurrentLocation, setUserCurrentLocation,
@@ -67,6 +68,7 @@ export function useMapController() {
 
     return {
         mapCenter, setMapCenter,
+        mapZoom, setMapZoom,
         currentMapBounds, setCurrentMapBounds,
         searchedLocation, setSearchedLocation,
         userCurrentLocation, setUserCurrentLocation,

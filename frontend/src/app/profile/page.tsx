@@ -12,8 +12,7 @@ import {
   UiCard as Card,
   UiCardContent as CardContent,
   UiCardHeader as CardHeader,
-  UiCardTitle as CardTitle,
-  UiBadge as Badge
+  UiCardTitle as CardTitle
 } from '@/shared/ui'
 
 export default function ProfilePage() {

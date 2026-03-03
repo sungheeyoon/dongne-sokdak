@@ -4,7 +4,7 @@ import React from 'react';
 import { MapPin, ThumbsUp, MessageCircle, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils';
-import { UiCard as Card, UiCardContent as CardContent, UiCardFooter as CardFooter, UiCardHeader as CardHeader, UiBadge as Badge } from '@/shared/ui';
+import { UiCard as Card, UiCardContent as CardContent, UiCardFooter as CardFooter, UiCardHeader as CardHeader } from '@/shared/ui';
 import { cn } from '@/lib/utils';
 
 export interface ReportCardProps {
@@ -32,18 +32,13 @@ const statusLabels = {
   OPEN: '접수됨', IN_PROGRESS: '처리중', RESOLVED: '해결됨'
 };
 
-const statusVariants = {
-  OPEN: 'destructive',
-  IN_PROGRESS: 'secondary',
-  RESOLVED: 'default' // Usually green/success, but using primary for now
-} as const;
 
 export const ReportCard = React.forwardRef<HTMLDivElement, ReportCardProps>(
-  ({ 
-    id, title, description, category, status, imageUrl, address, location,
-    voteCount = 0, commentCount = 0, createdAt, size = 'compact', onClick, className
+  ({
+    title, description, category, status, imageUrl, address,
+    voteCount = 0, commentCount = 0, createdAt, onClick, className
   }, ref) => {
-    
+
     const formatDate = (dateString: string) => {
       return new Date(dateString).toLocaleDateString('ko-KR', {
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -51,7 +46,7 @@ export const ReportCard = React.forwardRef<HTMLDivElement, ReportCardProps>(
     };
 
     return (
-      <Card 
+      <Card
         ref={ref}
         onClick={onClick}
         className={cn(
@@ -66,9 +61,9 @@ export const ReportCard = React.forwardRef<HTMLDivElement, ReportCardProps>(
             </h3>
             <div className={cn(
               "text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider",
-              status === 'OPEN' ? "bg-red-100 text-red-700" : 
-              status === 'IN_PROGRESS' ? "bg-amber-100 text-amber-700" : 
-              "bg-emerald-100 text-emerald-700"
+              status === 'OPEN' ? "bg-red-100 text-red-700" :
+                status === 'IN_PROGRESS' ? "bg-amber-100 text-amber-700" :
+                  "bg-emerald-100 text-emerald-700"
             )}>
               {statusLabels[status]}
             </div>
@@ -79,12 +74,12 @@ export const ReportCard = React.forwardRef<HTMLDivElement, ReportCardProps>(
           <p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
             {description}
           </p>
-          
+
           {imageUrl && (
             <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted mb-3">
               <Image
-                src={imageUrl} 
-                alt={title} 
+                src={imageUrl}
+                alt={title}
                 fill
                 className="object-cover transition-transform group-hover:scale-105"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

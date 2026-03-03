@@ -5,7 +5,7 @@ import { useProfileViewModel } from '@/features/profile/presentation/hooks/usePr
 import LocationSearch from '@/components/map/LocationSearch'
 import LocationResultList from '@/components/map/LocationResultList'
 import { PlaceSearchResult } from '@/features/map/domain/entities'
-import { MapPin, Home, Trash2, Search, Crosshair } from 'lucide-react'
+import { MapPin, Home, Trash2, Search } from 'lucide-react'
 import { NeighborhoodInfo } from '@/types'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 import {

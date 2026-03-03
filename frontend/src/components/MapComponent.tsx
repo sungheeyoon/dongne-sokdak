@@ -1,16 +1,16 @@
 'use client'
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react'
-import { Map, MapMarker, MapInfoWindow, MarkerClusterer, CustomOverlayMap } from 'react-kakao-maps-sdk'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+import { Map, MarkerClusterer, CustomOverlayMap } from 'react-kakao-maps-sdk'
 import { MapPin } from 'lucide-react'
-import { Report } from '@/types'
-import { formatToAdministrativeAddress, isSameAdministrativeArea } from '@/lib/utils/addressUtils'
+import { Report as ReportType } from '@/types'
+
 import { getMarkerColor } from '@/lib/utils/mapMarkerUtils'
 import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
 
-interface GroupedReport {
+export interface GroupedReport {
   id: string
-  reports: Report[]
+  reports: ReportType[]
   location: { lat: number; lng: number }
   address: string
   count: number
@@ -18,16 +18,15 @@ interface GroupedReport {
 }
 
 interface MapComponentProps {
-  reports: Report[]
+  reports: ReportType[]
   center?: { lat: number; lng: number }
   zoom?: number
   height?: string
   onLocationSelect?: (location: { lat: number; lng: number; address?: string }) => void
   onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void
-  onMarkerClick?: (group: GroupedReport) => void // 마커 클릭 이벤트 추가
+  onZoomChange?: (zoom: number) => void // 줌 변경 이벤트
+  onMarkerClick?: (report: ReportType) => void // 마커 클릭 이벤트 수정
   selectedMarkerId?: string // 선택된 마커 ID
-  onRegionSearch?: () => void // 지역 검색 이벤트
-  showRegionSearchButton?: boolean // 지역 검색 버튼 표시 여부
 }
 
 export default function MapComponent({
@@ -37,50 +36,23 @@ export default function MapComponent({
   height = '400px',
   onLocationSelect,
   onBoundsChange,
+  onZoomChange,
   onMarkerClick,
-  selectedMarkerId,
-  onRegionSearch,
-  showRegionSearchButton = false
+  selectedMarkerId
 }: MapComponentProps) {
   // center prop이 null인 경우 기본값 사용
   const safeCenter = center && center.lat && center.lng ? center : { lat: 37.5665, lng: 126.9780 }
   const [map, setMap] = useState<any>(null)
   const [kakaoLoaded, setKakaoLoaded] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
-  const [currentBounds, setCurrentBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null)
+  const [, setCurrentBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null)
   const [lastSetCenter, setLastSetCenter] = useState<{ lat: number, lng: number } | null>(null)
   const { reverseGeocode } = useLocationViewModel()
 
-  // 행정동 기준으로 제보들을 그룹핑
-  const groupedReports = useMemo(() => {
-    const groups: { [key: string]: GroupedReport } = {}
-
-    reports.forEach(report => {
-      // 행정동 기반 주소로 변환
-      const adminAddress = formatToAdministrativeAddress(report.address || '')
-
-      // 행정동 + 정밀한 좌표로 그룹핑 키 생성 (건물 단위)
-      const lat = report.location.lat.toFixed(5) // 소수점 5자리로 정밀 그룹핑 (~1m 단위)
-      const lng = report.location.lng.toFixed(5)
-      const groupKey = `${adminAddress}-${lat},${lng}` // 행정동 + 좌표 조합으로 정확한 그룹핑
-
-      if (groups[groupKey]) {
-        groups[groupKey].reports.push(report)
-        groups[groupKey].count++
-      } else {
-        groups[groupKey] = {
-          id: groupKey,
-          reports: [report],
-          location: report.location,
-          address: adminAddress,
-          count: 1,
-          primaryCategory: report.category
-        }
-      }
-    })
-
-    return Object.values(groups)
-  }, [reports])
+  // 개별 마커를 클러스터링하기 위한 데이터 준비 (이전 그룹핑 제거됨)
+  const validReports = useMemo(() => {
+    return reports.filter(r => r.location && typeof r.location.lat === 'number' && typeof r.location.lng === 'number');
+  }, [reports]);
 
   // 카카오맵 로딩 확인
   useEffect(() => {
@@ -255,37 +227,68 @@ export default function MapComponent({
     }
   }, [])
 
-  // 맵 bounds 변경 핸들러
+  // 맵 bounds 변경 핸들러 (디바운싱 적용 - 스크롤/드래그 시 렌더링 폭주 방지)
   const handleMapBoundsChange = useCallback(() => {
     if (!map) return
 
-    try {
-      const bounds = map.getBounds()
-      const swLatLng = bounds.getSouthWest()
-      const neLatLng = bounds.getNorthEast()
-
-      const newBounds = {
-        south: swLatLng.getLat(),
-        west: swLatLng.getLng(),
-        north: neLatLng.getLat(),
-        east: neLatLng.getLng()
-      }
-
-      // 개발 환경에서만 디버깅
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🗺️ MapComponent: bounds 변경됨')
-      }
-
-      setCurrentBounds(newBounds)
-
-      // 부모 컴포넌트에 bounds 변경 알림
-      if (onBoundsChange) {
-        onBoundsChange(newBounds)
-      }
-    } catch (error) {
-      console.error('맵 bounds 계산 오류:', error)
+    // 리렌더링 폭주를 막기 위해 requestAnimationFrame이나 timeout으로 약간 지연 처리 가능 (간단한 수동 debounce)
+    if ((handleMapBoundsChange as any).timeoutId) {
+      clearTimeout((handleMapBoundsChange as any).timeoutId)
     }
+
+    (handleMapBoundsChange as any).timeoutId = setTimeout(() => {
+      try {
+        const bounds = map.getBounds()
+        const swLatLng = bounds.getSouthWest()
+        const neLatLng = bounds.getNorthEast()
+
+        const newBounds = {
+          south: swLatLng.getLat(),
+          west: swLatLng.getLng(),
+          north: neLatLng.getLat(),
+          east: neLatLng.getLng()
+        }
+
+        // 개발 환경에서만 디버깅
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🗺️ MapComponent: bounds 변경됨 (debounced)')
+        }
+
+        setCurrentBounds(newBounds)
+
+        // 부모 컴포넌트에 bounds 변경 알림
+        if (onBoundsChange) {
+          onBoundsChange(newBounds)
+        }
+      } catch (error) {
+        console.error('맵 bounds 계산 오류:', error)
+      }
+    }, 200) // 200ms debounce
   }, [map, onBoundsChange])
+
+  // 줌 변경 핸들러
+  const handleZoomChange = useCallback(() => {
+    if (!map) return
+
+    if ((handleZoomChange as any).timeoutId) {
+      clearTimeout((handleZoomChange as any).timeoutId)
+    }
+
+    (handleZoomChange as any).timeoutId = setTimeout(() => {
+      try {
+        const currentZoomLevel = map.getLevel()
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 MapComponent: zoom 변경됨', currentZoomLevel)
+        }
+
+        if (onZoomChange) {
+          onZoomChange(currentZoomLevel)
+        }
+      } catch (error) {
+        console.error('줌 레벨 계산 오류:', error)
+      }
+    }, 200)
+  }, [map, onZoomChange])
 
   // center prop 변경 시 맵 이동 (검색 시에만)
   useEffect(() => {
@@ -367,20 +370,20 @@ export default function MapComponent({
   // 마커 관련 함수들은 공통 유틸리티로 이동됨
 
 
-  // 그룹 마커 클릭 핸들러
-  const handleGroupMarkerClick = (group: GroupedReport) => {
-    console.log('🎯 MapComponent: 마커 클릭됨', group)
+  // 단일 마커 클릭 핸들러
+  const handleMarkerClick = (report: ReportType) => {
+    console.log('🎯 MapComponent: 마커 클릭됨', report.id)
 
     // 마커를 클릭하면 해당 위치로 맵 중심 부드럽게 이동하고 적당히 줌인
     if (map) {
-      const moveLatLng = new window.kakao.maps.LatLng(group.location.lat, group.location.lng)
+      const moveLatLng = new window.kakao.maps.LatLng(report.location.lat, report.location.lng)
 
       // 부드러운 이동
       map.panTo(moveLatLng)
 
       // 적당한 줌 레벨로 설정 (너무 과도하지 않게)
       const currentLevel = map.getLevel()
-      const targetLevel = Math.max(2, 3) // 레벨 2-3 정도로 적당히 (30-50m 거리)
+      const targetLevel = Math.max(currentLevel, 3)
 
       if (currentLevel > targetLevel) {
         // 부드러운 줌인 (카카오맵 네이티브 기능 사용)
@@ -391,9 +394,9 @@ export default function MapComponent({
     }
 
     // 부모 컴포넌트에 마커 클릭 이벤트 전달
-    console.log('📤 MapComponent: onMarkerClick 호출', typeof onMarkerClick, group)
+    console.log('📤 MapComponent: onMarkerClick 호출', typeof onMarkerClick, report.id)
     if (onMarkerClick) {
-      onMarkerClick(group)
+      onMarkerClick(report)
     } else {
       console.warn('⚠️ MapComponent: onMarkerClick이 정의되지 않음')
     }
@@ -466,42 +469,82 @@ export default function MapComponent({
           level={zoom}
           onCreate={setMap}
           onClick={handleMapClick}
+          onBoundsChanged={handleMapBoundsChange}
+          onZoomChanged={handleZoomChange}
         >
-          {/* 그룹화된 마커들 - MapPin 아이콘 사용 */}
-          {groupedReports.map((group) => {
-            const isSelected = selectedMarkerId === group.id;
-            return (
-              <CustomOverlayMap
-                key={group.id}
-                position={{ lat: group.location.lat, lng: group.location.lng }}
-                yAnchor={1}
-                xAnchor={0.5}
-                zIndex={isSelected ? 50 : 1}
-              >
-                <div
-                  onClick={() => handleGroupMarkerClick(group)}
-                  className={`cursor-pointer transition-all duration-300 ${isSelected ? 'scale-125' : 'hover:scale-110'}`}
-                  style={{
-                    filter: isSelected ? 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))' : 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
-                    transformOrigin: 'bottom center'
-                  }}
-                >
+          {/* 그룹화된 마커들을 MarkerClusterer로 감싸서 줌 아웃 시 지도상에 뭉치는 현상(클러스터링) 해결 */}
+          <MarkerClusterer
+            averageCenter={true} // 클러스터에 포함된 마커들의 평균 위치를 클러스터 마커 위치로 설정
+            minLevel={5} // 클러스터링 할 최소 지도 레벨 지정 (줌레벨 4까지는 개별 표시, 5부터 묶음)
+            calculator={[10, 30, 50]} // 클러스터의 숫자 구분에 적용할 기준
+            styles={[
+              { // 10개 미만
+                width: '40px', height: '40px',
+                background: 'rgba(59, 130, 246, 0.8)',
+                borderRadius: '20px',
+                color: '#fff',
+                textAlign: 'center',
+                fontWeight: 'bold',
+                lineHeight: '40px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                border: '2px solid white'
+              },
+              { // 30개 미만
+                width: '50px', height: '50px',
+                background: 'rgba(59, 130, 246, 0.9)',
+                borderRadius: '25px',
+                color: '#fff',
+                textAlign: 'center',
+                fontWeight: 'bold',
+                lineHeight: '50px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                border: '2px solid white'
+              },
+              { // 50개 미만
+                width: '60px', height: '60px',
+                background: 'rgba(37, 99, 235, 1)',
+                borderRadius: '30px',
+                color: '#fff',
+                textAlign: 'center',
+                fontWeight: 'bold',
+                lineHeight: '60px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                border: '3px solid white'
+              },
+              { // 50개 이상
+                width: '70px', height: '70px',
+                background: 'rgba(29, 78, 216, 1)',
+                borderRadius: '35px',
+                color: '#fff',
+                textAlign: 'center',
+                fontWeight: 'bold',
+                lineHeight: '70px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                border: '3px solid white'
+              }
+            ]}
+          >
+            {/* 개별 마커들 (MarkerClusterer가 알아서 화면 기준 병합) */}
+            {validReports.map((report) => {
+              const isSelected = selectedMarkerId === report.id;
 
-                  {group.count > 1 ? (
-                    // 다중 제보 - 숫자가 있는 원형 마커
-                    <div
-                      className={`relative flex items-center justify-center rounded-full text-white font-bold transition-all duration-300 ${isSelected
-                        ? 'w-10 h-10 text-base border-4 border-blue-500 ring-4 ring-blue-500/30'
-                        : 'w-8 h-8 text-sm border-2 border-white'
-                        }`}
-                      style={{
-                        backgroundColor: getMarkerColor(group.primaryCategory),
-                      }}
-                    >
-                      {group.count}
-                    </div>
-                  ) : (
-                    // 단일 제보 - MapPin 아이콘 (fill + 가운데 흰 원)
+              return (
+                <CustomOverlayMap
+                  key={report.id}
+                  position={{ lat: report.location.lat, lng: report.location.lng }}
+                  yAnchor={1}
+                  xAnchor={0.5}
+                  zIndex={isSelected ? 50 : 1}
+                >
+                  <div
+                    onClick={() => handleMarkerClick(report)}
+                    className={`cursor-pointer transition-all duration-300 ${isSelected ? 'scale-125' : 'hover:scale-110'}`}
+                    style={{
+                      filter: isSelected ? 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))' : 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
+                      transformOrigin: 'bottom center'
+                    }}
+                  >
+                    {/* 단일 제보 */}
                     <div
                       className={`relative transition-all duration-300 ${isSelected
                         ? 'w-10 h-10 -translate-y-2'
@@ -511,17 +554,17 @@ export default function MapComponent({
                       <MapPin
                         className="w-full h-full"
                         style={{
-                          fill: getMarkerColor(group.primaryCategory),
+                          fill: getMarkerColor(report.category),
                           stroke: isSelected ? '#3b82f6' : 'white', // Tailwind colors.blue.500
                           strokeWidth: isSelected ? '2' : '1.5',
                         }}
                       />
                     </div>
-                  )}
-                </div>
-              </CustomOverlayMap>
-            );
-          })}
+                  </div>
+                </CustomOverlayMap>
+              );
+            })}
+          </MarkerClusterer>
         </Map>
       </div>
 

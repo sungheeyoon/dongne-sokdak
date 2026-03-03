@@ -1,16 +1,23 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Search, MapPin, X, FileText } from 'lucide-react'
+import { MapPin, X, FileText } from 'lucide-react'
 import { clsx } from 'clsx'
 
-import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
-import { PlaceSearchResult } from '@/features/map/domain/entities'
+export interface UnifiedSearchPlaceResult {
+  placeName: string
+  address: string
+  roadAddress?: string
+  location: { lat: number; lng: number }
+  categoryName?: string
+}
 
 export interface UnifiedSearchProps {
   searchMode: 'location' | 'text'
   onLocationSelect: (location: { lat: number; lng: number; address: string; placeName: string }) => void
   onTextSearch: (query: string) => void
+  searchPlaces?: (query: string, locationContext?: any) => Promise<UnifiedSearchPlaceResult[]>
+  isSearching?: boolean
   className?: string
   placeholder?: string
   disabled?: boolean
@@ -27,14 +34,15 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
   searchMode,
   onLocationSelect,
   onTextSearch,
+  searchPlaces: fetchPlaces,
+  isSearching: isLoading = false,
   className,
   placeholder,
   disabled = false,
   size = 'md'
 }) => {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<PlaceSearchResult[]>([])
-  const { searchPlaces: fetchPlaces, isSearching: isLoading } = useLocationViewModel()
+  const [results, setResults] = useState<UnifiedSearchPlaceResult[]>([])
   const [showResults, setShowResults] = useState(false)
   const [isPlaceSelected, setIsPlaceSelected] = useState(false)
   const [selectedPlaceName, setSelectedPlaceName] = useState('')
@@ -67,6 +75,10 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
     }
 
     try {
+      if (!fetchPlaces) {
+        console.warn('searchPlaces prop is not provided to UnifiedSearch')
+        return
+      }
       const data = await fetchPlaces(searchQuery)
 
       if (isPlaceSelected) {
@@ -115,7 +127,7 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
   }, [query, searchMode, isPlaceSelected])
 
   // 장소 선택 처리
-  const handlePlaceSelect = (place: PlaceSearchResult) => {
+  const handlePlaceSelect = (place: UnifiedSearchPlaceResult) => {
     // 행정동 변환
     const adminAddress = place.address
 

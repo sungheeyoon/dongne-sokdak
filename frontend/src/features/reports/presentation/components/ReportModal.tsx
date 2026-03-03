@@ -19,7 +19,6 @@ import {
   UiDialogDescription as DialogDescription,
   UiButton as Button,
   UiInput as Input,
-  UiCard as Card,
   UiLabel as Label
 } from '@/shared/ui'
 import { cn } from '@/lib/utils'

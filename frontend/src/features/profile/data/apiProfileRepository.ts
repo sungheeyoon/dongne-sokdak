@@ -74,7 +74,7 @@ export const apiProfileRepository: ProfileRepository = {
         await supabase.storage.from('avatars').remove([fileName])
 
         // Supabase Storage에 업로드
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
             .from('avatars')
             .upload(fileName, avatarFile, {
                 cacheControl: '3600',

@@ -12,9 +12,6 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    plugins: {
-      import: (await import("eslint-plugin-import")).default,
-    },
     rules: {
       // 프로덕션 배포를 위한 임시 규칙 완화
       "@typescript-eslint/no-explicit-any": "warn",

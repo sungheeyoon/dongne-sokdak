@@ -62,25 +62,23 @@ export function useAdmin() {
   const [error, setError] = useState<string | null>(null);
 
   // React Query로 관리자 정보 캐싱 (전역 캐시)
-  const { 
-    data: adminInfo, 
-    isLoading: isAdminLoading,
-    error: adminError 
+  const {
+    data: adminInfo
   } = useQuery<AdminInfo | null>({
     queryKey: ['adminInfo', user?.id],
     queryFn: async (): Promise<AdminInfo | null> => {
       if (!user) return null;
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 Admin Info Query 실행');
       }
-      
+
       const response = await authenticatedRequest(createApiUrl('/admin/my-info')) as AdminInfo;
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.log('✅ Admin Info Query 성공:', response.role);
       }
-      
+
       return response;
     },
     enabled: !!user, // 사용자가 있을 때만 실행
@@ -135,7 +133,7 @@ export function useAdmin() {
       setLoading(true);
       setError(null);
       const queryParams = new URLSearchParams();
-      
+
       if (params?.skip) queryParams.append('skip', params.skip.toString());
       if (params?.limit) queryParams.append('limit', params.limit.toString());
       if (params?.role) queryParams.append('role', params.role);
@@ -220,7 +218,7 @@ export function useAdmin() {
       setLoading(true);
       setError(null);
       const queryParams = new URLSearchParams();
-      
+
       if (params?.skip) queryParams.append('skip', params.skip.toString());
       if (params?.limit) queryParams.append('limit', params.limit.toString());
       if (params?.action) queryParams.append('action', params.action);
@@ -231,7 +229,7 @@ export function useAdmin() {
         apiRequest(`/admin/activity-logs?${queryParams.toString()}`),
         users.length === 0 ? apiRequest('/admin/users?limit=100') : Promise.resolve(users)
       ]);
-      
+
       setActivities(activities as AdminActivity[]);
       if (users.length === 0) {
         setUsers(usersList as UserManagement[]);

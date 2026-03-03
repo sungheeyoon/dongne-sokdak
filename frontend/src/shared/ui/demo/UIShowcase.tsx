@@ -2,24 +2,19 @@
 
 import React, { useState } from 'react'
 import {
-  UiButton as Button, UiInput as Input, UiAlert as Alert, UiBadge as Badge, UiForm as Form,
+  UiButton as Button, UiInput as Input, UiAlert as Alert, UiBadge as Badge,
   BaseModal, ReportDetailModal,
-  UnifiedSearch, RegionSearchButton, CurrentRegionButton, RefreshSearchButton,
-  demoReports, demoGroupedReports, demoUsers
+  UnifiedSearch, CurrentRegionButton, RefreshSearchButton,
+  demoReports
 } from '../index'
-import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
-import ReportModal from '@/features/reports/presentation/components/ReportModal'
-import EditReportModal from '@/features/reports/presentation/components/EditReportModal'
 import { ReportCard as UIReportCard } from '../ReportCard'
-import { Mail, Lock, User, Search, Home, Settings, Bell, MapPin } from 'lucide-react'
+import { Mail, Home, Settings, Bell } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export const UIShowcase: React.FC = () => {
   const router = useRouter()
-  const [showAuthModal, setShowAuthModal] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
   const [showBaseModal, setShowBaseModal] = useState(false)
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
   const [inputValue, setInputValue] = useState('')
   const [inputError, setInputError] = useState('')
 
@@ -268,7 +263,7 @@ export const UIShowcase: React.FC = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowAuthModal(true)}
+                    onClick={() => { }}
                   >
                     미리보기
                   </Button>

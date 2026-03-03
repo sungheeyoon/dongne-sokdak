@@ -1,20 +1,23 @@
 'use client'
 
-import { UnifiedSearch as UIUnifiedSearch } from '@/shared/ui'
-import { getDisplayNeighborhoodName } from '@/lib/utils/neighborhoodUtils'
+import { UnifiedSearch as UIUnifiedSearch, UnifiedSearchPlaceResult } from '@/shared/ui/UnifiedSearch'
 import { convertPlaceToAdministrativeAddress } from '@/lib/utils/addressUtils'
 
 interface UnifiedSearchProps {
   searchMode: 'location' | 'text'
   onLocationSelect: (location: { lat: number; lng: number; address: string; placeName: string }) => void
   onTextSearch: (query: string) => void
+  searchPlaces?: (query: string, locationContext?: any) => Promise<UnifiedSearchPlaceResult[]>
+  isSearching?: boolean
   className?: string
 }
 
-export default function UnifiedSearch({ 
+export default function UnifiedSearch({
   searchMode,
-  onLocationSelect, 
+  onLocationSelect,
   onTextSearch,
+  searchPlaces,
+  isSearching,
   className
 }: UnifiedSearchProps) {
   // 위치 선택 핸들러에서 주소 변환 적용
@@ -29,9 +32,9 @@ export default function UnifiedSearch({
       category_name: '',
       place_url: ''
     }
-    
+
     const adminAddress = convertPlaceToAdministrativeAddress(place)
-    
+
     onLocationSelect({
       ...location,
       address: adminAddress
@@ -43,6 +46,8 @@ export default function UnifiedSearch({
       searchMode={searchMode}
       onLocationSelect={handleLocationSelect}
       onTextSearch={onTextSearch}
+      searchPlaces={searchPlaces}
+      isSearching={isSearching}
       className={className}
     />
   )

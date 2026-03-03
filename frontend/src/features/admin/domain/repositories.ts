@@ -1,4 +1,4 @@
-import { AdminStats, UserManagement, AdminActivity, AdminInfo, AdminRole } from './entities';
+import { AdminStats, UserManagement, AdminActivity, AdminInfo } from './entities';
 
 export interface AdminRepository {
     getMyAdminInfo(): Promise<AdminInfo>;

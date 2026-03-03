@@ -1,7 +1,7 @@
-import { Report, ReportsFilter, Comment, ReportCategory } from './entities'
+import { Report, ReportsFilter, Comment, ReportCategory, PaginatedReports } from './entities'
 
 export interface ReportRepository {
-    getReports(filter?: ReportsFilter): Promise<Report[]>
+    getReports(filter?: ReportsFilter): Promise<PaginatedReports>
     getReportsInBounds(params: {
         north: number
         south: number
@@ -9,10 +9,11 @@ export interface ReportRepository {
         west: number
         category?: ReportCategory
         search?: string
+        page?: number
         limit?: number
-    }): Promise<Report[]>
+    }): Promise<PaginatedReports>
     getReportById(id: string): Promise<Report | null>
-    getMyNeighborhoodReports(radiusKm?: number, category?: string, limit?: number): Promise<Report[]>
+    getMyNeighborhoodReports(radiusKm?: number, category?: string, page?: number, limit?: number): Promise<PaginatedReports>
     createReport(data: any): Promise<Report>
     updateReport(id: string, data: any): Promise<Report>
     deleteReport(id: string): Promise<void>

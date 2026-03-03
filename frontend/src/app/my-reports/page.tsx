@@ -1,17 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import { getReports } from '@/lib/api/reports'
 import { Report, ReportStatus } from '@/types'
 import Header from '@/components/Header'
-import { UiTabs as Tabs, UiTabsContent as TabsContent, UiTabsList as TabsList, UiTabsTrigger as TabsTrigger } from "@/shared/ui"
 import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
-import ReportDetailModal from "@/shared/ui/ReportDetailModal"
 import ReportModal from '@/features/reports/presentation/components/ReportModal'
 import EditReportModal from '@/features/reports/presentation/components/EditReportModal'
-import ReportCard from '@/features/reports/presentation/components/ReportCard'
 import ReportList from '@/features/reports/presentation/components/ReportList'
 
 const statusOptions = [
@@ -26,20 +23,32 @@ export default function MyReportsPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [editingReport, setEditingReport] = useState<Report | null>(null)
 
+  const [paginationPage, setPaginationPage] = useState<number>(1)
+
+  // 상태 변경 시 페이징 리셋
+  useEffect(() => {
+    setPaginationPage(1)
+  }, [selectedStatus])
+
   const {
-    data: reports = [],
+    data,
     isLoading,
     error
   } = useQuery({
-    queryKey: ['my-reports', user?.id, selectedStatus],
+    queryKey: ['my-reports', user?.id, selectedStatus, paginationPage],
     queryFn: () => getReports({
       userId: user?.id,
       status: selectedStatus === 'all' ? undefined : selectedStatus as ReportStatus,
-      limit: 100
+      page: paginationPage,
+      limit: 9
     }),
     enabled: !!user?.id,
     refetchInterval: 30000,
   })
+
+  const reports = data?.items || []
+  const totalCount = data?.totalCount || 0
+  const totalPages = data?.totalPages || 1
 
   if (!user) {
     return (
@@ -122,7 +131,7 @@ export default function MyReportsPage() {
             </div>
           </div>
           <div className="text-sm text-gray-600">
-            총 {reports.length}개 제보
+            총 {totalCount}개 제보
           </div>
         </div>
 
@@ -130,6 +139,9 @@ export default function MyReportsPage() {
         <ReportList
           reports={reports}
           isLoading={isLoading}
+          currentPage={paginationPage}
+          totalPages={totalPages}
+          onPageChange={setPaginationPage}
           emptyMessage={
             <div className="text-center py-12">
               <div className="text-6xl mb-4">✨</div>

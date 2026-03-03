@@ -1,4 +1,4 @@
-import { AuthUser, AuthSession } from './entities';
+import { AuthSession } from './entities';
 
 export interface SignInCredentials {
     email: string;

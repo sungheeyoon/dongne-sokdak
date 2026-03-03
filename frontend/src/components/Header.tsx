@@ -6,7 +6,7 @@ import { useAdminViewModel } from '@/features/admin/presentation/hooks/useAdminV
 import { useRouter } from 'next/navigation'
 import Avatar from './Avatar'
 import MyNeighborhoodModal from './MyNeighborhoodModal'
-import { Home, Settings, User, LogOut, ChevronDown, Pencil, Bell, Menu, X } from 'lucide-react'
+import { Home, Settings, User, LogOut, ChevronDown, Pencil, Menu, X } from 'lucide-react'
 import Image from 'next/image'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 import { UiButton } from '@/shared/ui'
@@ -16,7 +16,7 @@ export default function Header() {
   const { openAuthModal, openReportModal } = useUIStore()
   const { user, signOut } = useAuthViewModel()
   const { profile } = useProfileViewModel()
-  const { isAdmin, adminInfo } = useAdminViewModel()
+  const { isAdmin } = useAdminViewModel()
   const router = useRouter()
   const [isNeighborhoodModalOpen, setIsNeighborhoodModalOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)

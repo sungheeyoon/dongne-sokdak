@@ -1,9 +1,9 @@
 'use client'
 
 import React from 'react'
-import { MapPin, Calendar, User, MessageCircle, ThumbsUp, Tag } from 'lucide-react'
+import { MapPin, MessageCircle, ThumbsUp, Tag } from 'lucide-react'
 import { BaseModal } from './UiBaseModal'
-import { Button } from './UiButton'
+
 import { Badge } from './UiBadge'
 import { Report } from '@/types'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
@@ -153,7 +153,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
 
         {/* 제보 목록 */}
         <div className="space-y-4 max-h-96 overflow-y-auto">
-          {reports.map((report, index) => (
+          {reports.map((report) => (
             <SingleReport
               key={report.id}
               report={report}

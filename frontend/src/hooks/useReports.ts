@@ -5,11 +5,10 @@ import {
   getReport,
   createReport,
   deleteReport,
-  CreateReportData,
-  ReportsFilter
+  CreateReportData
 } from '../lib/api/reports'
 import { Report, ReportCategory } from '@/types'
-import { addVote, removeVote, checkUserVote, getVoteCount } from '../lib/api/votes'
+import { addVote, removeVote } from '../lib/api/votes'
 
 interface UseReportsParams {
   mode: 'all' | 'bounds'
@@ -40,7 +39,7 @@ export function useReports({
       const parsedCategory = category === 'all' ? undefined : category as ReportCategory;
 
       if (mode === 'bounds' && bounds) {
-        return getReportsInBounds({
+        const res = await getReportsInBounds({
           north: bounds.north,
           south: bounds.south,
           east: bounds.east,
@@ -49,13 +48,15 @@ export function useReports({
           search: searchQuery || undefined,
           limit: 200
         })
+        return res.items
       }
 
-      return getReports({
+      const res = await getReports({
         category: parsedCategory,
         search: searchQuery || undefined,
         limit: 100
       })
+      return res.items
     },
     refetchInterval: false,
     refetchOnWindowFocus: false,

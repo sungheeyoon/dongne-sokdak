@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { checkKakaoMapStatus, analyzeKakaoMapError, isKakaoMapScriptLoaded, forceReloadKakaoMap } from '@/lib/map/kakaoMapUtils'
+import { checkKakaoMapStatus, analyzeKakaoMapError, forceReloadKakaoMap } from '@/lib/map/kakaoMapUtils'
 
 export default function MapDebugPanel() {
   const [debugInfo, setDebugInfo] = useState<any>(null)
@@ -11,16 +11,16 @@ export default function MapDebugPanel() {
     const updateDebugInfo = () => {
       const info = checkKakaoMapStatus()
       const problems = analyzeKakaoMapError()
-      
+
       setDebugInfo(info)
       setIssues(problems)
     }
 
     updateDebugInfo()
-    
+
     // 1초마다 상태 업데이트
     const interval = setInterval(updateDebugInfo, 1000)
-    
+
     return () => clearInterval(interval)
   }, [])
 
@@ -33,14 +33,14 @@ export default function MapDebugPanel() {
     <div className="fixed top-4 right-4 bg-black bg-opacity-90 text-white p-4 rounded-lg text-sm z-50 max-w-sm">
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-bold">🔧 카카오맵 디버그</h3>
-        <button 
+        <button
           onClick={forceReloadKakaoMap}
           className="text-xs bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded"
         >
           새로고침
         </button>
       </div>
-      
+
       {debugInfo && (
         <div className="space-y-1 mb-3">
           <div>Window: {debugInfo.windowExists ? '✅' : '❌'}</div>
@@ -56,7 +56,7 @@ export default function MapDebugPanel() {
           )}
         </div>
       )}
-      
+
       {issues.length > 0 && (
         <div className="mb-3">
           <h4 className="font-semibold text-red-300 mb-1">❌ 문제점:</h4>
@@ -67,11 +67,11 @@ export default function MapDebugPanel() {
           </ul>
         </div>
       )}
-      
+
       {issues.length === 0 && debugInfo?.latLngExists && (
         <div className="text-green-300 font-semibold">✅ 모든 설정 완료!</div>
       )}
-      
+
       {issues.length > 0 && (
         <div className="mt-2 pt-2 border-t border-gray-600">
           <div className="text-xs text-gray-300">

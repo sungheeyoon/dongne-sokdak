@@ -1,15 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useReportManagement, ReportManagement, ReportFilters } from '@/hooks/useReportManagement'
+import { useReportManagement, ReportFilters } from '@/hooks/useReportManagement'
 import ReportDetailModal from './ReportDetailModal'
-import { 
-  FileText, Search, Filter, Eye, Trash2, CheckCircle, 
+import {
+  FileText, Search, Filter, Eye, Trash2, CheckCircle,
   Clock, AlertTriangle, Camera, ThumbsUp, MessageCircle,
-  RefreshCw, X, Users, Mail 
+  X, Users, Mail
 } from 'lucide-react'
 
-import { getStatusColor, getCategoryLabel, getStatusLabel } from '@/lib/constants/status';
+import { getStatusColor, getCategoryLabel } from '@/lib/constants/status';
 
 export default function ReportManagementComponent() {
   const {
@@ -27,7 +27,7 @@ export default function ReportManagementComponent() {
     limit: 20
   })
   const [selectedReports, setSelectedReports] = useState<string[]>([])
-  const [showBulkActions, setShowBulkActions] = useState(false)
+  const [, setShowBulkActions] = useState(false)
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
 

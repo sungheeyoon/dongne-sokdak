@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel';
 import { createApiUrl } from '../lib/api/config';
 
@@ -88,7 +88,7 @@ export function useReportManagement() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const queryParams = new URLSearchParams();
       if (filters?.skip) queryParams.append('skip', filters.skip.toString());
       if (filters?.limit) queryParams.append('limit', filters.limit.toString());
@@ -111,7 +111,7 @@ export function useReportManagement() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const report = await apiRequest(`/admin/reports/${reportId}`);
       setSelectedReport(report as ReportDetail);
       return report as ReportDetail;
@@ -125,15 +125,15 @@ export function useReportManagement() {
 
   // 제보 상태 변경
   const updateReportStatus = async (
-    reportId: string, 
-    status: string, 
-    adminComment?: string, 
+    reportId: string,
+    status: string,
+    adminComment?: string,
     assignedAdminId?: string
   ) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       await apiRequest(`/admin/reports/${reportId}/status`, {
         method: 'PUT',
         body: JSON.stringify({
@@ -142,7 +142,7 @@ export function useReportManagement() {
           assigned_admin_id: assignedAdminId
         }),
       });
-      
+
       // 목록 새로고침
       await fetchReports();
     } catch (err) {
@@ -167,7 +167,7 @@ export function useReportManagement() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const result = await apiRequest(`/admin/reports/${reportId}/action`, {
         method: 'POST',
         body: JSON.stringify({
@@ -178,7 +178,7 @@ export function useReportManagement() {
           assigned_admin_id: options?.assignedAdminId
         }),
       });
-      
+
       // 목록 새로고침
       await fetchReports();
       return result;
@@ -204,7 +204,7 @@ export function useReportManagement() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const result = await apiRequest('/admin/reports/bulk-action', {
         method: 'POST',
         body: JSON.stringify({
@@ -216,7 +216,7 @@ export function useReportManagement() {
           assigned_admin_id: options?.assignedAdminId
         }),
       });
-      
+
       // 목록 새로고침
       await fetchReports();
       return result;
@@ -233,7 +233,7 @@ export function useReportManagement() {
     try {
       setLoading(true);
       setError(null);
-      
+
       await performReportAction(reportId, 'delete', { reason });
     } catch (err) {
       setError(err instanceof Error ? err.message : '제보 삭제 실패');
@@ -248,7 +248,7 @@ export function useReportManagement() {
     try {
       setLoading(true);
       setError(null);
-      
+
       await performReportAction(reportId, 'assign', {
         assignedAdminId: adminId,
         adminComment: comment

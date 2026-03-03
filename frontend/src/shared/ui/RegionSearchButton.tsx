@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { clsx } from 'clsx'
-import { RotateCcw, MapPin, Loader2 } from 'lucide-react'
+import { RotateCcw, Loader2 } from 'lucide-react'
 
 export interface RegionSearchButtonProps {
   onClick: () => void

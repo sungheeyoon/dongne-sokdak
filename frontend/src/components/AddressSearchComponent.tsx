@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Search, MapPin, X } from 'lucide-react'
 
 interface AddressResult {
@@ -24,8 +24,8 @@ interface AddressSearchProps {
   className?: string
 }
 
-export default function AddressSearchComponent({ 
-  onAddressSelect, 
+export default function AddressSearchComponent({
+  onAddressSelect,
   placeholder = "주소나 장소명을 검색하세요",
   className = ""
 }: AddressSearchProps) {
@@ -75,7 +75,7 @@ export default function AddressSearchComponent({
     // Places 서비스로 키워드 검색
     ps.current.keywordSearch(searchQuery, (data: AddressResult[], status: any) => {
       setIsLoading(false)
-      
+
       if (status === window.kakao.maps.services.Status.OK) {
         setResults(data.slice(0, 8)) // 최대 8개 결과만 표시
         setIsOpen(true)
@@ -108,7 +108,7 @@ export default function AddressSearchComponent({
   const handleAddressSelect = (result: AddressResult) => {
     // 정확한 장소명 우선 사용, 카테고리 정보가 있으면 포함
     let displayTitle = result.place_name
-    
+
     // 지하철역이나 특정 카테고리인 경우 더 상세한 정보 포함
     if (result.category_group_name) {
       displayTitle = `${result.place_name} ${result.category_group_name}`
@@ -126,10 +126,10 @@ export default function AddressSearchComponent({
     setResults([]) // 검색 결과 완전 초기화
     setIsOpen(false) // 드롭다운 닫기
     inputRef.current?.blur() // 포커스 해제
-    
+
     // 콜백 호출
     onAddressSelect(selectedAddress)
-    
+
     console.log('✅ 주소 선택 완료 및 검색 결과 정리됨')
   }
 
