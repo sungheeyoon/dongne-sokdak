@@ -33,7 +33,7 @@
 ## 🛠️ 기술 스택
 
 ### **프론트엔드**
-- **Framework**: Next.js 15 (App Router) + TypeScript
+- **Framework**: Next.js 16 (App Router) + TypeScript
 - **Styling**: TailwindCSS + 반응형 디자인
 - **State Management**: Zustand (UI 상태), TanStack Query (서버 상태)
 - **Maps**: Kakao Map API (위치 기반 서비스)

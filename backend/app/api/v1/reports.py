@@ -8,8 +8,13 @@ from app.api.deps import get_current_active_user, get_supabase
 from app.utils.wkb_parser import convert_wkb_to_location
 from supabase.client import Client
 import math
+from cachetools import TTLCache
 
 router = APIRouter()
+
+# 15초 동안 최대 1000개의 쿼리 결과를 기억하는 핫스팟 캐시 
+nearby_cache = TTLCache(maxsize=1000, ttl=15)
+bounds_cache = TTLCache(maxsize=1000, ttl=15)
 
 # --- Helper Functions ---
 
@@ -171,7 +176,7 @@ async def get_reports(
         raise HTTPException(status_code=400, detail=f"Query error: {str(e)}")
 
 @router.get("/nearby", response_model=PaginatedReportResponse[Report])
-async def get_nearby_reports(
+def get_nearby_reports(
     lat: float,
     lng: float,
     radius_km: float = 3.0,
@@ -179,10 +184,15 @@ async def get_nearby_reports(
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
     limit: int = 50,
+    current_user_id: Optional[str] = None,
     supabase: Client = Depends(get_supabase)
 ) -> Any:
     """Get reports near a specific location (using PostGIS RPC for optimal O(logN) performance)."""
     try:
+        cache_key = f"{lat}_{lng}_{radius_km}_{category.value if category else ''}_{search}_{page}_{limit}_{current_user_id}"
+        if cache_key in nearby_cache:
+            return nearby_cache[cache_key]
+            
         radius_meters = radius_km * 1000
         
         # 1. Count Total
@@ -197,7 +207,6 @@ async def get_nearby_reports(
             count_res = supabase.rpc("count_reports_within_radius", count_params).execute()
             total_count = count_res.data if count_res.data is not None else 0
         except Exception as e:
-            # Fallback for old schema
             total_count = 0
 
         # 2. Fetch Page
@@ -209,34 +218,21 @@ async def get_nearby_reports(
             "category_filter": category.value if category else None,
             "search_query": search,
             "result_offset": offset,
-            "result_limit": limit
+            "result_limit": limit,
+            "current_user_id": current_user_id
         }
         
-        # FastAPI -> Supabase RPC -> PostGIS
         response = supabase.rpc("get_reports_within_radius", rpc_params).execute()
         nearby_reports = response.data
         
-        # Enrich and format location for client
+        # Location parsing for client and distance_km formatting
         for report in nearby_reports:
-            parsed_loc = parse_location(report.get("location"))
-            report["location"] = parsed_loc
-            
-            # Since Haversine iteration on all records is gone, we just calculate
-            # distance for the final returned subset (O(limit) instead of O(N))
-            dist = calculate_distance(lat, lng, parsed_loc["lat"], parsed_loc["lng"])
-            report["distance"] = dist
-            report["distance_km"] = round(dist / 1000, 2)
-            
-            # Initialize counts to 0 for list view performance
-            report["vote_count"] = 0
-            report["comment_count"] = 0
-            report["user_voted"] = False
-        
-        # Sort by computed distance in Python (O(limit log limit), which is < 1ms for 50 items)
-        nearby_reports.sort(key=lambda x: x.get("distance", float('inf')))        
+            report["location"] = parse_location(report.get("location"))
+            report["distance_km"] = round(report.get("distance_meters", 0) / 1000, 2)
+            # vote_count, comment_count, user_voted are now populated natively by the database!
         
         total_pages = math.ceil(total_count / limit) if limit > 0 else 1
-        return {
+        result = {
             "items": nearby_reports,
             "totalCount": total_count,
             "totalPages": total_pages,
@@ -244,20 +240,28 @@ async def get_nearby_reports(
             "limit": limit
         }
         
+        nearby_cache[cache_key] = result
+        return result
+        
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error fetching nearby reports via RPC: {str(e)}")
 
 @router.get("/bounds", response_model=PaginatedReportResponse[Report])
-async def get_reports_in_bounds(
+def get_reports_in_bounds(
     north: float, south: float, east: float, west: float,
     category: Optional[ReportCategory] = None,
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
     limit: int = 100,
+    current_user_id: Optional[str] = None,
     supabase: Client = Depends(get_supabase)
 ) -> Any:
     """Get reports within map bounds (using PostGIS RPC for optimal O(logN) performance)."""
     try:
+        cache_key = f"{north}_{south}_{east}_{west}_{category.value if category else ''}_{search}_{page}_{limit}_{current_user_id}"
+        if cache_key in bounds_cache:
+            return bounds_cache[cache_key]
+            
         # 1. Count Total
         count_params = {
             "north": north, "south": south, "east": east, "west": west,
@@ -277,23 +281,18 @@ async def get_reports_in_bounds(
             "category_filter": category.value if category else None,
             "search_query": search,
             "result_offset": offset,
-            "result_limit": limit
+            "result_limit": limit,
+            "current_user_id": current_user_id
         }
         
-        # FastAPI -> Supabase RPC -> PostGIS
         response = supabase.rpc("get_reports_in_bounds", rpc_params).execute()
         bounded_reports = response.data
         
         for report in bounded_reports:
-            loc = parse_location(report.get("location"))
-            report["location"] = loc
-            
-            report["vote_count"] = 0
-            report["comment_count"] = 0
-            report["user_voted"] = False
+            report["location"] = parse_location(report.get("location"))
                 
         total_pages = math.ceil(total_count / limit) if limit > 0 else 1
-        return {
+        result = {
             "items": bounded_reports,
             "totalCount": total_count,
             "totalPages": total_pages,
@@ -301,11 +300,14 @@ async def get_reports_in_bounds(
             "limit": limit
         }
         
+        bounds_cache[cache_key] = result
+        return result
+        
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error fetching bounds reports via RPC: {str(e)}")
 
 @router.get("/my-neighborhood", response_model=PaginatedReportResponse[Report])
-async def get_my_neighborhood_reports(
+def get_my_neighborhood_reports(
     radius_km: float = 3.0,
     category: Optional[ReportCategory] = None,
     search: Optional[str] = None,
@@ -327,7 +329,7 @@ async def get_my_neighborhood_reports(
                 detail="Neighborhood not set. Please set your neighborhood first."
             )
             
-        return await get_nearby_reports(
+        return get_nearby_reports(
             lat=neighborhood["lat"], 
             lng=neighborhood["lng"], 
             radius_km=radius_km, 
@@ -335,6 +337,7 @@ async def get_my_neighborhood_reports(
             search=search,
             page=page,
             limit=limit, 
+            current_user_id=current_user_id,
             supabase=supabase
         )
         
@@ -427,7 +430,7 @@ async def delete_report(
 # --- Benchmark Endpoints ---
 
 @router.get("/benchmark/nearby-rest", response_model=List[Report])
-async def get_benchmark_nearby_rest(
+def get_benchmark_nearby_rest(
     lat: float,
     lng: float,
     radius_km: float = 3.0,

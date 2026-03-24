@@ -1,12 +1,60 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { Map, MarkerClusterer, CustomOverlayMap } from 'react-kakao-maps-sdk'
-import { MapPin } from 'lucide-react'
+import { useEffect, useState, useMemo, useCallback, useRef, useTransition } from 'react'
+import { Map, MarkerClusterer } from 'react-kakao-maps-sdk'
 import { Report as ReportType } from '@/types'
 
-import { getMarkerColor } from '@/lib/utils/mapMarkerUtils'
+import MemoizedMapMarker from './MemoizedMapMarker'
 import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
+
+// 클러스터링 계산 및 스타일 기준을 전역 변수로 분리 (렌더링 시 재생성 방지 -> Clusterer 붕괴(Memory Leak) 차단)
+const CLUSTER_CALCULATOR = [10, 30, 50]
+const CLUSTER_STYLES = [
+  { // 10개 미만
+    width: '40px', height: '40px',
+    background: 'rgba(59, 130, 246, 0.8)',
+    borderRadius: '20px',
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    lineHeight: '40px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+    border: '2px solid white'
+  },
+  { // 30개 미만
+    width: '50px', height: '50px',
+    background: 'rgba(59, 130, 246, 0.9)',
+    borderRadius: '25px',
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    lineHeight: '50px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+    border: '2px solid white'
+  },
+  { // 50개 미만
+    width: '60px', height: '60px',
+    background: 'rgba(37, 99, 235, 1)',
+    borderRadius: '30px',
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    lineHeight: '60px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+    border: '3px solid white'
+  },
+  { // 50개 이상
+    width: '70px', height: '70px',
+    background: 'rgba(29, 78, 216, 1)',
+    borderRadius: '35px',
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    lineHeight: '70px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+    border: '3px solid white'
+  }
+]
 
 export interface GroupedReport {
   id: string
@@ -17,13 +65,22 @@ export interface GroupedReport {
   primaryCategory: string
 }
 
+function DebugClusterer({ children, ...props }: any) {
+  useEffect(() => {
+    console.log("🟢 clusterer mounted")
+    return () => console.log("🔴 clusterer unmounted")
+  }, [])
+  console.log("🟡 clusterer rendering")
+  return <MarkerClusterer {...props}>{children}</MarkerClusterer>
+}
+
 interface MapComponentProps {
   reports: ReportType[]
   center?: { lat: number; lng: number }
   zoom?: number
   height?: string
   onLocationSelect?: (location: { lat: number; lng: number; address?: string }) => void
-  onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void
+  onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }, center?: { lat: number, lng: number }) => void
   onZoomChange?: (zoom: number) => void // 줌 변경 이벤트
   onMarkerClick?: (report: ReportType) => void // 마커 클릭 이벤트 수정
   selectedMarkerId?: string // 선택된 마커 ID
@@ -45,14 +102,43 @@ export default function MapComponent({
   const [map, setMap] = useState<any>(null)
   const [kakaoLoaded, setKakaoLoaded] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
-  const [, setCurrentBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null)
+  const [currentBounds, setCurrentBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null)
   const [lastSetCenter, setLastSetCenter] = useState<{ lat: number, lng: number } | null>(null)
+  const lastBoundsKeyRef = useRef<string | null>(null)
   const { reverseGeocode } = useLocationViewModel()
 
   // 개별 마커를 클러스터링하기 위한 데이터 준비 (이전 그룹핑 제거됨)
   const validReports = useMemo(() => {
     return reports.filter(r => r.location && typeof r.location.lat === 'number' && typeof r.location.lng === 'number');
   }, [reports]);
+
+  // 안정적인 참조를 위해 ref에 보관 (마커 클릭 이벤트 메모이제이션 보호용)
+  const validReportsRef = useRef(validReports)
+  useEffect(() => {
+    validReportsRef.current = validReports
+  }, [validReports])
+
+  // Concurrent UI 스케줄링 (React 18) - 브라우저 페인팅 우선순위 조정
+  const [, startTransition] = useTransition()
+  const [transitionReports, setTransitionReports] = useState<ReportType[]>([])
+
+  useEffect(() => {
+    startTransition(() => {
+      setTransitionReports(validReports)
+    })
+  }, [validReports])
+
+  // Viewport DOM Culling 로직 (보이지 않는 마커 React 렌더링 즉시 차단)
+  const isReportInBounds = useCallback((lat: number, lng: number) => {
+    if (!currentBounds) return true // fallback
+    const padding = 0.005 // 경계선에서 갑자기 팝업되는것 방지용 패딩
+    return (
+      lat >= currentBounds.south - padding &&
+      lat <= currentBounds.north + padding &&
+      lng >= currentBounds.west - padding &&
+      lng <= currentBounds.east + padding
+    )
+  }, [currentBounds])
 
   // 카카오맵 로딩 확인
   useEffect(() => {
@@ -227,44 +313,88 @@ export default function MapComponent({
     }
   }, [])
 
-  // 맵 bounds 변경 핸들러 (디바운싱 적용 - 스크롤/드래그 시 렌더링 폭주 방지)
-  const handleMapBoundsChange = useCallback(() => {
+  // 1. Zoom에 따른 동적 정밀도 지원
+  const precisionByZoom = useCallback((level: number) => {
+    if (level <= 3) return 6
+    if (level <= 6) return 5
+    return 4
+  }, [])
+
+  // 2. 통합된 Bounds 갱신 파이프라인 (Single Source of Truth)
+  const dispatchBoundsUpdate = useCallback((isImmediate = false) => {
     if (!map) return
 
-    // 리렌더링 폭주를 막기 위해 requestAnimationFrame이나 timeout으로 약간 지연 처리 가능 (간단한 수동 debounce)
+    try {
+      const bounds = map.getBounds()
+      if (!bounds) return
+
+      const swLatLng = bounds.getSouthWest()
+      const neLatLng = bounds.getNorthEast()
+
+      const currentZoomLevel = map.getLevel()
+      const precision = precisionByZoom(currentZoomLevel)
+
+      const south = swLatLng.getLat()
+      const west = swLatLng.getLng()
+      const north = neLatLng.getLat()
+      const east = neLatLng.getLng()
+
+      // 객체 프로퍼티 순서 및 재생성 이슈 회피 (String Snapshot)
+      const newKey = `${south.toFixed(precision)},${west.toFixed(precision)},${north.toFixed(precision)},${east.toFixed(precision)}`
+
+      if (lastBoundsKeyRef.current === newKey) return
+      lastBoundsKeyRef.current = newKey
+
+      // 좌표를 강제로 정규화(toFixed)하여 QueryKey 안정화 보장
+      const newBounds = {
+        south: Number(south.toFixed(precision)),
+        west: Number(west.toFixed(precision)),
+        north: Number(north.toFixed(precision)),
+        east: Number(east.toFixed(precision))
+      }
+
+      const mapCenter = map.getCenter()
+      const newCenter = {
+        lat: mapCenter.getLat(),
+        lng: mapCenter.getLng()
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🗺️ MapComponent: bounds 갱신됨 (${isImmediate ? '즉시' : '디바운스'}) [Zoom: ${currentZoomLevel}]`)
+      }
+
+      setCurrentBounds(newBounds)
+
+      if (onBoundsChange) {
+        onBoundsChange(newBounds, newCenter)
+      }
+    } catch (error) {
+      console.error('맵 bounds 계산 오류:', error)
+    }
+  }, [map, onBoundsChange, precisionByZoom])
+
+  // 3. 디바운스 Fallback (핀치줌 / 관성 이동 등 onDragEnd가 놓치는 케이스 대비)
+  const handleMapBoundsChange = useCallback(() => {
+    if (!map) return
     if ((handleMapBoundsChange as any).timeoutId) {
       clearTimeout((handleMapBoundsChange as any).timeoutId)
     }
-
     (handleMapBoundsChange as any).timeoutId = setTimeout(() => {
-      try {
-        const bounds = map.getBounds()
-        const swLatLng = bounds.getSouthWest()
-        const neLatLng = bounds.getNorthEast()
+      dispatchBoundsUpdate(false)
+    }, 200) // 매우 잦은 onBoundsChanged를 막는 200ms 보조망
+  }, [map, dispatchBoundsUpdate])
 
-        const newBounds = {
-          south: swLatLng.getLat(),
-          west: swLatLng.getLng(),
-          north: neLatLng.getLat(),
-          east: neLatLng.getLng()
-        }
+  // 4. 즉각 반응 이벤트 (드래그 종료 시 0 딜레이 UX 확보)
+  const handleDragEnd = useCallback(() => {
+    dispatchBoundsUpdate(true)
+  }, [dispatchBoundsUpdate])
 
-        // 개발 환경에서만 디버깅
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🗺️ MapComponent: bounds 변경됨 (debounced)')
-        }
-
-        setCurrentBounds(newBounds)
-
-        // 부모 컴포넌트에 bounds 변경 알림
-        if (onBoundsChange) {
-          onBoundsChange(newBounds)
-        }
-      } catch (error) {
-        console.error('맵 bounds 계산 오류:', error)
-      }
-    }, 200) // 200ms debounce
-  }, [map, onBoundsChange])
+  // 기본 지도 로드가 완료되었을 때 정확히 1회의 Data Fetch를 보장
+  useEffect(() => {
+    if (map) {
+      dispatchBoundsUpdate(true)
+    }
+  }, [map, dispatchBoundsUpdate])
 
   // 줌 변경 핸들러
   const handleZoomChange = useCallback(() => {
@@ -277,18 +407,15 @@ export default function MapComponent({
     (handleZoomChange as any).timeoutId = setTimeout(() => {
       try {
         const currentZoomLevel = map.getLevel()
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 MapComponent: zoom 변경됨', currentZoomLevel)
-        }
-
         if (onZoomChange) {
           onZoomChange(currentZoomLevel)
         }
+        dispatchBoundsUpdate(true) // 줌 변경 종료 시 즉각 갱신
       } catch (error) {
         console.error('줌 레벨 계산 오류:', error)
       }
     }, 200)
-  }, [map, onZoomChange])
+  }, [map, onZoomChange, dispatchBoundsUpdate])
 
   // center prop 변경 시 맵 이동 (검색 시에만)
   useEffect(() => {
@@ -314,40 +441,11 @@ export default function MapComponent({
     // 마지막 설정된 center 저장
     setLastSetCenter(center)
 
-    // 중심이 변경되었으므로 bounds도 업데이트 (panTo 애니메이션 시간을 고려해 300ms 정도 후)
-    setTimeout(() => {
-      handleMapBoundsChange()
-    }, 400)
+    // 중심이 변경되었을 때도 map.panTo 완료 후 debounce망(onBoundsChanged)이 알아서 캐치함 (불필요한 setTimeout 제거)
+    console.log('✅ 지도 이동 대기 완료')
+  }, [center, map])
 
-    console.log('✅ 지도 이동 완료')
-  }, [center, map, handleMapBoundsChange])
-
-  // 맵 이동 완료 이벤트 등록
-  useEffect(() => {
-    if (!map) return
-
-    // 맵 이동 완료 시 bounds 업데이트
-    const handleDragEnd = () => {
-      handleMapBoundsChange()
-    }
-
-    const handleZoomChanged = () => {
-      handleMapBoundsChange()
-    }
-
-    // 카카오맵 이벤트 등록
-    window.kakao.maps.event.addListener(map, 'dragend', handleDragEnd)
-    window.kakao.maps.event.addListener(map, 'zoom_changed', handleZoomChanged)
-
-    // 초기 bounds 설정
-    setTimeout(handleMapBoundsChange, 500)
-
-    return () => {
-      // 이벤트 제거
-      window.kakao.maps.event.removeListener(map, 'dragend', handleDragEnd)
-      window.kakao.maps.event.removeListener(map, 'zoom_changed', handleZoomChanged)
-    }
-  }, [map, handleMapBoundsChange])
+  // (이전의 중복 이중 이벤트 addListener 로직들은 모두 쓰레기통으로 제거)
 
   // 지도 클릭 이벤트 (제보 위치 선택용)
   const handleMapClick = async (event: any) => {
@@ -370,37 +468,33 @@ export default function MapComponent({
   // 마커 관련 함수들은 공통 유틸리티로 이동됨
 
 
-  // 단일 마커 클릭 핸들러
-  const handleMarkerClick = (report: ReportType) => {
+  // 단일 마커 클릭 핸들러 (Ref 기반 접근을 통해 useCallback 종속성 제거 완벽 달성)
+  const memoizedMarkerClick = useCallback((reportId: string) => {
+    const report = validReportsRef.current.find(r => r.id === reportId)
+    if (!report) return
+
     console.log('🎯 MapComponent: 마커 클릭됨', report.id)
 
-    // 마커를 클릭하면 해당 위치로 맵 중심 부드럽게 이동하고 적당히 줌인
     if (map) {
       const moveLatLng = new window.kakao.maps.LatLng(report.location.lat, report.location.lng)
-
-      // 부드러운 이동
       map.panTo(moveLatLng)
 
-      // 적당한 줌 레벨로 설정 (너무 과도하지 않게)
       const currentLevel = map.getLevel()
       const targetLevel = Math.max(currentLevel, 3)
 
       if (currentLevel > targetLevel) {
-        // 부드러운 줌인 (카카오맵 네이티브 기능 사용)
         setTimeout(() => {
-          map.setLevel(targetLevel, { animate: { duration: 500 } }) // 500ms 애니메이션
-        }, 200) // 이동 후 약간 딜레이
+          map.setLevel(targetLevel, { animate: { duration: 500 } })
+        }, 200)
       }
     }
 
-    // 부모 컴포넌트에 마커 클릭 이벤트 전달
-    console.log('📤 MapComponent: onMarkerClick 호출', typeof onMarkerClick, report.id)
     if (onMarkerClick) {
       onMarkerClick(report)
     } else {
       console.warn('⚠️ MapComponent: onMarkerClick이 정의되지 않음')
     }
-  }
+  }, [map, onMarkerClick]) // report 관련 state 전혀 의존 안함 (100% 안전한 closure)
 
   // 카카오맵 로딩 상태 확인
   if (mapError) {
@@ -471,100 +565,35 @@ export default function MapComponent({
           onClick={handleMapClick}
           onBoundsChanged={handleMapBoundsChange}
           onZoomChanged={handleZoomChange}
+          onDragEnd={handleDragEnd}
         >
           {/* 그룹화된 마커들을 MarkerClusterer로 감싸서 줌 아웃 시 지도상에 뭉치는 현상(클러스터링) 해결 */}
-          <MarkerClusterer
+          <DebugClusterer
             averageCenter={true} // 클러스터에 포함된 마커들의 평균 위치를 클러스터 마커 위치로 설정
             minLevel={5} // 클러스터링 할 최소 지도 레벨 지정 (줌레벨 4까지는 개별 표시, 5부터 묶음)
-            calculator={[10, 30, 50]} // 클러스터의 숫자 구분에 적용할 기준
-            styles={[
-              { // 10개 미만
-                width: '40px', height: '40px',
-                background: 'rgba(59, 130, 246, 0.8)',
-                borderRadius: '20px',
-                color: '#fff',
-                textAlign: 'center',
-                fontWeight: 'bold',
-                lineHeight: '40px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                border: '2px solid white'
-              },
-              { // 30개 미만
-                width: '50px', height: '50px',
-                background: 'rgba(59, 130, 246, 0.9)',
-                borderRadius: '25px',
-                color: '#fff',
-                textAlign: 'center',
-                fontWeight: 'bold',
-                lineHeight: '50px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                border: '2px solid white'
-              },
-              { // 50개 미만
-                width: '60px', height: '60px',
-                background: 'rgba(37, 99, 235, 1)',
-                borderRadius: '30px',
-                color: '#fff',
-                textAlign: 'center',
-                fontWeight: 'bold',
-                lineHeight: '60px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                border: '3px solid white'
-              },
-              { // 50개 이상
-                width: '70px', height: '70px',
-                background: 'rgba(29, 78, 216, 1)',
-                borderRadius: '35px',
-                color: '#fff',
-                textAlign: 'center',
-                fontWeight: 'bold',
-                lineHeight: '70px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                border: '3px solid white'
-              }
-            ]}
+            calculator={CLUSTER_CALCULATOR} // 외부 전역 상수 사용 (렌더링 참조 누수 방지)
+            styles={CLUSTER_STYLES} // 외부 전역 스타일 상수 사용 (클러스터러 엔진 파괴 방지)
           >
-            {/* 개별 마커들 (MarkerClusterer가 알아서 화면 기준 병합) */}
-            {validReports.map((report) => {
+            {/* 개별 마커들 (React 18 Transition 지연 및 Viewport Culling 처리됨) */}
+            {transitionReports.map((report) => {
+              // DOM Culling: 화면 밖에 있는 노드는 애초에 렌더링 파이프라인 도착 전 차단 (500 -> 80)
+              if (!isReportInBounds(report.location.lat, report.location.lng)) return null;
+
               const isSelected = selectedMarkerId === report.id;
 
               return (
-                <CustomOverlayMap
+                <MemoizedMapMarker
                   key={report.id}
-                  position={{ lat: report.location.lat, lng: report.location.lng }}
-                  yAnchor={1}
-                  xAnchor={0.5}
-                  zIndex={isSelected ? 50 : 1}
-                >
-                  <div
-                    onClick={() => handleMarkerClick(report)}
-                    className={`cursor-pointer transition-all duration-300 ${isSelected ? 'scale-125' : 'hover:scale-110'}`}
-                    style={{
-                      filter: isSelected ? 'drop-shadow(0 10px 15px rgba(0,0,0,0.3))' : 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
-                      transformOrigin: 'bottom center'
-                    }}
-                  >
-                    {/* 단일 제보 */}
-                    <div
-                      className={`relative transition-all duration-300 ${isSelected
-                        ? 'w-10 h-10 -translate-y-2'
-                        : 'w-7 h-7'
-                        }`}
-                    >
-                      <MapPin
-                        className="w-full h-full"
-                        style={{
-                          fill: getMarkerColor(report.category),
-                          stroke: isSelected ? '#3b82f6' : 'white', // Tailwind colors.blue.500
-                          strokeWidth: isSelected ? '2' : '1.5',
-                        }}
-                      />
-                    </div>
-                  </div>
-                </CustomOverlayMap>
+                  id={report.id}
+                  lat={report.location.lat}
+                  lng={report.location.lng}
+                  category={report.category}
+                  isSelected={isSelected}
+                  onClick={memoizedMarkerClick}
+                />
               );
             })}
-          </MarkerClusterer>
+          </DebugClusterer>
         </Map>
       </div>
 

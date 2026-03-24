@@ -6,6 +6,7 @@ export function useMapController() {
         mapCenter, setMapCenter,
         mapZoom, setMapZoom,
         currentMapBounds, setCurrentMapBounds,
+        currentMapCenter, setCurrentMapCenter,
         searchedLocation, setSearchedLocation,
         userCurrentLocation, setUserCurrentLocation,
         useMapBoundsFilter, setUseMapBoundsFilter,
@@ -13,38 +14,26 @@ export function useMapController() {
         selectedMapMarker, setSelectedMapMarker
     } = useUIStore();
 
-    const handleMapBoundsChange = useCallback((bounds: { north: number; south: number; east: number; west: number }) => {
-        setCurrentMapBounds(prev => {
-            // Check if the bounds actually changed significantly (tolerance for accidental small drags)
-            // 0.002 degrees is approximately 200 meters. 
-            if (prev &&
-                Math.abs(prev.north - bounds.north) < 0.002 &&
-                Math.abs(prev.south - bounds.south) < 0.002 &&
-                Math.abs(prev.east - bounds.east) < 0.002 &&
-                Math.abs(prev.west - bounds.west) < 0.002) {
-                return prev;
-            }
-            setUseMapBoundsFilter(true);
-
-            if (process.env.NODE_ENV === 'development') {
-                console.log('🗺️ 맵 영역 이동 감지, 자동 갱신:', bounds);
-            }
-            setTriggerMapSearch(t => t + 1);
-
-            return bounds;
-        });
-    }, [setCurrentMapBounds, setUseMapBoundsFilter, setTriggerMapSearch]);
+    const handleMapBoundsChange = useCallback((bounds: { north: number; south: number; east: number; west: number }, center?: { lat: number, lng: number }) => {
+        setCurrentMapBounds(bounds);
+        if (center) {
+            setCurrentMapCenter(center);
+        }
+        setUseMapBoundsFilter(true);
+        setTriggerMapSearch(t => t + 1);
+    }, [setCurrentMapBounds, setCurrentMapCenter, setUseMapBoundsFilter, setTriggerMapSearch]);
 
     const resetToMyNeighborhood = useCallback(() => {
         setMapCenter(null);
         setSearchedLocation(null);
         setUserCurrentLocation(null);
         setCurrentMapBounds(null); // 맵 영역을 초기화하여 activeLocation이 내 동네로 이동하게 만듦
+        setCurrentMapCenter(null);
         setSelectedMapMarker(null);
         if (process.env.NODE_ENV === 'development') {
             console.log('🏠 내 동네로 돌아가기');
         }
-    }, [setMapCenter, setSearchedLocation, setUserCurrentLocation, setCurrentMapBounds, setSelectedMapMarker]);
+    }, [setMapCenter, setSearchedLocation, setUserCurrentLocation, setCurrentMapBounds, setCurrentMapCenter, setSelectedMapMarker]);
 
     const handleLocationSearch = useCallback((location: { lat: number; lng: number; address: string; placeName: string }) => {
         if (process.env.NODE_ENV === 'development') {
@@ -70,6 +59,7 @@ export function useMapController() {
         mapCenter, setMapCenter,
         mapZoom, setMapZoom,
         currentMapBounds, setCurrentMapBounds,
+        currentMapCenter, setCurrentMapCenter,
         searchedLocation, setSearchedLocation,
         userCurrentLocation, setUserCurrentLocation,
         useMapBoundsFilter, setUseMapBoundsFilter,

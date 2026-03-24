@@ -22,6 +22,7 @@ interface UIState {
   searchedLocation: { placeName: string; address: string } | null
   userCurrentLocation: { lat: number; lng: number } | null
   currentMapBounds: { north: number; south: number; east: number; west: number } | null
+  currentMapCenter: { lat: number; lng: number } | null
   triggerMapSearch: number
   useMapBoundsFilter: boolean
   selectedMapMarker: Report | null
@@ -43,6 +44,7 @@ interface UIState {
   setSearchedLocation: (location: { placeName: string; address: string } | null) => void
   setUserCurrentLocation: (location: { lat: number; lng: number } | null) => void
   setCurrentMapBounds: (bounds: { north: number; south: number; east: number; west: number } | null | ((prev: any) => any)) => void
+  setCurrentMapCenter: (center: { lat: number; lng: number } | null) => void
   setTriggerMapSearch: (trigger: number | ((prev: number) => number)) => void
   setUseMapBoundsFilter: (use: boolean) => void
   setSelectedMapMarker: (marker: Report | null) => void
@@ -75,6 +77,7 @@ export const useUIStore = create<UIState>((set) => ({
   searchedLocation: null,
   userCurrentLocation: null,
   currentMapBounds: null,
+  currentMapCenter: null,
   triggerMapSearch: 0,
   useMapBoundsFilter: true, // 기본값을 true로 변경하여 처음에 무조건 맵 영역 제보를 가져오도록 함
   selectedMapMarker: null,
@@ -86,6 +89,7 @@ export const useUIStore = create<UIState>((set) => ({
   setCurrentMapBounds: (bounds) => set((state) => ({
     currentMapBounds: typeof bounds === 'function' ? bounds(state.currentMapBounds) : bounds
   })),
+  setCurrentMapCenter: (center) => set({ currentMapCenter: center }),
   setTriggerMapSearch: (trigger) => set((state) => ({
     triggerMapSearch: typeof trigger === 'function' ? trigger(state.triggerMapSearch) : trigger
   })),

@@ -140,26 +140,18 @@ export default function Home() {
   // 첫 로드 여부를 추적하여 초기 내 동네 이동을 1회 보장
   const [isInitialLoadDone, setIsInitialLoadDone] = useState(false)
 
-  // 현재 사용 중인 위치
+  // 현재 사용 중인 위치 (외부 통제: 검색된 위치, 내 동네, 등)
   const activeLocation = useMemo(() => {
-    let cachedLastCenter = null;
-    if (useMapBoundsFilter && currentMapBounds) {
-      cachedLastCenter = {
-        lat: (currentMapBounds.north + currentMapBounds.south) / 2,
-        lng: (currentMapBounds.east + currentMapBounds.west) / 2
-      };
-    }
-
     return getActiveLocation({
       focusedLocation: mapCenter,
       isInitialLoadDone,
       myNeighborhoodLocation,
-      cachedLastCenter,
+      cachedLastCenter: null, // 지도의 현재 뷰가 피드백 루프를 발생시키지 않도록 null 고정
       userCurrentLocation,
       // fallback을 서울시청 대신 내 동네가 있으면 내 동네로, 없으면 서울시청으로 설정
       fallbackCenter: myNeighborhoodLocation || { lat: 37.5665, lng: 126.9780 }
     });
-  }, [mapCenter, isInitialLoadDone, myNeighborhoodLocation, useMapBoundsFilter, currentMapBounds, userCurrentLocation])
+  }, [mapCenter, isInitialLoadDone, myNeighborhoodLocation, userCurrentLocation])
 
   useEffect(() => {
     if (!isInitialLoadDone && myNeighborhoodLocation) {
