@@ -26,7 +26,11 @@
       "WebFetch(domain:docs.anthropic.com)",
       "Bash(.venv\\Scripts\\Activate.ps1)",
       "Bash(npm run build:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(Get-ChildItem -Path \"C:\\\\dev\\\\web_projects\\\\dongne-sokdak\" -Force)",
+      "Bash(Select-Object -Property Name, PSIsContainer)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\dev\\\\web_projects\\\\dongne-sokdak\" -Force | Select-Object -Property Name, @{Name=\"IsDir\";Expression={$_.PSIsContainer}})",
+      "Bash(xargs wc -l)"
     ],
     "deny": []
   }
