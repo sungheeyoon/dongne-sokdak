@@ -1,6 +1,10 @@
 -- 20260508_update_spatial_rpcs_with_counts.sql
 -- Description: Updates get_reports_within_radius and get_reports_in_bounds to include vote and comment counts.
 
+-- Drop existing functions first because we are changing the return type (adding columns)
+DROP FUNCTION IF EXISTS public.get_reports_within_radius(FLOAT, FLOAT, FLOAT, TEXT, TEXT, INT, INT);
+DROP FUNCTION IF EXISTS public.get_reports_in_bounds(FLOAT, FLOAT, FLOAT, FLOAT, TEXT, TEXT, INT, INT);
+
 -- Function 1: get_reports_within_radius (updated to include counts)
 CREATE OR REPLACE FUNCTION public.get_reports_within_radius(
   target_lat FLOAT,
