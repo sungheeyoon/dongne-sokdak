@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from typing import Any, List, Optional, Dict
 from supabase.client import Client
 from app.schemas.profile import ProfileUpdate, AvatarUpdate, NeighborhoodUpdate
@@ -7,36 +8,31 @@ async def get_my_profile(
     supabase: Client,
     current_user_id: str
 ) -> Dict[str, Any]:
-    """Fetch current user's profile and stats."""
-    profile_response = supabase.table("profiles").select("*").eq("id", current_user_id).execute()
+    """Fetch current user's profile and stats using RPC for efficiency."""
+    response = supabase.rpc("get_profile_with_stats", {"target_user_id": current_user_id}).execute()
     
-    if not profile_response.data:
-        # Create default profile
-        user_response = supabase.auth.admin.get_user_by_id(current_user_id)
-        nickname = user_response.user.email.split("@")[0] if user_response.user and user_response.user.email else "사용자"
+    if not response.data:
+        # Create default profile if not exists
+        try:
+            user_response = supabase.auth.admin.get_user_by_id(current_user_id)
+            nickname = user_response.user.email.split("@")[0] if user_response.user and user_response.user.email else "사용자"
+        except:
+            nickname = "사용자"
         
         default_profile = {
             "id": current_user_id,
             "nickname": nickname,
             "avatar_url": None
         }
-        create_res = supabase.table("profiles").insert(default_profile).execute()
-        profile = create_res.data[0]
-    else:
-        profile = profile_response.data[0]
+        supabase.table("profiles").insert(default_profile).execute()
         
-    # Stats
-    report_count = supabase.table("reports").select("id", count="exact").eq("user_id", current_user_id).execute().count or 0
-    comment_count = supabase.table("comments").select("id", count="exact").eq("user_id", current_user_id).execute().count or 0
-    vote_count = supabase.table("votes").select("id", count="exact").eq("user_id", current_user_id).execute().count or 0
-    
+        # After creation, fetch again with stats
+        response = supabase.rpc("get_profile_with_stats", {"target_user_id": current_user_id}).execute()
+        profile = response.data
+    else:
+        profile = response.data
+        
     profile["user_id"] = profile["id"]
-    profile["stats"] = {
-        "report_count": report_count,
-        "comment_count": comment_count,
-        "vote_count": vote_count,
-        "joined_at": profile.get("created_at")
-    }
     return profile
 
 async def update_profile(
@@ -50,7 +46,7 @@ async def update_profile(
         # Check nickname
         existing = supabase.table("profiles").select("id").neq("id", current_user_id).eq("nickname", profile_in.nickname).execute()
         if existing.data:
-            return {"error": "Nickname already in use", "status_code": 400}
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nickname already in use")
         update_data["nickname"] = profile_in.nickname
         
     if profile_in.location is not None:
@@ -60,7 +56,7 @@ async def update_profile(
     
     response = supabase.table("profiles").update(update_data).eq("id", current_user_id).execute()
     if not response.data:
-        return {"error": "Update failed", "status_code": 400}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Update failed")
         
     profile = response.data[0]
     profile["user_id"] = profile["id"]
@@ -70,22 +66,13 @@ async def get_user_profile(
     supabase: Client,
     user_id: str
 ) -> Dict[str, Any]:
-    """Fetch another user's public profile."""
-    res = supabase.table("profiles").select("*").eq("id", user_id).execute()
-    if not res.data:
+    """Fetch another user's public profile and stats using RPC."""
+    response = supabase.rpc("get_profile_with_stats", {"target_user_id": user_id}).execute()
+    if not response.data:
         return None
         
-    profile = res.data[0]
-    report_count = supabase.table("reports").select("id", count="exact").eq("user_id", user_id).execute().count or 0
-    comment_count = supabase.table("comments").select("id", count="exact").eq("user_id", user_id).execute().count or 0
-    
+    profile = response.data
     profile["user_id"] = profile["id"]
-    profile["stats"] = {
-        "report_count": report_count,
-        "comment_count": comment_count,
-        "vote_count": 0, # Private
-        "joined_at": profile.get("created_at")
-    }
     return profile
 
 async def update_avatar(
@@ -100,7 +87,7 @@ async def update_avatar(
     }
     response = supabase.table("profiles").update(update_data).eq("id", current_user_id).execute()
     if not response.data:
-        return {"error": "Update failed", "status_code": 400}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Update failed")
     return {"avatar_url": avatar_url}
 
 async def update_neighborhood(
@@ -121,7 +108,7 @@ async def update_neighborhood(
     }
     response = supabase.table("profiles").update(update_data).eq("id", current_user_id).execute()
     if not response.data:
-        return {"error": "Update failed", "status_code": 400}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Update failed")
     return neighborhood_json
 
 async def delete_neighborhood(
@@ -135,3 +122,4 @@ async def delete_neighborhood(
     }
     response = supabase.table("profiles").update(update_data).eq("id", current_user_id).execute()
     return len(response.data) > 0
+

@@ -1,4 +1,6 @@
+from fastapi import HTTPException, status
 from typing import Any, List, Optional, Dict
+from datetime import datetime, timezone
 from supabase.client import Client
 from app.schemas.comment import CommentCreate, CommentUpdate
 
@@ -11,17 +13,17 @@ async def create_comment(
     # Check if report exists
     report_response = supabase.table("reports").select("id").eq("id", str(comment_in.report_id)).execute()
     if not report_response.data:
-        return {"error": "Report not found", "status_code": 404}
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     
     # Handle reply logic
     if comment_in.parent_comment_id:
         parent_response = supabase.table("comments").select("id, parent_comment_id").eq("id", str(comment_in.parent_comment_id)).execute()
         if not parent_response.data:
-            return {"error": "Parent comment not found", "status_code": 404}
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent comment not found")
         
         parent_comment = parent_response.data[0]
         if parent_comment.get("parent_comment_id"):
-            return {"error": "Nested replies are not supported", "status_code": 400}
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nested replies are not supported")
             
     comment_data = {
         "report_id": str(comment_in.report_id),
@@ -32,7 +34,7 @@ async def create_comment(
     
     response = supabase.table("comments").insert(comment_data).execute()
     if not response.data:
-        return {"error": "Failed to create comment", "status_code": 400}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to create comment")
         
     comment = response.data[0]
     
@@ -59,16 +61,20 @@ async def get_comments_by_report(
     # Check report
     report_response = supabase.table("reports").select("id").eq("id", report_id).execute()
     if not report_response.data:
-        return None # Should handle 404 in route
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
         
-    response = supabase.table("comments").select("*").eq("report_id", report_id).order("created_at", desc=False).execute()
+    response = supabase.table("comments") \
+        .select("*, profiles!comments_user_id_fkey(nickname, avatar_url)") \
+        .eq("report_id", report_id) \
+        .order("created_at", desc=False) \
+        .execute()
+    
     all_comments = response.data
     
     # User info enrichment
     for comment in all_comments:
-        profile_response = supabase.table("profiles").select("nickname, avatar_url").eq("id", comment["user_id"]).execute()
-        if profile_response.data:
-            profile = profile_response.data[0]
+        profile = comment.get("profiles")
+        if profile:
             comment["user_nickname"] = profile.get("nickname") or "알 수 없음"
             comment["user_avatar_url"] = profile.get("avatar_url")
         else:
@@ -96,13 +102,12 @@ async def update_comment(
     """Update a comment's content."""
     res = supabase.table("comments").select("*").eq("id", comment_id).execute()
     if not res.data:
-        return {"error": "Comment not found", "status_code": 404}
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
         
     comment = res.data[0]
     if comment["user_id"] != current_user_id:
-        return {"error": "Not authorized", "status_code": 403}
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
         
-    from datetime import datetime, timezone
     update_data = {
         "content": comment_in.content,
         "updated_at": datetime.now(timezone.utc).isoformat()
@@ -110,7 +115,7 @@ async def update_comment(
     
     response = supabase.table("comments").update(update_data).eq("id", comment_id).execute()
     if not response.data:
-        return {"error": "Update failed", "status_code": 400}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Update failed")
         
     updated_comment = response.data[0]
     profile_response = supabase.table("profiles").select("nickname, avatar_url").eq("id", current_user_id).execute()
@@ -125,17 +130,15 @@ async def delete_comment(
     supabase: Client,
     comment_id: str,
     current_user_id: str
-) -> Optional[Dict[str, Any]]:
+) -> None:
     """Delete a comment."""
     res = supabase.table("comments").select("user_id").eq("id", comment_id).execute()
     if not res.data:
-        return {"error": "Comment not found", "status_code": 404}
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
         
     if res.data[0]["user_id"] != current_user_id:
-        return {"error": "Not authorized", "status_code": 403}
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
         
     response = supabase.table("comments").delete().eq("id", comment_id).execute()
     if not response.data:
-        return {"error": "Delete failed", "status_code": 400}
-        
-    return None
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Delete failed")

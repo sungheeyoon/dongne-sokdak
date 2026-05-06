@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from typing import Any, List, Optional, Dict
 from supabase.client import Client
 from app.schemas.vote import VoteCreate
@@ -11,12 +12,12 @@ async def create_vote(
     # Check if report exists
     report_response = supabase.table("reports").select("id").eq("id", str(vote_in.report_id)).execute()
     if not report_response.data:
-        return {"error": "Report not found", "status_code": 404}
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     
     # Check duplicate
     vote_response = supabase.table("votes").select("id").eq("report_id", str(vote_in.report_id)).eq("user_id", current_user_id).execute()
     if vote_response.data:
-        return {"error": "Already voted", "status_code": 400}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Already voted")
         
     vote_data = {
         "report_id": str(vote_in.report_id),
@@ -25,7 +26,7 @@ async def create_vote(
     
     response = supabase.table("votes").insert(vote_data).execute()
     if not response.data:
-        return {"error": "Failed to create vote", "status_code": 400}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to create vote")
         
     return response.data[0]
 
@@ -33,18 +34,17 @@ async def delete_vote(
     supabase: Client,
     report_id: str,
     current_user_id: str
-) -> Optional[Dict[str, Any]]:
+) -> None:
     """Delete a vote for a report."""
     res = supabase.table("votes").select("id").eq("report_id", report_id).eq("user_id", current_user_id).execute()
     if not res.data:
-        return {"error": "Vote not found", "status_code": 404}
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vote not found")
         
     vote_id = res.data[0]["id"]
     response = supabase.table("votes").delete().eq("id", vote_id).execute()
     if not response.data:
-        return {"error": "Delete failed", "status_code": 400}
-        
-    return None
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Delete failed")
+
 
 async def get_vote_count(
     supabase: Client,

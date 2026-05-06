@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 from typing import List, Optional
 import uuid
 from app.db.supabase_client import supabase
 from app.middleware.admin_auth import get_admin_user
-from app.services.admin_service import AdminService
+from app.services import admin_report_service
 from app.api.admin.schemas import (
     ReportManagementResponse, ReportDetailResponse, 
     ReportStatusUpdate, ReportActionRequest, BulkReportAction
@@ -21,7 +21,7 @@ async def get_reports_for_management(
     admin_user: dict = Depends(get_admin_user)
 ):
     """제보 관리 목록 조회"""
-    data = await AdminService.get_reports(supabase, skip, limit, status, category, str(assigned_admin_id) if assigned_admin_id else None)
+    data = await admin_report_service.get_reports(supabase, skip, limit, status, category, str(assigned_admin_id) if assigned_admin_id else None)
     
     reports = []
     for report in data:
@@ -61,7 +61,7 @@ async def get_report_detail(
     admin_user: dict = Depends(get_admin_user)
 ):
     """제보 상세 조회"""
-    report = await AdminService.get_report_detail(supabase, str(report_id))
+    report = await admin_report_service.get_report_detail(supabase, str(report_id))
     
     user_data = report.get("user") or {}
     profile_data = report.get("profiles", [])
@@ -119,7 +119,7 @@ async def update_report_status(
     admin_user: dict = Depends(get_admin_user)
 ):
     """제보 상태 변경"""
-    result = await AdminService.update_report_status(
+    result = await admin_report_service.update_report_status(
         supabase, str(report_id), status_update.status, status_update.admin_comment,
         str(status_update.assigned_admin_id) if status_update.assigned_admin_id else None,
         admin_user.get("id"), request.client.host if request.client else None,
@@ -138,7 +138,7 @@ async def perform_report_action(
     admin_user: dict = Depends(get_admin_user)
 ):
     """제보에 대한 관리자 액션 수행"""
-    result = await AdminService.perform_report_action(
+    result = await admin_report_service.perform_report_action(
         supabase, str(report_id), action_request.action, action_request.admin_comment,
         action_request.reason, action_request.new_status,
         str(action_request.assigned_admin_id) if action_request.assigned_admin_id else None,
@@ -155,10 +155,9 @@ async def bulk_report_action(
 ):
     """제보 일괄 작업"""
     if not bulk_action.report_ids:
-        from fastapi import HTTPException, status
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="선택된 제보가 없습니다")
     
-    result = await AdminService.bulk_report_action(
+    result = await admin_report_service.bulk_report_action(
         supabase, [str(rid) for rid in bulk_action.report_ids], bulk_action.action,
         bulk_action.new_status, str(bulk_action.assigned_admin_id) if bulk_action.assigned_admin_id else None,
         bulk_action.admin_comment, bulk_action.reason, admin_user.get("id"), admin_user.get("role"),

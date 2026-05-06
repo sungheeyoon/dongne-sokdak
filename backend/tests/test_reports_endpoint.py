@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
 from app.main import app
 from app.api.deps import get_supabase
-from app.api.v1.reports import nearby_cache, bounds_cache
+from app.services.report_service import nearby_cache, bounds_cache
 from app.services.report_service import enrich_report_data
 from datetime import datetime
 from uuid import uuid4

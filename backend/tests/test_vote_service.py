@@ -1,4 +1,5 @@
 import pytest
+from fastapi import HTTPException
 from unittest.mock import MagicMock
 from uuid import uuid4
 from app.services.vote_service import (
@@ -31,7 +32,6 @@ async def test_create_vote_success(mocker):
     
     result = await create_vote(mock_supabase, vote_in, user_id)
     
-    assert "error" not in result
     assert result["id"] == "vote-123"
 
 @pytest.mark.asyncio
@@ -51,10 +51,11 @@ async def test_create_vote_duplicate(mocker):
 
     mock_supabase.table.side_effect = mock_table
     
-    result = await create_vote(mock_supabase, vote_in, user_id)
+    with pytest.raises(HTTPException) as excinfo:
+        await create_vote(mock_supabase, vote_in, user_id)
     
-    assert result["error"] == "Already voted"
-    assert result["status_code"] == 400
+    assert excinfo.value.status_code == 400
+    assert excinfo.value.detail == "Already voted"
 
 @pytest.mark.asyncio
 async def test_delete_vote_success(mocker):
@@ -68,6 +69,7 @@ async def test_delete_vote_success(mocker):
     result = await delete_vote(mock_supabase, report_id, user_id)
     
     assert result is None
+
 
 @pytest.mark.asyncio
 async def test_get_vote_count(mocker):

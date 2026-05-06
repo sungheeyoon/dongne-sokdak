@@ -15,10 +15,7 @@ async def create_comment(
     supabase: Client = Depends(get_supabase)
 ) -> Any:
     """새 댓글 생성 (일반 댓글 또는 대댓글)"""
-    result = await comment_service.create_comment(supabase, comment_in, current_user_id)
-    if isinstance(result, dict) and "error" in result:
-        raise HTTPException(status_code=result["status_code"], detail=result["error"])
-    return result
+    return await comment_service.create_comment(supabase, comment_in, current_user_id)
 
 @router.get("/report/{report_id}", response_model=List[Comment])
 async def get_comments_by_report(
@@ -28,10 +25,7 @@ async def get_comments_by_report(
     supabase: Client = Depends(get_supabase)
 ) -> Any:
     """특정 제보에 달린 댓글 목록 조회 (계층 구조로 반환)"""
-    result = await comment_service.get_comments_by_report(supabase, str(report_id), skip, limit)
-    if result is None:
-        raise HTTPException(status_code=404, detail="제보를 찾을 수 없습니다")
-    return result
+    return await comment_service.get_comments_by_report(supabase, str(report_id), skip, limit)
 
 @router.put("/{comment_id}", response_model=Comment)
 async def update_comment(
@@ -41,10 +35,7 @@ async def update_comment(
     supabase: Client = Depends(get_supabase)
 ) -> Any:
     """댓글 수정"""
-    result = await comment_service.update_comment(supabase, str(comment_id), comment_in, current_user_id)
-    if "error" in result:
-        raise HTTPException(status_code=result["status_code"], detail=result["error"])
-    return result
+    return await comment_service.update_comment(supabase, str(comment_id), comment_in, current_user_id)
 
 @router.delete("/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_comment(
@@ -53,7 +44,5 @@ async def delete_comment(
     supabase: Client = Depends(get_supabase)
 ):
     """댓글 삭제"""
-    result = await comment_service.delete_comment(supabase, str(comment_id), current_user_id)
-    if result and "error" in result:
-        raise HTTPException(status_code=result["status_code"], detail=result["error"])
+    await comment_service.delete_comment(supabase, str(comment_id), current_user_id)
     return

@@ -15,10 +15,7 @@ async def create_vote(
     supabase: Client = Depends(get_supabase)
 ) -> Any:
     """특정 제보에 공감(투표) 추가"""
-    result = await vote_service.create_vote(supabase, vote_in, current_user_id)
-    if "error" in result:
-        raise HTTPException(status_code=result["status_code"], detail=result["error"])
-    return result
+    return await vote_service.create_vote(supabase, vote_in, current_user_id)
 
 @router.delete("/report/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_vote(
@@ -27,9 +24,7 @@ async def delete_vote(
     supabase: Client = Depends(get_supabase)
 ):
     """특정 제보에 대한 공감(투표) 취소"""
-    result = await vote_service.delete_vote(supabase, str(report_id), current_user_id)
-    if result and "error" in result:
-        raise HTTPException(status_code=result["status_code"], detail=result["error"])
+    await vote_service.delete_vote(supabase, str(report_id), current_user_id)
     return
 
 @router.get("/count/{report_id}", response_model=Dict[str, int])

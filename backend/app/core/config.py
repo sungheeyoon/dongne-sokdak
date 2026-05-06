@@ -1,7 +1,11 @@
 import os
+import logging
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 from typing import List
+
+# 로거 설정
+logger = logging.getLogger(__name__)
 
 # 환경별 설정 파일 로드
 env = os.getenv("ENVIRONMENT", "development")
@@ -10,11 +14,11 @@ env_file = f"config/{env}.env"
 # 환경별 파일을 먼저 로드한 후, .env 파일로 오버라이드
 if os.path.exists(env_file):
     load_dotenv(env_file)
-    print(f"Loaded environment file: {env_file}")
+    logger.info(f"Loaded environment file: {env_file}")
 
 if os.path.exists(".env"):
     load_dotenv(".env", override=True)
-    print("Loaded .env file")
+    logger.info("Loaded .env file")
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "동네속닥 API"

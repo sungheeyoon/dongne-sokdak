@@ -23,10 +23,7 @@ async def update_my_profile(
     supabase: Client = Depends(get_supabase)
 ) -> Any:
     """내 프로필 수정"""
-    result = await profile_service.update_profile(supabase, current_user_id, profile_in)
-    if "error" in result:
-        raise HTTPException(status_code=result["status_code"], detail=result["error"])
-    return result
+    return await profile_service.update_profile(supabase, current_user_id, profile_in)
 
 @router.get("/{user_id}", response_model=Profile)
 async def get_user_profile(
@@ -46,9 +43,7 @@ async def update_avatar(
     supabase: Client = Depends(get_supabase)
 ) -> Any:
     """아바타 이미지 업데이트"""
-    result = await profile_service.update_avatar(supabase, current_user_id, avatar_data.avatar_url)
-    if "error" in result:
-        raise HTTPException(status_code=result["status_code"], detail=result["error"])
+    await profile_service.update_avatar(supabase, current_user_id, avatar_data.avatar_url)
     return {"message": "아바타가 성공적으로 업데이트되었습니다", "avatar_url": avatar_data.avatar_url}
 
 @router.put("/neighborhood", response_model=dict)
@@ -59,8 +54,6 @@ async def update_my_neighborhood(
 ) -> Any:
     """내 동네 설정 업데이트"""
     result = await profile_service.update_neighborhood(supabase, current_user_id, neighborhood_data)
-    if "error" in result:
-        raise HTTPException(status_code=result["status_code"], detail=result["error"])
     return {
         "message": "내 동네가 성공적으로 설정되었습니다", 
         "neighborhood": result

@@ -4,7 +4,7 @@ import uuid
 from app.db.supabase_client import supabase
 from app.core.security import get_current_user
 from app.middleware.admin_auth import get_admin_user
-from app.services.admin_service import AdminService
+from app.services import admin_log_service
 from app.api.admin.schemas import AdminActivityResponse
 
 router = APIRouter(tags=["admin"])
@@ -18,7 +18,7 @@ async def get_admin_activity_logs(
     admin_user: dict = Depends(get_admin_user)
 ):
     """관리자 활동 로그 조회"""
-    data = await AdminService.get_admin_activity_logs(
+    data = await admin_log_service.get_admin_activity_logs(
         supabase, skip, limit, action, str(admin_id) if admin_id else None
     )
     
