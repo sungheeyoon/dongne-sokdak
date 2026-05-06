@@ -66,9 +66,9 @@ export default function ImageUpload({ onImageSelect, currentImage }: ImageUpload
 
       // 이미지 크기가 2MB 이상이면 압축
       if (file.size > 2 * 1024 * 1024) {
-        console.log('이미지 압축 시작:', file.size)
+        if (process.env.NODE_ENV === 'development') console.log('이미지 압축 시작:', file.size)
         processedFile = await compressImage(file)
-        console.log('이미지 압축 완료:', processedFile.size)
+        if (process.env.NODE_ENV === 'development') console.log('이미지 압축 완료:', processedFile.size)
       }
 
       // 미리보기 생성
@@ -86,7 +86,7 @@ export default function ImageUpload({ onImageSelect, currentImage }: ImageUpload
       if (uploadedUrl) {
         // 업로드된 URL을 부모 컴포넌트에 전달
         onImageSelect(uploadedUrl)
-        console.log('이미지 업로드 성공:', uploadedUrl)
+        if (process.env.NODE_ENV === 'development') console.log('이미지 업로드 성공:', uploadedUrl)
       } else {
         throw new Error('Upload failed')
       }

@@ -36,7 +36,7 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
 
   // 파일 선택 시 미리보기만 생성
   const handleAvatarSelect = (file: File) => {
-    console.log('📁 파일 선택됨:', {
+    if (process.env.NODE_ENV === 'development') console.log('📁 파일 선택됨:', {
       fileName: file.name,
       fileSize: file.size,
       fileType: file.type
@@ -76,16 +76,16 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
 
       // 1. 선택된 아바타 파일이 있으면 먼저 업로드
       if (selectedFile) {
-        console.log('🔄 아바타 업로드 중...')
+        if (process.env.NODE_ENV === 'development') console.log('🔄 아바타 업로드 중...')
         await updateAvatar(selectedFile)
-        console.log('✅ 아바타 업데이트 완료!')
+        if (process.env.NODE_ENV === 'development') console.log('✅ 아바타 업데이트 완료!')
       }
 
       // 2. 닉네임 업데이트 (변경되었을 경우만)
       if (nickname.trim() !== profile?.nickname) {
-        console.log('🔄 닉네임 업데이트 중...')
+        if (process.env.NODE_ENV === 'development') console.log('🔄 닉네임 업데이트 중...')
         await updateProfile({ nickname: nickname.trim() })
-        console.log('✅ 닉네임 업데이트 완료!')
+        if (process.env.NODE_ENV === 'development') console.log('✅ 닉네임 업데이트 완료!')
       }
 
       // 3. 성공 시 모달 닫기 및 상태 초기화

@@ -5,7 +5,7 @@
  */
 export const debugEnvironment = () => {
   if (typeof window === 'undefined') {
-    console.log('🔍 서버 사이드 환경')
+    if (process.env.NODE_ENV === 'development') console.log('🔍 서버 사이드 환경')
     console.log('NODE_ENV:', process.env.NODE_ENV)
     return
   }
@@ -13,9 +13,9 @@ export const debugEnvironment = () => {
   const currentOrigin = window.location.origin
   const currentUrl = window.location.href
   
-  console.log('🔍 클라이언트 환경 정보:')
-  console.log('  - Origin:', currentOrigin)
-  console.log('  - Full URL:', currentUrl)
+  if (process.env.NODE_ENV === 'development') console.log('🔍 클라이언트 환경 정보:')
+  if (process.env.NODE_ENV === 'development') console.log('  - Origin:', currentOrigin)
+  if (process.env.NODE_ENV === 'development') console.log('  - Full URL:', currentUrl)
   console.log('  - NODE_ENV:', process.env.NODE_ENV)
   
   // 각 조건 체크
@@ -30,13 +30,13 @@ export const debugEnvironment = () => {
     ':8080 포함': currentOrigin.includes(':8080')
   }
   
-  console.log('🔍 개발 환경 조건 체크:')
+  if (process.env.NODE_ENV === 'development') console.log('🔍 개발 환경 조건 체크:')
   Object.entries(conditions).forEach(([condition, result]) => {
-    console.log(`  - ${condition}: ${result ? '✅' : '❌'}`)
+    if (process.env.NODE_ENV === 'development') console.log(`  - ${condition}: ${result ? '✅' : '❌'}`)
   })
   
   const isLocalDev = Object.values(conditions).some(Boolean) || process.env.NODE_ENV === 'development'
-  console.log(`🔍 최종 판단: ${isLocalDev ? '로컬 개발 환경' : '프로덕션 환경'}`)
+  if (process.env.NODE_ENV === 'development') console.log(`🔍 최종 판단: ${isLocalDev ? '로컬 개발 환경' : '프로덕션 환경'}`)
   
   return {
     origin: currentOrigin,

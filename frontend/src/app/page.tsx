@@ -168,10 +168,10 @@ export default function Home() {
 
   // selectedMapMarker 상태 변화 디버깅
   useEffect(() => {
-    console.log('🔄 Page: selectedMapMarker 상태 변화:', selectedMapMarker)
+    if (process.env.NODE_ENV === 'development') console.log('🔄 Page: selectedMapMarker 상태 변화:', selectedMapMarker)
     if (selectedMapMarker) {
       const markerData = selectedMapMarker as any;
-      console.log('📊 Page: selectedMapMarker 상세:', {
+      if (process.env.NODE_ENV === 'development') console.log('📊 Page: selectedMapMarker 상세:', {
         id: markerData.id,
         title: markerData.title
       })

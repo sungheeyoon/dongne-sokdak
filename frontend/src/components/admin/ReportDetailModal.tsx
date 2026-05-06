@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useReportManagement, ReportDetail } from '../../hooks/useReportManagement';
+import { useReportManagementViewModel } from '@/features/admin/presentation/hooks/useReportManagementViewModel';
+import { ReportDetail } from '@/features/admin/domain/entities';
 import MarkerIcon from '@/shared/ui/MarkerIcon';
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils';
 
@@ -41,7 +42,7 @@ const getCategoryLabel = (category: string) => {
 };
 
 export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportDetailModalProps) {
-  const { fetchReportDetail, updateReportStatus, loading, error } = useReportManagement();
+  const { fetchReportDetail, updateReportStatus, loading, error } = useReportManagementViewModel();
   const [reportDetail, setReportDetail] = useState<ReportDetail | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
   const [newStatus, setNewStatus] = useState('');
@@ -59,7 +60,7 @@ export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportD
       const detail = await fetchReportDetail(reportId);
       setReportDetail(detail);
       setNewStatus(detail.status);
-      setAdminComment(detail.admin_comment || '');
+      setAdminComment(detail.adminComment || '');
     } catch (error) {
       console.error('Failed to load report detail:', error);
     }
@@ -123,7 +124,7 @@ export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportD
                   </span>
                 </div>
                 <div className="text-sm text-gray-600">
-                  제보자: {reportDetail.user_nickname} ({reportDetail.user_email})
+                  제보자: {reportDetail.userNickname} ({reportDetail.userEmail})
                 </div>
               </div>
               <button
@@ -146,12 +147,12 @@ export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportD
                 </div>
 
                 {/* 이미지 */}
-                {reportDetail.image_url && (
+                {reportDetail.imageUrl && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">첨부 이미지</h3>
                     <div className="relative">
                       <img
-                        src={reportDetail.image_url}
+                        src={reportDetail.imageUrl}
                         alt="제보 이미지"
                         className="w-full h-64 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                         onClick={() => setShowImageModal(true)}
@@ -193,15 +194,15 @@ export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportD
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">통계 정보</h3>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="bg-blue-50 p-3 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-blue-600">{reportDetail.votes_count}</div>
+                      <div className="text-2xl font-bold text-blue-600">{reportDetail.votesCount}</div>
                       <div className="text-sm text-blue-700">투표</div>
                     </div>
                     <div className="bg-green-50 p-3 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-green-600">{reportDetail.comments_count}</div>
+                      <div className="text-2xl font-bold text-green-600">{reportDetail.commentsCount}</div>
                       <div className="text-sm text-green-700">댓글</div>
                     </div>
                     <div className="bg-purple-50 p-3 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-purple-600">{reportDetail.view_count}</div>
+                      <div className="text-2xl font-bold text-purple-600">{reportDetail.viewCount}</div>
                       <div className="text-sm text-purple-700">조회</div>
                     </div>
                   </div>
@@ -260,13 +261,13 @@ export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportD
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">최근 댓글</h3>
                   <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {reportDetail.recent_comments && reportDetail.recent_comments.length > 0 ? (
-                      reportDetail.recent_comments.map((comment) => (
+                    {reportDetail.recentComments && reportDetail.recentComments.length > 0 ? (
+                      reportDetail.recentComments.map((comment) => (
                         <div key={comment.id} className="bg-gray-50 p-3 rounded-lg">
                           <div className="flex justify-between items-start mb-2">
-                            <span className="font-medium text-gray-900">{comment.user_nickname}</span>
+                            <span className="font-medium text-gray-900">{comment.userNickname}</span>
                             <span className="text-xs text-gray-500">
-                              {new Date(comment.created_at).toLocaleDateString()}
+                              {new Date(comment.createdAt).toLocaleDateString()}
                             </span>
                           </div>
                           <p className="text-gray-700 text-sm">{comment.content}</p>
@@ -290,16 +291,16 @@ export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportD
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">생성일:</span>
-                      <span className="text-gray-900">{new Date(reportDetail.created_at).toLocaleString()}</span>
+                      <span className="text-gray-900">{new Date(reportDetail.createdAt).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">수정일:</span>
-                      <span className="text-gray-900">{new Date(reportDetail.updated_at).toLocaleString()}</span>
+                      <span className="text-gray-900">{new Date(reportDetail.updatedAt).toLocaleString()}</span>
                     </div>
-                    {reportDetail.assigned_admin_nickname && (
+                    {reportDetail.assignedAdminNickname && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">담당자:</span>
-                        <span className="text-gray-900">{reportDetail.assigned_admin_nickname}</span>
+                        <span className="text-gray-900">{reportDetail.assignedAdminNickname}</span>
                       </div>
                     )}
                   </div>
@@ -321,7 +322,7 @@ export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportD
       </div>
 
       {/* 이미지 확대 모달 */}
-      {showImageModal && reportDetail?.image_url && (
+      {showImageModal && reportDetail?.imageUrl && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-60">
           <div className="relative max-w-4xl max-h-full">
             <button
@@ -331,7 +332,7 @@ export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportD
               ×
             </button>
             <img
-              src={reportDetail.image_url}
+              src={reportDetail.imageUrl}
               alt="제보 이미지 확대"
               className="max-w-full max-h-full object-contain rounded-lg"
             />

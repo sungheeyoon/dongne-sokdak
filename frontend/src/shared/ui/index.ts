@@ -54,11 +54,6 @@ export { default as ReportDetailModal } from './ReportDetailModal'
 export { UnifiedSearch } from './UnifiedSearch'
 export { RegionSearchButton, CurrentRegionButton, RefreshSearchButton, MapBoundsSearchButton } from './RegionSearchButton'
 
-// 레이아웃 컴포넌트
-export { AppHeader } from './AppHeader'
-export { Navbar } from './Navbar'
-export { HeroSection } from './HeroSection'
-
 // 기타 UI 컴포넌트
 export { default as LoadingSpinner, CardSkeleton } from './LoadingSpinner'
 export { default as ErrorDisplay } from './ErrorDisplay'
@@ -66,9 +61,6 @@ export { default as MarkerIcon } from './MarkerIcon'
 export { SearchButton } from './SearchButton'
 export { SearchInput } from './SearchInput'
 export { default as LocalhostGuide } from './LocalhostGuide'
-
-// 데모 데이터
-export * from './demo/DemoData'
 
 // 타입 정의
 export type { BaseModalProps } from './UiBaseModal'

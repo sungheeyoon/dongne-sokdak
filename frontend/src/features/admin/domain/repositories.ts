@@ -1,4 +1,4 @@
-import { AdminStats, UserManagement, AdminActivity, AdminInfo } from './entities';
+import { AdminStats, UserManagement, AdminActivity, AdminInfo, ReportManagement, ReportDetail, ReportFilters } from './entities';
 
 export interface AdminRepository {
     getMyAdminInfo(): Promise<AdminInfo>;
@@ -19,4 +19,21 @@ export interface AdminRepository {
         action?: string;
         adminId?: string;
     }): Promise<AdminActivity[]>;
+
+    // Report Management
+    getReports(filters?: ReportFilters): Promise<ReportManagement[]>;
+    getReportDetail(reportId: string): Promise<ReportDetail>;
+    updateReportStatus(reportId: string, status: string, adminComment?: string, assignedAdminId?: string): Promise<void>;
+    performReportAction(reportId: string, action: string, options?: {
+        adminComment?: string;
+        reason?: string;
+        newStatus?: string;
+        assignedAdminId?: string;
+    }): Promise<any>;
+    bulkReportAction(reportIds: string[], action: string, options?: {
+        adminComment?: string;
+        reason?: string;
+        newStatus?: string;
+        assignedAdminId?: string;
+    }): Promise<any>;
 }

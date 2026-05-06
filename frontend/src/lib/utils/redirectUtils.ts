@@ -22,11 +22,11 @@ export const getSafeHomeUrl = (): string => {
 
   // 환경별 로깅
   if (isLocalDev) {
-    console.log(`🏠 로컬 개발 환경 감지: ${currentOrigin}`)
-    console.log(`🏠 로컬 홈으로 리다이렉트: ${currentOrigin}/`)
+    if (process.env.NODE_ENV === 'development') console.log(`🏠 로컬 개발 환경 감지: ${currentOrigin}`)
+    if (process.env.NODE_ENV === 'development') console.log(`🏠 로컬 홈으로 리다이렉트: ${currentOrigin}/`)
   } else {
-    console.log(`🏠 프로덕션 환경 감지: ${currentOrigin}`)
-    console.log(`🏠 프로덕션 홈으로 리다이렉트: ${currentOrigin}/`)
+    if (process.env.NODE_ENV === 'development') console.log(`🏠 프로덕션 환경 감지: ${currentOrigin}`)
+    if (process.env.NODE_ENV === 'development') console.log(`🏠 프로덕션 홈으로 리다이렉트: ${currentOrigin}/`)
   }
 
   return '/'
@@ -55,11 +55,11 @@ export const getOAuthRedirectUrl = (provider: string): string => {
                     currentOrigin.includes(':8080')    // 다른 개발 서버
 
   if (isLocalDev) {
-    console.log(`🔄 ${provider} OAuth 로컬 개발 환경 감지: ${currentOrigin}`)
-    console.log(`🔄 ${provider} OAuth 로컬 리다이렉트 URL: ${redirectUrl}`)
+    if (process.env.NODE_ENV === 'development') console.log(`🔄 ${provider} OAuth 로컬 개발 환경 감지: ${currentOrigin}`)
+    if (process.env.NODE_ENV === 'development') console.log(`🔄 ${provider} OAuth 로컬 리다이렉트 URL: ${redirectUrl}`)
   } else {
-    console.log(`🔄 ${provider} OAuth 프로덕션 환경 감지: ${currentOrigin}`)
-    console.log(`🔄 ${provider} OAuth 프로덕션 리다이렉트 URL: ${redirectUrl}`)
+    if (process.env.NODE_ENV === 'development') console.log(`🔄 ${provider} OAuth 프로덕션 환경 감지: ${currentOrigin}`)
+    if (process.env.NODE_ENV === 'development') console.log(`🔄 ${provider} OAuth 프로덕션 리다이렉트 URL: ${redirectUrl}`)
   }
 
   return redirectUrl

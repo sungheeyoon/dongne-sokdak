@@ -4,12 +4,13 @@ import React, { useState } from 'react'
 import {
   UiButton as Button, UiInput as Input, UiAlert as Alert, UiBadge as Badge,
   BaseModal, ReportDetailModal,
-  UnifiedSearch, CurrentRegionButton, RefreshSearchButton,
-  demoReports
+  UnifiedSearch, CurrentRegionButton, RefreshSearchButton
 } from '../index'
+import { demoReports } from './DemoData'
 import { ReportCard as UIReportCard } from '../ReportCard'
 import { Mail, Home, Settings, Bell } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { Report } from '@/types'
 
 export const UIShowcase: React.FC = () => {
   const router = useRouter()
@@ -406,7 +407,7 @@ export const UIShowcase: React.FC = () => {
           <div className="bg-white rounded-xl p-8 shadow-sm border">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* 컴팩트 카드들 */}
-              {demoReports.slice(0, 3).map((report) => (
+              {demoReports.slice(0, 3).map((report: Report) => (
                 <div key={report.id} className="space-y-2">
                   <h4 className="font-medium text-sm text-center">
                     {report.category} - {report.status}

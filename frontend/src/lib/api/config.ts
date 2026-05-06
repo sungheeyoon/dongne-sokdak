@@ -20,7 +20,7 @@ export const apiRequest = async (
 ): Promise<unknown> => {
   // 개발 환경에서만 로그 출력
   if (process.env.NODE_ENV === 'development') {
-    console.log('🔗 API Request:', url)
+    if (process.env.NODE_ENV === 'development') console.log('🔗 API Request:', url)
   }
   
   try {
@@ -33,7 +33,7 @@ export const apiRequest = async (
     })
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('📡 API Response:', response.status, response.statusText)
+      if (process.env.NODE_ENV === 'development') console.log('📡 API Response:', response.status, response.statusText)
     }
 
     if (!response.ok) {
@@ -83,7 +83,7 @@ export const authenticatedRequest = async (
     const { data: { session }, error } = await supabase.auth.getSession()
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔐 Auth Session:', session ? 'Found' : 'Not found')
+      if (process.env.NODE_ENV === 'development') console.log('🔐 Auth Session:', session ? 'Found' : 'Not found')
     }
     
     if (error) {

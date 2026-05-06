@@ -7,6 +7,8 @@ export { ReportCategory, ReportStatus }
 
 export interface ReportsFilter {
     category?: ReportCategory
+    status?: ReportStatus
+    userId?: string
     search?: string
     limit?: number
     cursor?: string // 페이지네이션용

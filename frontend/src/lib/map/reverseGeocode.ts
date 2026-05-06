@@ -2,7 +2,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
     return new Promise((resolve) => {
         if (typeof window === 'undefined' || !(window as any).kakao?.maps) {
             if (process.env.NODE_ENV === 'development') {
-                console.log('📍 reverseGeocode: 카카오맵 없어서 기본 위치명 설정');
+                if (process.env.NODE_ENV === 'development') console.log('📍 reverseGeocode: 카카오맵 없어서 기본 위치명 설정');
             }
             return resolve('선택한 위치');
         }
@@ -11,7 +11,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
         geocoder.coord2Address(lng, lat, (result: any[], status: any) => {
             if (status !== (window as any).kakao.maps.services.Status.OK) {
                 if (process.env.NODE_ENV === 'development') {
-                    console.log('📍 reverseGeocode: 기본 위치명 설정');
+                    if (process.env.NODE_ENV === 'development') console.log('📍 reverseGeocode: 기본 위치명 설정');
                 }
                 resolve('선택한 위치');
                 return;

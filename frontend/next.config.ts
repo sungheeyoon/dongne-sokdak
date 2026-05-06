@@ -53,7 +53,7 @@ const nextConfig: NextConfig = {
 
   // 실험적 기능
   experimental: {
-    optimizePackageImports: ['lucide-react', '@tanstack/react-query'],
+    optimizePackageImports: ['lucide-react', '@tanstack/react-query', 'react-kakao-maps-sdk'],
   },
 };
 

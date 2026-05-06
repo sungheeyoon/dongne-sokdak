@@ -300,7 +300,7 @@ export function extractAdministrativeDong(
   let neighborhood = ''
   
   // 디버깅을 위한 로그
-  console.log('🔍 extractAdministrativeDong 호출됨:', {
+  if (process.env.NODE_ENV === 'development') console.log('🔍 extractAdministrativeDong 호출됨:', {
     address,
     roadAddress
   })
@@ -341,13 +341,13 @@ export function extractAdministrativeDong(
         
         // 동을 찾지 못한 경우, 법정동을 행정동으로 매핑
         if (!neighborhood) {
-          console.log('🔍 동을 찾지 못해 convertToAdministrativeDong 호출:', {
+          if (process.env.NODE_ENV === 'development') console.log('🔍 동을 찾지 못해 convertToAdministrativeDong 호출:', {
             district,
             address,
             roadAddress
           })
           neighborhood = convertToAdministrativeDong(district, address, roadAddress)
-          console.log('🔍 convertToAdministrativeDong 결과:', neighborhood)
+          if (process.env.NODE_ENV === 'development') console.log('🔍 convertToAdministrativeDong 결과:', neighborhood)
         }
       }
     }
@@ -386,7 +386,7 @@ export function extractAdministrativeDong(
     full: full.replace(/\s+/g, ' ').trim() // 공백 정리
   }
   
-  console.log('🔍 extractAdministrativeDong 최종 결과:', result)
+  if (process.env.NODE_ENV === 'development') console.log('🔍 extractAdministrativeDong 최종 결과:', result)
   
   return result
 }

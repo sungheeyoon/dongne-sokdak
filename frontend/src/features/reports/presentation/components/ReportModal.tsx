@@ -153,7 +153,7 @@ export default function ReportModal() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    console.log('🔘 제출 버튼 클릭됨', { title: formData.title, description: formData.description, location });
+    if (process.env.NODE_ENV === 'development') console.log('🔘 제출 버튼 클릭됨', { title: formData.title, description: formData.description, location });
 
     if (!formData.title.trim()) {
       toast.error('제목을 입력해주세요.');
@@ -174,7 +174,7 @@ export default function ReportModal() {
     }
 
     try {
-      console.log('📝 제출 데이터:', {
+      if (process.env.NODE_ENV === 'development') console.log('📝 제출 데이터:', {
         title: formData.title,
         description: formData.description,
         category: formData.category,
@@ -192,7 +192,7 @@ export default function ReportModal() {
         imageUrl: formData.imageUrl || undefined
       })
 
-      console.log('✅ 제보 생성 성공:', result)
+      if (process.env.NODE_ENV === 'development') console.log('✅ 제보 생성 성공:', result)
       toast.success('제보가 성공적으로 등록되었습니다!')
       handleClose()
     } catch (error: any) {
