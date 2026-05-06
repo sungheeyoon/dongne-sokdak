@@ -164,14 +164,14 @@ print('routes OK')
 - Coverage target: report_service 90%
 
 **Tasks**
-- [ ] **RED**: `backend/tests/test_reports_endpoint.py::test_list_reports_has_real_counts` (실패: 현재 0 반환)
-- [ ] **GREEN**: SQL RPC `get_reports_paginated(category, status, user_id, search, page, limit)` 작성 — `/nearby`, `/bounds` 의 vote/comment count 조인 패턴 재사용. 마이그레이션 파일로 추가.
-- [ ] **GREEN**: `report_service.list_reports()` 가 RPC 호출하도록 전환. `enrich_report_data` 의 하드코딩 `0` 제거.
-- [ ] **GREEN**: 통합 테스트 그린 (시드 100건)
-- [ ] **REFACTOR**: 캐시 키에서 `current_user_id` 제거. user-agnostic payload 캐싱.
-- [ ] **REFACTOR**: 사용자별 `user_voted` 는 응답 직전 단일 쿼리(`votes WHERE user_id = ? AND report_id IN (...)`)로 batch 조회 후 합성.
-- [ ] **REFACTOR**: `nearby_cache`, `bounds_cache` 의 `maxsize=1000` 적정성 재평가 — 메모리 사용량 측정 후 결정.
-- [ ] **REFACTOR**: `api/v1/reports.py` 의 `print(...)` 제거 → `app.core.logging` 의 logger 사용
+- [x] **RED**: `backend/tests/test_reports_endpoint.py::test_list_reports_has_real_counts` (실패: 현재 0 반환)
+- [x] **GREEN**: SQL RPC `get_reports_paginated(category, status, user_id, search, page, limit)` 작성 — `/nearby`, `/bounds` 의 vote/comment count 조인 패턴 재사용. 마이그레이션 파일로 추가.
+- [x] **GREEN**: `report_service.list_reports()` 가 RPC 호출하도록 전환. `enrich_report_data` 의 하드코딩 `0` 제거.
+- [x] **GREEN**: 통합 테스트 그린 (시드 100건)
+- [x] **REFACTOR**: 캐시 키에서 `current_user_id` 제거. user-agnostic payload 캐싱.
+- [x] **REFACTOR**: 사용자별 `user_voted` 는 응답 직전 단일 쿼리(`votes WHERE user_id = ? AND report_id IN (...)`)로 batch 조회 후 합성.
+- [x] **REFACTOR**: `nearby_cache`, `bounds_cache` 의 `maxsize=1000` 적정성 재평가 — 메모리 사용량 측정 후 결정.
+- [x] **REFACTOR**: `api/v1/reports.py` 의 `print(...)` 제거 → `app.core.logging` 의 logger 사용
 
 **Quality Gate**
 ```bash
