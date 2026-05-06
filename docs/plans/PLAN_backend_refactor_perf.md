@@ -105,20 +105,21 @@ flowchart TD
 - Coverage target: 새로 만든 service 함수 ≥80%
 - 통합 테스트는 Phase 2 까지 제외 (라우트 분리만으로는 동작 변경 없음)
 
-**Sub-Phase 1A — services 모듈 생성 + v1 라우트 위임**
-- [ ] **RED**: `backend/tests/test_report_service.py` — `create_report` / `parse_location` / 실패 케이스 (실패)
-- [ ] **GREEN**: `services/report_service.py` 신설. `api/v1/reports.py` 의 `parse_location`, `enrich_report_data`, CRUD 헬퍼를 이전. 라우트는 `service.create_report(...)` 같은 thin 위임만 남김.
-- [ ] **GREEN**: 동일 패턴으로 `comment_service`, `vote_service`, `profile_service`
-- [ ] **GREEN**: `pytest -q` 그린
+### Sub-Phase 1A — services 모듈 생성 + v1 라우트 위임
+- [x] **RED**: `backend/tests/test_report_service.py` — `create_report` / `parse_location` / 실패 케이스 (실패)
+- [x] **GREEN**: `services/report_service.py` 신설. `api/v1/reports.py` 의 `parse_location`, `enrich_report_data`, CRUD 헬퍼를 이전. 라우트는 `service.create_report(...)` 같은 thin 위임만 남김.
+- [x] **GREEN**: 동일 패턴으로 `comment_service`, `vote_service`, `profile_service`
+- [x] **GREEN**: `pytest -q` 그린
 
 **Sub-Phase 1B — admin routes 분리**
-- [ ] **GREEN**: `services/admin_service.py` 에 통계/사용자/제보관리/설정 로직 이전
-- [ ] **GREEN**: `api/admin/routes_dashboard.py` (`/dashboard/*`)
-- [ ] **GREEN**: `api/admin/routes_users.py` (`/users`, `/users/{id}/role`, `/users/bulk`)
-- [ ] **GREEN**: `api/admin/routes_reports.py` (`/reports`, `/reports/{id}/status`, `/reports/{id}/action`)
-- [ ] **GREEN**: `api/admin/routes_settings.py` (`/settings`, `/activities`, `/my-info`)
-- [ ] **GREEN**: `api/admin/__init__.py` 에서 4개 라우터 include — 외부 URL 변경 X
-- [ ] **REFACTOR**: 빈 `api/admin/routes.py` 삭제
+- [x] **GREEN**: `services/admin_service.py` 에 통계/사용자/제보관리/설정 로직 이전
+- [x] **GREEN**: `api/admin/routes_dashboard.py` (`/dashboard/*`)
+- [x] **GREEN**: `api/admin/routes_users.py` (`/users`, `/users/{id}/role`, `/users/bulk`)
+- [x] **GREEN**: `api/admin/routes_reports.py` (`/reports`, `/reports/{id}/status`, `/reports/{id}/action`)
+- [x] **GREEN**: `api/admin/routes_settings.py` (`/settings`, `/activities`, `/my-info`)
+- [x] **GREEN**: `api/admin/__init__.py` 에서 4개 라우터 include — 외부 URL 변경 X
+- [x] **REFACTOR**: 빈 `api/admin/routes.py` 삭제
+
 
 **Quality Gate**
 ```bash
@@ -217,23 +218,21 @@ ls supabase/migrations/20260507_get_reports_paginated.sql
 
 ## 7. Progress Tracking
 
-- [ ] Phase 1A — v1 services 도입
-  - [ ] Quality gate 통과
-- [ ] Phase 1B — admin routes 분리
-  - [ ] Quality gate 통과
-  - [ ] `routes_*.py` 각 <400줄 확인
-- [ ] Phase 2 — N+1 fix + 캐시 정리
-  - [ ] RPC 마이그레이션 파일 추가
-  - [ ] `/reports` 응답 vote/comment count 실측 정확
-  - [ ] 캐시 키에서 user_id 제거
-  - [ ] Quality gate 통과
+- [x] Phase 1A — v1 services 도입
+  - [x] Quality gate 통과
+- [x] Phase 1B — admin routes 분리
+  - [x] Quality gate 통과
+  - [x] `routes_*.py` 각 <400줄 확인
+- [x] Phase 2 — N+1 fix + 캐시 정리
+  - [x] RPC 마이그레이션 파일 추가
+  - [x] `/reports` 응답 vote/comment count 실측 정확
+  - [x] 캐시 키에서 user_id 제거
+  - [x] Quality gate 통과
 
 ---
 
 ## 8. Notes & Learnings
 
-> 각 phase 완료 시 아래에 5줄 이내로 학습/이슈 기록
-
-- (Phase 1A) —
-- (Phase 1B) —
-- (Phase 2) —
+- (Phase 1A) — `services/` 레이어 도입으로 비즈니스 로직과 라우트 핸들러를 성공적으로 분리함. `pytest` 및 `pytest-mock`을 활용한 첫 단위 테스트 체계를 구축하여 안정성을 확보함.
+- (Phase 1B) — 1171줄의 거대했던 `admin/routes.py`를 도메인별 4개 파일로 분할하여 유지보수성을 극대화함. `AdminService`를 통해 관리자 로직을 통합 관리할 수 있게 됨.
+- (Phase 2) — `get_reports_paginated` RPC 도입으로 `/reports` 리스트의 N+1 문제를 근본적으로 해결함. 캐시 키에서 `user_id`를 제거하고 `user_voted` 정보를 batch lookup으로 처리하여 캐시 효율성을 대폭 개선함.
