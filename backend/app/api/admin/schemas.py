@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import uuid
@@ -33,8 +33,7 @@ class UserManagementResponse(BaseModel):
     login_count: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserRoleUpdate(BaseModel):
@@ -63,8 +62,7 @@ class AdminActivityResponse(BaseModel):
     user_agent: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReportManagementResponse(BaseModel):
@@ -89,8 +87,7 @@ class ReportManagementResponse(BaseModel):
     assigned_admin_id: Optional[uuid.UUID] = None
     assigned_admin_nickname: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReportStatusUpdate(BaseModel):
@@ -149,5 +146,4 @@ class ReportDetailResponse(BaseModel):
     recent_comments: List[Dict[str, Any]] = []
     status_history: List[Dict[str, Any]] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

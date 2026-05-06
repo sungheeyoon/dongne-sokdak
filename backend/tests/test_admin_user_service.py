@@ -1,30 +1,7 @@
 import pytest
 from fastapi import HTTPException
-from unittest.mock import MagicMock
 from uuid import uuid4
-from datetime import datetime, date
-from app.services import admin_dashboard_service, admin_user_service
-
-@pytest.mark.asyncio
-async def test_get_dashboard_stats_success(mocker):
-    mock_supabase = mocker.Mock()
-    
-    # Mock response for RPC
-    mock_stats = {
-        "total_users": 3,
-        "active_users": 2,
-        "admin_count": 1,
-        "open_reports": 1
-    }
-    
-    mock_supabase.rpc.return_value.execute.return_value.data = mock_stats
-    
-    result = await admin_dashboard_service.get_dashboard_stats(mock_supabase)
-    
-    assert result["total_users"] == 3
-    assert result["active_users"] == 2
-    assert result["admin_count"] == 1
-    assert result["open_reports"] == 1
+from app.services import admin_user_service
 
 @pytest.mark.asyncio
 async def test_update_user_role_success(mocker):
@@ -88,3 +65,51 @@ async def test_bulk_user_action_success(mocker):
     
     assert result["success_count"] == 2
     assert len(result["results"]) == 2
+
+@pytest.mark.asyncio
+async def test_get_users_success(mocker):
+    mock_supabase = mocker.Mock()
+    mock_users = [{"id": str(uuid4()), "email": "u1@test.com"}]
+    
+    mock_query = mocker.Mock()
+    mock_query.order.return_value.range.return_value.execute.return_value.data = mock_users
+    mock_supabase.table.return_value.select.return_value = mock_query
+    
+    result = await admin_user_service.get_users(mock_supabase)
+    
+    assert len(result) == 1
+    assert result[0]["email"] == "u1@test.com"
+
+@pytest.mark.asyncio
+async def test_set_user_active_status_success(mocker):
+    mock_supabase = mocker.Mock()
+    user_id = str(uuid4())
+    admin_id = str(uuid4())
+    
+    mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+        "id": user_id, "is_active": True, "role": "user"
+    }
+    mock_supabase.table.return_value.update.return_value.eq.return_value.execute.return_value.data = [{"id": user_id, "is_active": False}]
+    mocker.patch("app.services.admin.user_service.log_admin_activity")
+    
+    result = await admin_user_service.set_user_active_status(mock_supabase, user_id, False, admin_id, "admin")
+    
+    assert result["is_active"] == False
+
+@pytest.mark.asyncio
+async def test_bulk_user_action_role_change_success(mocker):
+    mock_supabase = mocker.Mock()
+    u1 = str(uuid4())
+    admin_id = str(uuid4())
+    
+    mock_supabase.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
+        {"id": u1, "role": "user"}
+    ]
+    mocker.patch("app.services.admin.user_service.log_admin_activity")
+    
+    result = await admin_user_service.bulk_user_action(
+        mock_supabase, [u1], "change_role", "Promote", "moderator", admin_id, "admin"
+    )
+    
+    assert result["success_count"] == 1
+    mock_supabase.table.return_value.update.return_value.in_.return_value.execute.assert_called()
