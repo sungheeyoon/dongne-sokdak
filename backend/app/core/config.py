@@ -1,6 +1,7 @@
 import os
 import logging
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from dotenv import load_dotenv
 from typing import List
 
@@ -115,8 +116,6 @@ class Settings(BaseSettings):
         
         return list(set(origins))  # 중복 제거
     
-    class Config:
-        env_file = ".env"
-        extra = "ignore"  # 추가 환경변수 무시
+    model_config = ConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

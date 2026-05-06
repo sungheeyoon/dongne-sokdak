@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from typing import Any, List, Optional, Dict
 from supabase.client import Client
 from app.schemas.profile import ProfileUpdate, AvatarUpdate, NeighborhoodUpdate
-from datetime import datetime
+from datetime import datetime, timezone
 
 async def get_my_profile(
     supabase: Client,
@@ -16,7 +16,7 @@ async def get_my_profile(
         try:
             user_response = supabase.auth.admin.get_user_by_id(current_user_id)
             nickname = user_response.user.email.split("@")[0] if user_response.user and user_response.user.email else "사용자"
-        except:
+        except Exception:
             nickname = "사용자"
         
         default_profile = {
@@ -52,7 +52,7 @@ async def update_profile(
     if profile_in.location is not None:
         update_data["location"] = f"POINT({profile_in.location['lng']} {profile_in.location['lat']})"
         
-    update_data["updated_at"] = datetime.now().isoformat()
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
     response = supabase.table("profiles").update(update_data).eq("id", current_user_id).execute()
     if not response.data:
@@ -83,7 +83,7 @@ async def update_avatar(
     """Update user's avatar URL."""
     update_data = {
         "avatar_url": avatar_url,
-        "updated_at": datetime.now().isoformat()
+        "updated_at": datetime.now(timezone.utc).isoformat()
     }
     response = supabase.table("profiles").update(update_data).eq("id", current_user_id).execute()
     if not response.data:
@@ -104,7 +104,7 @@ async def update_neighborhood(
     }
     update_data = {
         "neighborhood": neighborhood_json,
-        "updated_at": datetime.now().isoformat()
+        "updated_at": datetime.now(timezone.utc).isoformat()
     }
     response = supabase.table("profiles").update(update_data).eq("id", current_user_id).execute()
     if not response.data:
@@ -118,7 +118,7 @@ async def delete_neighborhood(
     """Delete user's neighborhood settings."""
     update_data = {
         "neighborhood": None,
-        "updated_at": datetime.now().isoformat()
+        "updated_at": datetime.now(timezone.utc).isoformat()
     }
     response = supabase.table("profiles").update(update_data).eq("id", current_user_id).execute()
     return len(response.data) > 0

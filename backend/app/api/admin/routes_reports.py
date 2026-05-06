@@ -9,6 +9,8 @@ from app.api.admin.schemas import (
     ReportStatusUpdate, ReportActionRequest, BulkReportAction
 )
 
+from app.services.report_service import parse_location
+
 router = APIRouter(tags=["admin"])
 
 @router.get("/reports", response_model=List[ReportManagementResponse])
@@ -67,9 +69,7 @@ async def get_report_detail(
     profile_data = report.get("profiles", [])
     user_nickname = profile_data[0].get("nickname", "알 수 없음") if profile_data else "알 수 없음"
     
-    location = None
-    if report.get("location"):
-        location = {"lat": 0.0, "lng": 0.0}
+    location = parse_location(report.get("location")) if report.get("location") else None
     
     comments = report.get("comments", [])
     recent_comments = []

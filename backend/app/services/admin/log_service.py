@@ -19,5 +19,5 @@ async def get_admin_activity_logs(
         response = query.order("created_at", desc=True).range(skip, skip + limit - 1).execute()
         return response.data or []
     except Exception as e:
-        logger.error(f"❌ Error fetching admin activity logs: {e}")
+        logger.error(f"Error fetching admin activity logs: {e}")
         return []

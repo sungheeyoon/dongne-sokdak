@@ -9,28 +9,15 @@ from app.services import admin_dashboard_service, admin_user_service
 async def test_get_dashboard_stats_success(mocker):
     mock_supabase = mocker.Mock()
     
-    # Mock responses for different tables
-    mock_profiles = [
-        {"id": "1", "role": "admin", "is_active": True, "created_at": date.today().isoformat()},
-        {"id": "2", "role": "user", "is_active": True, "created_at": date.today().isoformat()},
-        {"id": "3", "role": "moderator", "is_active": False, "created_at": "2020-01-01"}
-    ]
+    # Mock response for RPC
+    mock_stats = {
+        "total_users": 3,
+        "active_users": 2,
+        "admin_count": 1,
+        "open_reports": 1
+    }
     
-    def mock_table(name):
-        mock = mocker.Mock()
-        if name == "profiles":
-            mock.select.return_value.execute.return_value.data = mock_profiles
-        elif name == "admin_activity_logs":
-            mock.select.return_value.execute.return_value.data = []
-        elif name == "reports":
-            mock.select.return_value.execute.return_value.data = [{"status": "OPEN", "created_at": date.today().isoformat()}]
-        elif name == "comments":
-            mock.select.return_value.execute.return_value.data = []
-        elif name == "votes":
-            mock.select.return_value.execute.return_value.data = []
-        return mock
-
-    mock_supabase.table.side_effect = mock_table
+    mock_supabase.rpc.return_value.execute.return_value.data = mock_stats
     
     result = await admin_dashboard_service.get_dashboard_stats(mock_supabase)
     
@@ -77,17 +64,19 @@ async def test_update_user_role_self_error(mocker):
 @pytest.mark.asyncio
 async def test_bulk_user_action_success(mocker):
     mock_supabase = mocker.Mock()
-    user_ids = [str(uuid4()), str(uuid4())]
+    u1, u2 = str(uuid4()), str(uuid4())
+    user_ids = [u1, u2]
     admin_id = str(uuid4())
     
     # Mock find user for each
     def mock_table(name):
         mock = mocker.Mock()
         if name == "profiles":
-            mock.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
-                "id": "some-id", "is_active": True, "role": "user"
-            }
-            mock.update.return_value.eq.return_value.execute.return_value.data = [{"id": "some-id"}]
+            mock.select.return_value.in_.return_value.execute.return_value.data = [
+                {"id": u1, "is_active": True, "role": "user"},
+                {"id": u2, "is_active": True, "role": "user"}
+            ]
+            mock.update.return_value.in_.return_value.execute.return_value.data = [{"id": u1}, {"id": u2}]
         return mock
         
     mock_supabase.table.side_effect = mock_table

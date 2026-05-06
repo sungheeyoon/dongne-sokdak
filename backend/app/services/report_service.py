@@ -195,6 +195,9 @@ async def create_report(
         "lng": report_in.location.lng
     }
     
+    nearby_cache.clear()
+    bounds_cache.clear()
+    
     return created_report
 
 async def get_nearby_reports(
@@ -250,14 +253,15 @@ async def get_nearby_reports(
     response = supabase.rpc("get_reports_within_radius", rpc_params).execute()
     nearby_reports = response.data or []
     
-    for report in nearby_reports:
-        report["location"] = parse_location(report.get("location"))
-        report["distance_km"] = round(report.get("distance_meters", 0) / 1000, 2)
-        report["user_voted"] = False
+    # 3. Enrich and Merge
+    items = []
+    for r in nearby_reports:
+        r["distance_km"] = round(r.get("distance_meters", 0) / 1000, 2)
+        items.append(enrich_report_data(r, supabase))
     
     total_pages = math.ceil(total_count / limit) if limit > 0 else 1
     result = {
-        "items": nearby_reports,
+        "items": items,
         "totalCount": total_count,
         "totalPages": total_pages,
         "page": page,
@@ -266,9 +270,9 @@ async def get_nearby_reports(
     
     nearby_cache[cache_key] = result
     
-    if current_user_id and nearby_reports:
+    if current_user_id and items:
         final_result = result.copy()
-        final_result["items"] = [r.copy() for r in nearby_reports]
+        final_result["items"] = [r.copy() for r in items]
         _apply_user_voted(final_result["items"], supabase, current_user_id)
         return final_result
 
@@ -322,13 +326,14 @@ async def get_reports_in_bounds(
     response = supabase.rpc("get_reports_in_bounds", rpc_params).execute()
     bounded_reports = response.data or []
     
-    for report in bounded_reports:
-        report["location"] = parse_location(report.get("location"))
-        report["user_voted"] = False
+    # 3. Enrich and Merge
+    items = []
+    for r in bounded_reports:
+        items.append(enrich_report_data(r, supabase))
                 
     total_pages = math.ceil(total_count / limit) if limit > 0 else 1
     result = {
-        "items": bounded_reports,
+        "items": items,
         "totalCount": total_count,
         "totalPages": total_pages,
         "page": page,
@@ -337,9 +342,9 @@ async def get_reports_in_bounds(
     
     bounds_cache[cache_key] = result
 
-    if current_user_id and bounded_reports:
+    if current_user_id and items:
         final_result = result.copy()
-        final_result["items"] = [r.copy() for r in bounded_reports]
+        final_result["items"] = [r.copy() for r in items]
         _apply_user_voted(final_result["items"], supabase, current_user_id)
         return final_result
 
@@ -347,14 +352,24 @@ async def get_reports_in_bounds(
 
 async def get_report_by_id(supabase: Client, report_id: str, current_user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Get a single report by ID."""
-    res = supabase.table("reports").select("*").eq("id", report_id).execute()
+    # Use select with count to get vote/comment counts in one go
+    res = supabase.table("reports").select("*, votes(count), comments(count)").eq("id", report_id).execute()
     if not res.data:
         return None
         
     report = res.data[0]
     
-    # Enrich with counts and user_voted (simulated for single report if not from RPC)
-    # Usually better to use a view or RPC even for single report, but this is a refactoring of existing logic.
+    # Flatten counts from Supabase response
+    if "votes" in report and isinstance(report["votes"], list) and len(report["votes"]) > 0:
+        report["vote_count"] = report["votes"][0].get("count", 0)
+    elif "votes" in report and isinstance(report["votes"], dict):
+        report["vote_count"] = report["votes"].get("count", 0)
+    
+    if "comments" in report and isinstance(report["comments"], list) and len(report["comments"]) > 0:
+        report["comment_count"] = report["comments"][0].get("count", 0)
+    elif "comments" in report and isinstance(report["comments"], dict):
+        report["comment_count"] = report["comments"].get("count", 0)
+        
     report = enrich_report_data(report, supabase)
     
     if current_user_id:

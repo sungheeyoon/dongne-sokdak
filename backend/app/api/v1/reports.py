@@ -26,6 +26,8 @@ async def create_report(
         if not result:
             raise HTTPException(status_code=400, detail="Failed to create report")
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating report: {e}")
         raise HTTPException(status_code=400, detail=f"Error creating report: {str(e)}")
@@ -53,6 +55,8 @@ async def get_reports(
             search=search,
             current_user_id=current_user_id
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Query error in get_reports: {e}")
         raise HTTPException(status_code=400, detail=f"Query error: {str(e)}")
@@ -76,6 +80,8 @@ async def get_nearby_reports(
             category.value if category else None,
             search, page, limit, current_user_id
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching nearby reports: {e}")
         raise HTTPException(status_code=400, detail=f"Error fetching nearby reports: {str(e)}")
@@ -97,6 +103,8 @@ async def get_reports_in_bounds(
             category.value if category else None,
             search, page, limit, current_user_id
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching bounds reports: {e}")
         raise HTTPException(status_code=400, detail=f"Error fetching bounds reports: {str(e)}")
@@ -198,6 +206,8 @@ async def get_benchmark_nearby_rest(
             category.value if category else None,
             limit
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Bench error REST: {str(e)}")
 
