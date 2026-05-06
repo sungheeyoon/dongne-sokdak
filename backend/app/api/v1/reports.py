@@ -5,90 +5,12 @@ from app.schemas.report import (
     Report, ReportCreate, ReportUpdate, ReportCategory, ReportStatus, PaginatedReportResponse
 )
 from app.api.deps import get_current_active_user, get_supabase
-from app.utils.wkb_parser import convert_wkb_to_location
+from app.services import report_service
+from app.core.logging import get_logger
 from supabase.client import Client
-import math
-from cachetools import TTLCache
 
+logger = get_logger(__name__)
 router = APIRouter()
-
-# 15초 동안 최대 1000개의 쿼리 결과를 기억하는 핫스팟 캐시 
-nearby_cache = TTLCache(maxsize=1000, ttl=15)
-bounds_cache = TTLCache(maxsize=1000, ttl=15)
-
-# --- Helper Functions ---
-
-def calculate_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """
-    Calculate distance between two points using Haversine formula.
-    Returns distance in meters.
-    """
-    R = 6371000  # Earth radius in meters
-    
-    lat1_rad, lng1_rad = math.radians(lat1), math.radians(lng1)
-    lat2_rad, lng2_rad = math.radians(lat2), math.radians(lng2)
-    
-    dlat = lat2_rad - lat1_rad
-    dlng = lng2_rad - lng1_rad
-    
-    a = (math.sin(dlat / 2) ** 2 + 
-         math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlng / 2) ** 2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    
-    return R * c
-
-def parse_location(location_data: Any) -> Dict[str, float]:
-    """
-    Parse location data from Supabase (WKB string, dict, or POINT string) into {"lat": ..., "lng": ...}.
-    Returns default Seoul coordinates if parsing fails.
-    """
-    default_loc = {"lat": 37.5665, "lng": 126.9780}
-    
-    if not location_data:
-        return default_loc
-
-    try:
-        if isinstance(location_data, dict) and "lat" in location_data:
-            return location_data
-        
-        loc_str = str(location_data)
-        
-        # Case 1: WKB Hex String
-        if len(loc_str) > 20 and all(c in '0123456789ABCDEFabcdef' for c in loc_str):
-            return convert_wkb_to_location(loc_str)
-            
-        # Case 2: PostGIS "POINT(lng lat)" String
-        if "POINT(" in loc_str:
-            coords = loc_str.replace("POINT(", "").replace(")", "").split()
-            if len(coords) == 2:
-                # Note: PostGIS is usually (lng, lat)
-                return {"lng": float(coords[0]), "lat": float(coords[1])}
-                
-    except Exception as e:
-        print(f"Location parsing failed: {e}")
-        
-    return default_loc
-
-def enrich_report_data(report: Dict[str, Any], supabase: Client, current_user_id: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Add computed fields (vote_count, comment_count, user_voted, location) to a report dict.
-    """
-    # Parse Location
-    report["location"] = parse_location(report.get("location"))
-    
-    # TODO: [Performance Tuning Needed] N+1 Query Warning
-    # Fetching exact counts for 100 reports individually takes 15+ seconds. 
-    # Must use a SQL View or bulk query. Disabling temporarily to prevent server crash.
-    report["vote_count"] = 0
-    report["comment_count"] = 0
-    
-    # Check if user voted
-    report["user_voted"] = False
-    if current_user_id:
-        # FIXME: N+1 here as well if user is authenticated
-        pass
-        
-    return report
 
 # --- Routes ---
 
@@ -100,34 +22,14 @@ async def create_report(
 ) -> Any:
     """Create a new report."""
     try:
-        location_point = f"POINT({report_in.location.lng} {report_in.location.lat})"
-        
-        report_data = {
-            "user_id": current_user_id,
-            "title": report_in.title,
-            "description": report_in.description,
-            "location": location_point,
-            "address": report_in.address,
-            "category": report_in.category.value,
-            "image_url": report_in.image_url,
-            "status": ReportStatus.OPEN.value
-        }
-        
-        response = supabase.table("reports").insert(report_data).execute()
-        
-        if not response.data:
+        result = await report_service.create_report(supabase, report_in, current_user_id)
+        if not result:
             raise HTTPException(status_code=400, detail="Failed to create report")
-            
-        # Return the created report with parsed location
-        created_report = response.data[0]
-        created_report["location"] = {
-            "lat": report_in.location.lat, 
-            "lng": report_in.location.lng
-        }
-        
-        return created_report
-        
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error creating report: {e}")
         raise HTTPException(status_code=400, detail=f"Error creating report: {str(e)}")
 
 @router.get("/", response_model=PaginatedReportResponse[Report])
@@ -138,45 +40,29 @@ async def get_reports(
     status: Optional[ReportStatus] = None,
     user_id: Optional[str] = None,
     search: Optional[str] = None,
-    current_user_id: Optional[str] = None, # Optional: for user_voted check
+    current_user_id: Optional[str] = None,
     supabase: Client = Depends(get_supabase)
 ) -> Any:
     """List reports with filtering and search."""
     try:
-        query = supabase.table("reports").select("*", count="exact").order("created_at", desc=True)
-        
-        if category:
-            query = query.eq("category", category.value)
-        if status:
-            query = query.eq("status", status.value)
-        if user_id:
-            query = query.eq("user_id", user_id)
-        if search:
-            query = query.or_(f"title.ilike.%{search}%,description.ilike.%{search}%")
-            
-        offset = (page - 1) * limit
-        query = query.range(offset, offset + limit - 1)
-            
-        response = query.execute()
-        reports = response.data
-        total_count = response.count or 0
-        total_pages = math.ceil(total_count / limit) if limit > 0 else 1
-        
-        # Enrich data
-        items = [enrich_report_data(r, supabase, current_user_id) for r in reports]
-        return {
-            "items": items,
-            "totalCount": total_count,
-            "totalPages": total_pages,
-            "page": page,
-            "limit": limit
-        }
-        
+        return await report_service.list_reports(
+            supabase, 
+            page=page, 
+            limit=limit, 
+            category=category.value if category else None,
+            status=status.value if status else None,
+            user_id=user_id,
+            search=search,
+            current_user_id=current_user_id
+        )
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Query error in get_reports: {e}")
         raise HTTPException(status_code=400, detail=f"Query error: {str(e)}")
 
 @router.get("/nearby", response_model=PaginatedReportResponse[Report])
-def get_nearby_reports(
+async def get_nearby_reports(
     lat: float,
     lng: float,
     radius_km: float = 3.0,
@@ -187,67 +73,21 @@ def get_nearby_reports(
     current_user_id: Optional[str] = None,
     supabase: Client = Depends(get_supabase)
 ) -> Any:
-    """Get reports near a specific location (using PostGIS RPC for optimal O(logN) performance)."""
+    """Get reports near a specific location."""
     try:
-        cache_key = f"{lat}_{lng}_{radius_km}_{category.value if category else ''}_{search}_{page}_{limit}_{current_user_id}"
-        if cache_key in nearby_cache:
-            return nearby_cache[cache_key]
-            
-        radius_meters = radius_km * 1000
-        
-        # 1. Count Total
-        count_params = {
-            "target_lat": lat,
-            "target_lng": lng,
-            "radius_meters": radius_meters,
-            "category_filter": category.value if category else None,
-            "search_query": search
-        }
-        try:
-            count_res = supabase.rpc("count_reports_within_radius", count_params).execute()
-            total_count = count_res.data if count_res.data is not None else 0
-        except Exception as e:
-            total_count = 0
-
-        # 2. Fetch Page
-        offset = (page - 1) * limit
-        rpc_params = {
-            "target_lat": lat,
-            "target_lng": lng,
-            "radius_meters": radius_meters,
-            "category_filter": category.value if category else None,
-            "search_query": search,
-            "result_offset": offset,
-            "result_limit": limit,
-            "current_user_id": current_user_id
-        }
-        
-        response = supabase.rpc("get_reports_within_radius", rpc_params).execute()
-        nearby_reports = response.data
-        
-        # Location parsing for client and distance_km formatting
-        for report in nearby_reports:
-            report["location"] = parse_location(report.get("location"))
-            report["distance_km"] = round(report.get("distance_meters", 0) / 1000, 2)
-            # vote_count, comment_count, user_voted are now populated natively by the database!
-        
-        total_pages = math.ceil(total_count / limit) if limit > 0 else 1
-        result = {
-            "items": nearby_reports,
-            "totalCount": total_count,
-            "totalPages": total_pages,
-            "page": page,
-            "limit": limit
-        }
-        
-        nearby_cache[cache_key] = result
-        return result
-        
+        return await report_service.get_nearby_reports(
+            supabase, lat, lng, radius_km,
+            category.value if category else None,
+            search, page, limit, current_user_id
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error fetching nearby reports via RPC: {str(e)}")
+        logger.error(f"Error fetching nearby reports: {e}")
+        raise HTTPException(status_code=400, detail=f"Error fetching nearby reports: {str(e)}")
 
 @router.get("/bounds", response_model=PaginatedReportResponse[Report])
-def get_reports_in_bounds(
+async def get_reports_in_bounds(
     north: float, south: float, east: float, west: float,
     category: Optional[ReportCategory] = None,
     search: Optional[str] = None,
@@ -256,58 +96,21 @@ def get_reports_in_bounds(
     current_user_id: Optional[str] = None,
     supabase: Client = Depends(get_supabase)
 ) -> Any:
-    """Get reports within map bounds (using PostGIS RPC for optimal O(logN) performance)."""
+    """Get reports within map bounds."""
     try:
-        cache_key = f"{north}_{south}_{east}_{west}_{category.value if category else ''}_{search}_{page}_{limit}_{current_user_id}"
-        if cache_key in bounds_cache:
-            return bounds_cache[cache_key]
-            
-        # 1. Count Total
-        count_params = {
-            "north": north, "south": south, "east": east, "west": west,
-            "category_filter": category.value if category else None,
-            "search_query": search
-        }
-        try:
-            count_res = supabase.rpc("count_reports_in_bounds", count_params).execute()
-            total_count = count_res.data if count_res.data is not None else 0
-        except Exception as e:
-            total_count = 0
-            
-        # 2. Fetch Page
-        offset = (page - 1) * limit
-        rpc_params = {
-            "north": north, "south": south, "east": east, "west": west,
-            "category_filter": category.value if category else None,
-            "search_query": search,
-            "result_offset": offset,
-            "result_limit": limit,
-            "current_user_id": current_user_id
-        }
-        
-        response = supabase.rpc("get_reports_in_bounds", rpc_params).execute()
-        bounded_reports = response.data
-        
-        for report in bounded_reports:
-            report["location"] = parse_location(report.get("location"))
-                
-        total_pages = math.ceil(total_count / limit) if limit > 0 else 1
-        result = {
-            "items": bounded_reports,
-            "totalCount": total_count,
-            "totalPages": total_pages,
-            "page": page,
-            "limit": limit
-        }
-        
-        bounds_cache[cache_key] = result
-        return result
-        
+        return await report_service.get_reports_in_bounds(
+            supabase, north, south, east, west,
+            category.value if category else None,
+            search, page, limit, current_user_id
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error fetching bounds reports via RPC: {str(e)}")
+        logger.error(f"Error fetching bounds reports: {e}")
+        raise HTTPException(status_code=400, detail=f"Error fetching bounds reports: {str(e)}")
 
 @router.get("/my-neighborhood", response_model=PaginatedReportResponse[Report])
-def get_my_neighborhood_reports(
+async def get_my_neighborhood_reports(
     radius_km: float = 3.0,
     category: Optional[ReportCategory] = None,
     search: Optional[str] = None,
@@ -319,54 +122,36 @@ def get_my_neighborhood_reports(
     """Get reports for the user's registered neighborhood."""
     try:
         res = supabase.table("profiles").select("neighborhood").eq("id", current_user_id).single().execute()
-        
-        # Check if neighborhood exists properly
         neighborhood = res.data.get("neighborhood") if res.data else None
         
         if not neighborhood or not isinstance(neighborhood, dict) or "lat" not in neighborhood:
-             raise HTTPException(
-                status_code=400, 
-                detail="Neighborhood not set. Please set your neighborhood first."
-            )
+             raise HTTPException(status_code=400, detail="Neighborhood not set.")
             
-        return get_nearby_reports(
-            lat=neighborhood["lat"], 
-            lng=neighborhood["lng"], 
-            radius_km=radius_km, 
-            category=category, 
-            search=search,
-            page=page,
-            limit=limit, 
-            current_user_id=current_user_id,
-            supabase=supabase
+        return await report_service.get_nearby_reports(
+            supabase, neighborhood["lat"], neighborhood["lng"], radius_km,
+            category.value if category else None,
+            search, page, limit, current_user_id
         )
-        
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error fetching neighborhood reports: {e}")
         raise HTTPException(status_code=400, detail=f"Error fetching neighborhood: {str(e)}")
 
 @router.get("/{report_id}", response_model=Report)
 async def get_report(
     report_id: UUID,
-    current_user_id: Optional[str] = None, # Allow anon logic if needed, but usually deps handles it
+    current_user_id: Optional[str] = None,
     supabase: Client = Depends(get_supabase),
 ) -> Any:
     """Get detailed report by ID."""
     try:
-        res = supabase.table("reports").select("*").eq("id", str(report_id)).execute()
-        
-        if not res.data:
+        report = await report_service.get_report_by_id(supabase, str(report_id), current_user_id)
+        if not report:
             raise HTTPException(status_code=404, detail="Report not found")
-            
-        # Use helper to fill data
-        # Note: Need actual user_id for 'user_voted' check. 
-        # If endpoint doesn't enforce auth, user_voted will be False.
-        # Ideally, we should inject current_user using Depends(get_current_user_optional) pattern.
-        # For now, assuming caller might pass it or we skip accurate user_voted if anon.
-        
-        return enrich_report_data(res.data[0], supabase, current_user_id)
-        
+        return report
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error fetching report: {str(e)}")
 
@@ -379,31 +164,15 @@ async def update_report(
 ) -> Any:
     """Update a report."""
     try:
-        # Check ownership
-        existing = supabase.table("reports").select("user_id").eq("id", str(report_id)).single().execute()
-        if not existing.data:
-            raise HTTPException(status_code=404, detail="Report not found")
-            
-        if existing.data["user_id"] != current_user_id:
-            raise HTTPException(status_code=403, detail="Not authorized to update this report")
-            
-        # Prepare Update Data
-        update_data = report_in.model_dump(exclude_unset=True) # Pydantic v2
-        
-        # Handle Enum conversion
+        update_data = report_in.model_dump(exclude_unset=True)
         if "category" in update_data:
             update_data["category"] = update_data["category"].value
         if "status" in update_data:
             update_data["status"] = update_data["status"].value
             
-        # Execute Update
-        res = supabase.table("reports").update(update_data).eq("id", str(report_id)).execute()
-        
-        if not res.data:
-            raise HTTPException(status_code=400, detail="Update failed")
-            
-        return enrich_report_data(res.data[0], supabase, current_user_id)
-        
+        return await report_service.update_report(supabase, str(report_id), update_data, current_user_id)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error updating report: {str(e)}")
 
@@ -415,22 +184,14 @@ async def delete_report(
 ):
     """Delete a report."""
     try:
-        existing = supabase.table("reports").select("user_id").eq("id", str(report_id)).single().execute()
-        if not existing.data:
-            raise HTTPException(status_code=404, detail="Report not found")
-            
-        if existing.data["user_id"] != current_user_id:
-            raise HTTPException(status_code=403, detail="Not authorized to delete this report")
-            
-        supabase.table("reports").delete().eq("id", str(report_id)).execute()
-        
+        await report_service.delete_report(supabase, str(report_id), current_user_id)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error deleting report: {str(e)}")
 
-# --- Benchmark Endpoints ---
-
 @router.get("/benchmark/nearby-rest", response_model=List[Report])
-def get_benchmark_nearby_rest(
+async def get_benchmark_nearby_rest(
     lat: float,
     lng: float,
     radius_km: float = 3.0,
@@ -438,39 +199,17 @@ def get_benchmark_nearby_rest(
     limit: int = 50,
     supabase: Client = Depends(get_supabase)
 ) -> Any:
-    """[V1 Benchmark] Pure REST + Python Haversine calculation (No PostGIS RPC)."""
+    """[V1 Benchmark] Pure REST + Python Haversine calculation."""
     try:
-        # Fetching a large set of rows to simulate pre-RPC memory bottleneck
-        # Note: We limit to 2000 to prevent outright crashing the server, 
-        # but it is enough to show severe performance degradation.
-        query = supabase.table("reports").select("*")
-        if category:
-            query = query.eq("category", category.value)
-            
-        res = query.limit(2000).execute()
-        all_reports = res.data
-        
-        radius_meters = radius_km * 1000
-        nearby_reports = []
-        
-        for report in all_reports:
-            parsed_loc = parse_location(report.get("location"))
-            report["location"] = parsed_loc
-            
-            dist = calculate_distance(lat, lng, parsed_loc["lat"], parsed_loc["lng"])
-            if dist <= radius_meters:
-                report["distance"] = dist
-                report["distance_km"] = round(dist / 1000, 2)
-                report["vote_count"] = 0
-                report["comment_count"] = 0
-                report["user_voted"] = False
-                nearby_reports.append(report)
-                
-        # Sort by distance in python
-        nearby_reports.sort(key=lambda x: x.get("distance", float('inf')))
-        return nearby_reports[:limit]
-        
+        return await report_service.benchmark_nearby_rest_python(
+            supabase, lat, lng, radius_km,
+            category.value if category else None,
+            limit
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Bench error REST: {str(e)}")
+
 
 

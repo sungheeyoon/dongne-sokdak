@@ -30,7 +30,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\dev\\\\web_projects\\\\dongne-sokdak\" -Force)",
       "Bash(Select-Object -Property Name, PSIsContainer)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\dev\\\\web_projects\\\\dongne-sokdak\" -Force | Select-Object -Property Name, @{Name=\"IsDir\";Expression={$_.PSIsContainer}})",
-      "Bash(xargs wc -l)"
+      "Bash(xargs wc -l)",
+      "Bash(.venv/Scripts/python -m pytest -q)",
+      "Bash(.venv/Scripts/python -m pytest --cov=app --cov-report=term-missing)"
     ],
     "deny": []
   }

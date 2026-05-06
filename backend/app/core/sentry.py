@@ -3,7 +3,10 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 import os
+import logging
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 def init_sentry():
     """Sentry 초기화"""
@@ -11,7 +14,7 @@ def init_sentry():
     
     # DSN이 없거나 빈 문자열이거나 플레이스홀더인 경우 스킵
     if not sentry_dsn or sentry_dsn.strip() == "" or sentry_dsn.startswith("your-"):
-        print("⚠️ SENTRY_DSN not configured, error tracking disabled")
+        logger.warning("⚠️ SENTRY_DSN not configured, error tracking disabled")
         return
     
     # 환경별 설정
