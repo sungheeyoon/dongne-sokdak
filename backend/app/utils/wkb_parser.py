@@ -69,14 +69,8 @@ def test_wkb_parsing():
     # 실제 데이터베이스에서 가져온 WKB 샘플
     test_wkb = "0101000020E61000003BDF4F8D97BE5F408D976E1283C84240"
     
-    print("Testing WKB parsing:")
-    print(f"Input WKB: {test_wkb}")
-    
     coords = parse_wkb_point(test_wkb)
-    print(f"Parsed coordinates: {coords}")
-    
     location = convert_wkb_to_location(test_wkb)
-    print(f"Location dict: {location}")
 
 if __name__ == "__main__":
     test_wkb_parsing()

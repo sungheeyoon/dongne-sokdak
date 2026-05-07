@@ -31,14 +31,8 @@
       "Bash(Select-Object -Property Name, PSIsContainer)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\dev\\\\web_projects\\\\dongne-sokdak\" -Force | Select-Object -Property Name, @{Name=\"IsDir\";Expression={$_.PSIsContainer}})",
       "Bash(xargs wc -l)",
-      "Bash(npm run *)",
-      "Bash(pnpm install *)",
-      "Bash(timeout 120 npx eslint src)",
-      "Bash(npx eslint *)",
-      "Bash(ANALYZE=true npm run build)",
-      "Bash(ls __tests__/)",
-      "Bash(find __tests__ -type f -name \"*.test.*\")",
-      "Bash(npx vitest *)"
+      "Bash(.venv/Scripts/python -m pytest -q)",
+      "Bash(.venv/Scripts/python -m pytest --cov=app --cov-report=term-missing)"
     ],
     "deny": []
   }

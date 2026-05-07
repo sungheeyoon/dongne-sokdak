@@ -1,5 +1,5 @@
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from uuid import UUID
 from datetime import datetime
 
@@ -24,8 +24,7 @@ class Comment(CommentBase):
     updated_at: datetime
     replies: Optional[List['Comment']] = []  # 답글 목록
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Pydantic의 순환 참조 해결
 Comment.model_rebuild()

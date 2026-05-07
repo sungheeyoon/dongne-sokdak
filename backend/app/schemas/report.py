@@ -1,5 +1,5 @@
 from typing import Optional, Dict, List, TypeVar, Generic
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
 from datetime import datetime
 from enum import Enum
@@ -48,8 +48,7 @@ class Report(ReportBase):
     comment_count: Optional[int] = 0
     user_voted: Optional[bool] = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReportInDB(Report):
     pass
