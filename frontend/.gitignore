@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 coverage.txt
+
+# server
+pid.txt
+*.log

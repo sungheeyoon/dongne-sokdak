@@ -35,7 +35,10 @@
       "Bash(pnpm install *)",
       "Bash(timeout 120 npx eslint src)",
       "Bash(npx eslint *)",
-      "Bash(ANALYZE=true npm run build)"
+      "Bash(ANALYZE=true npm run build)",
+      "Bash(ls __tests__/)",
+      "Bash(find __tests__ -type f -name \"*.test.*\")",
+      "Bash(npx vitest *)"
     ],
     "deny": []
   }
