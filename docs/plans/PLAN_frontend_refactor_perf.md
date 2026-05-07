@@ -11,7 +11,7 @@
 > ⛔ DO NOT skip quality gates or proceed with failing checks
 
 - **Created**: 2026-05-06
-- **Last Updated**: 2026-05-08 (5차 리뷰 — 4c685b2 푸시 후 재실측)
+- **Last Updated**: 2026-05-08 (6차 리뷰 — abb6160 푸시 후 최종 확인)
 - **Owner**: sungheeyoon
 - **Scope**: Medium (3 phases, 8–11h)
 - **Companion**: `PLAN_backend_refactor_perf.md`
@@ -682,6 +682,65 @@ Lines        : 68.64% ( 381/555 )
 1. §13.2 A·B·D 의 cosmetic 항목 일괄 처리 (체크박스 표기 변경 / 후속 트랙 분리 명시)
 2. §13.2 C 를 별도 이슈로 등록하고 Plan 본문에선 한 줄 포인터만 남김
 3. PR 생성 — 본 Plan 은 "완료" 상태로 main 머지 후 archive 권장
+
+---
+
+## 14. 6차 리뷰 (2026-05-08)
+
+> 커밋 `abb6160 docs(plan): resolve 5th review notes (Plan-out tracks & cosmetic fixes)` 푸시 후 최종 확인. §13.2 의 모든 항목이 처리됐는지 검증.
+
+### 14.1 §13.2 처리 결과 검증 ✅
+
+| § | 항목 | 처리 | 결과 |
+|---|---|---|---|
+| 13.2 A | Branch 커버리지 7건 표기 변경 | §12.2 A 의 `[ ]` → `[~]` + "(Plan-out, 추적용)" | ✅ 7건 모두 적용됨 |
+| 13.2 A | "(line / branch 둘 다)" 추가 항목 무효화 | 취소선 + "(Lines 기준으로 정책 변경됨)" | ✅ 적용됨 |
+| 13.2 B | §12.2 D 첫 번째 박스 무효화 | 취소선 + "(정책 변경으로 무효)" | ✅ 적용됨 |
+| 13.2 C | §12.2 E 항목을 Plan-out 으로 이관 | `[~]` + "(Plan-out 별도 티켓 이관)" | ✅ 2건 적용됨 |
+| 13.2 D | §10.2 헤더에 "Lines" 명시 | "실측 (Lines)" 로 컬럼명 변경 | ✅ 적용됨 |
+| 13.2 D | §11.2 임계 컬럼 명시 | "(※ 임계 ≥80% 는 Lines 컬럼 기준)" 추가 | ✅ 적용됨 |
+| 13.2 D | §9.1 회고 주석 | "(※ Lines 기준 적용 시 다수 통과)" 추가 | ✅ 적용됨 |
+
+### 14.2 자동 검증 명령 결과 (현재 working tree)
+
+| 명령 | 결과 |
+|---|---|
+| `npm run lint` | exit 0 ✅ |
+| `npm run tsc:check` | exit 0 ✅ |
+| `npm test -- --run` | 10 files / 77 tests 그린 ✅ |
+| `git ls-files \| grep -E "(pid\|dev\.log\|coverage\.txt\|tsbuildinfo)"` | 출력 0줄 ✅ |
+| `grep -rn "console.log" src \| grep -v NODE_ENV` | 출력 0줄 ✅ |
+
+### 14.3 잔존 cosmetic 사항 (선택)
+
+> 본 Plan 의 quality gate 와 무관. 회고 차원의 항목이며 수정 가치 낮음.
+
+- §9.2 의 4개 unchecked 박스 (`UIShowcase` 정책 / coverage 80% / ANALYZE 작동 / before-after 표 / lint 동작) — 1차 리뷰 시점 스냅샷이며 후속 커밋에서 모두 해소됨. 역사적 기록으로 보존 가능.
+- §10.2 D 행("circular JSON" 결과)은 14.2 시점에 해소됐으나 표가 2차 리뷰 스냅샷이라 그대로 둠.
+
+### 14.4 종합 판정 (6차, 최종)
+
+- **구조 / 아키텍처** : ✅ 완료
+- **테스트 (Lines 기준 정책)** : ✅ 신규/수정 ViewModel·Repository 모두 ≥80%
+- **Branch 커버리지** : ⚠️ 후속 트랙(Plan-out) 으로 분리 — 별도 티켓 이관 권장
+- **번들 검증** : ✅ 분석기 보고서 정상, §8 비교 표 작성
+- **운영 위생** : ✅ 추적 잔재 0, console unguarded 0
+- **lint / 타입 / 테스트** : ✅ 3종 모두 exit 0
+- **문서 정합성** : ✅ §10.2 / §11.2 / §9.1 회고 주석 반영, §12.2 / §12 D 표기 정합
+
+> **최종 결론**: 본 Plan 의 모든 quality gate 가 충족됐고, 문서 정합성도 정리됐음. **PR 생성 → main 머지 → 본 Plan archive** 단계로 진행 가능. Branch 커버리지 / `addressUtils` / `features/auth/*` 보강은 후속 별도 티켓으로 분리.
+
+### 14.5 머지 직전 권장 명령
+
+```bash
+cd frontend
+npm run lint            # ✅
+npm run tsc:check       # ✅
+npm run test:coverage -- --run   # ✅ Lines 기준 통과 확인
+ANALYZE=true npm run build -- --webpack   # 보고서 갱신 (선택)
+```
+
+PR 본문에는 §8 Notes 의 번들 before/after 표와 §13.4 / §14.4 종합 판정을 인용하면 충분.
 
 ```bash
 cd frontend
