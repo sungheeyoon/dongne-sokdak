@@ -1,0 +1,57 @@
+
+> frontend@0.1.0 test:coverage
+> vitest run --coverage --run
+
+
+ RUN  v4.1.5 /Users/kyunglee/Documents/projects/dongne-sokdak/frontend
+      Coverage enabled with v8
+
+
+ Test Files  9 passed (9)
+      Tests  48 passed (48)
+   Start at  20:08:14
+   Duration  1.53s (transform 397ms, setup 762ms, import 918ms, tests 598ms, environment 6.14s)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   54.42 |    44.39 |   52.31 |   58.09 |                   
+ ...s/admin/domain |   65.51 |    59.25 |   86.66 |   86.36 |                   
+  usecases.ts      |   65.51 |    59.25 |   86.66 |   86.36 | 58-59,68          
+ ...entation/hooks |   78.74 |    28.94 |   83.33 |   79.83 |                   
+  ...nViewModel.ts |   85.71 |    39.28 |      90 |   88.05 | ...93,107-108,132 
+  ...tViewModel.ts |   70.17 |        0 |      75 |   70.17 | ...83,100-110,121 
+ features/auth     |   33.33 |      100 |      20 |      20 |                   
+  store.ts         |   33.33 |      100 |      20 |      20 | 21-24             
+ ...ures/auth/data |    3.92 |        0 |       0 |     5.4 |                   
+  ...Repository.ts |    3.92 |        0 |       0 |     5.4 | 7,17-125          
+ ...es/auth/domain |    5.55 |        0 |      10 |    5.88 |                   
+  usecases.ts      |    5.55 |        0 |      10 |    5.88 | 7-49              
+ ...entation/hooks |    1.81 |        0 |       0 |    1.85 |                   
+  ...hViewModel.ts |    1.81 |        0 |       0 |    1.85 | 11-103            
+ ...ion/components |   62.16 |    58.82 |   72.72 |   65.62 |                   
+  ...rkerLayer.tsx |   62.16 |    58.82 |   72.72 |   65.62 | 103-120           
+ ...entation/hooks |    66.1 |    40.74 |    62.5 |   73.07 |                   
+  ...oMapBounds.ts |    66.1 |    40.74 |    62.5 |   73.07 | ...2,79,87,91-105 
+ ...s/reports/data |   83.14 |     53.4 |   94.73 |   93.24 |                   
+  ...Repository.ts |   81.25 |    66.66 |   85.71 |      80 | 17,63-64          
+  ...Repository.ts |   80.64 |       52 |     100 |   95.83 | 86-87             
+  ...Repository.ts |     100 |       50 |     100 |     100 | 27-38             
+ ...reports/domain |   43.75 |    86.36 |      30 |   45.16 |                   
+  entities.ts      |      90 |       95 |     100 |     100 | 32                
+  usecases.ts      |   22.72 |        0 |   26.31 |   22.72 | 34-93             
+ ...entation/hooks |    87.5 |    78.94 |     100 |   92.85 |                   
+  ...sViewModel.ts |    87.5 |    78.94 |     100 |   92.85 | 44,120            
+ lib               |   71.42 |      100 |       0 |   71.42 |                   
+  supabase.ts      |   71.42 |      100 |       0 |   71.42 | 10,15             
+ lib/utils         |   28.98 |       24 |   22.22 |   26.98 |                   
+  addressUtils.ts  |   28.98 |       24 |   22.22 |   26.98 | ...58,165-168,175 
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 54.42% ( 338/621 )
+Branches     : 44.39% ( 186/419 )
+Functions    : 52.31% ( 79/151 )
+Lines        : 58.09% ( 323/556 )
+================================================================================

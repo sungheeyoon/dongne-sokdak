@@ -30,7 +30,11 @@
       "Bash(Get-ChildItem -Path \"C:\\\\dev\\\\web_projects\\\\dongne-sokdak\" -Force)",
       "Bash(Select-Object -Property Name, PSIsContainer)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\dev\\\\web_projects\\\\dongne-sokdak\" -Force | Select-Object -Property Name, @{Name=\"IsDir\";Expression={$_.PSIsContainer}})",
-      "Bash(xargs wc -l)"
+      "Bash(xargs wc -l)",
+      "Bash(npm run *)",
+      "Bash(pnpm install *)",
+      "Bash(timeout 120 npx eslint src)",
+      "Bash(npx eslint *)"
     ],
     "deny": []
   }
