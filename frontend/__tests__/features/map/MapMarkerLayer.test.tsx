@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, fireEvent, act } from '@testing-library/react'
 import { MapMarkerLayer } from '@/features/map/presentation/components/MapMarkerLayer'
 import React from 'react'
 
@@ -8,7 +8,9 @@ vi.mock('react-kakao-maps-sdk', () => ({
 }))
 
 vi.mock('@/components/MemoizedMapMarker', () => ({
-  default: ({ id }: { id: string }) => <div data-testid="marker" data-id={id} />
+  default: ({ id, onClick }: { id: string, onClick: (id: string) => void }) => (
+    <div data-testid="marker" data-id={id} onClick={() => onClick(id)} />
+  )
 }))
 
 describe('MapMarkerLayer', () => {
@@ -47,5 +49,63 @@ describe('MapMarkerLayer', () => {
 
     const markers = getAllByTestId('marker')
     expect(markers.length).toBe(50) // Only the 50 inside should be rendered
+  })
+
+  it('should handle marker click and call map panTo and setLevel if needed', async () => {
+    vi.useFakeTimers()
+
+    const mockMap = {
+      panTo: vi.fn(),
+      getLevel: vi.fn().mockReturnValue(6), // current level 6 > target level 3
+      setLevel: vi.fn()
+    }
+
+    const mockReport = {
+      id: 'test-1',
+      location: { lat: 37.5, lng: 127.0 },
+      category: 'INFRASTRUCTURE'
+    } as any
+
+    const onMarkerClick = vi.fn()
+
+    // Mock kakao maps window object
+    window.kakao = {
+      maps: {
+        LatLng: class {
+          lat: number;
+          lng: number;
+          constructor(lat: number, lng: number) {
+            this.lat = lat;
+            this.lng = lng;
+          }
+        } as any
+      }
+    } as any
+
+    const { getByTestId } = render(
+      <MapMarkerLayer 
+        map={mockMap} 
+        reports={[mockReport]} 
+        currentBounds={null} 
+        onMarkerClick={onMarkerClick} 
+      />
+    )
+
+    const marker = getByTestId('marker')
+    
+    act(() => {
+      fireEvent.click(marker)
+    })
+
+    expect(mockMap.panTo).toHaveBeenCalled()
+    expect(onMarkerClick).toHaveBeenCalledWith(mockReport)
+
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+
+    expect(mockMap.setLevel).toHaveBeenCalledWith(3, { animate: { duration: 500 } })
+
+    vi.useRealTimers()
   })
 })

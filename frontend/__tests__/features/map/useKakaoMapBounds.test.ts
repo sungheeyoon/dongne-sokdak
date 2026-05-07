@@ -88,4 +88,95 @@ describe('useKakaoMapBounds', () => {
             expect.anything()
         )
     })
+
+    it('should test precisionByZoom for mid level', () => {
+        mockMap.getLevel.mockReturnValue(5)
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange))
+        
+        act(() => {
+            result.current.dispatchBoundsUpdate(true)
+        })
+
+        // Level 5 should use precision 5
+        expect(result.current.precisionByZoom(5)).toBe(5)
+    })
+
+    it('should call onZoomChange and dispatch update on handleZoomChange', () => {
+        const onZoomChange = vi.fn()
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, onZoomChange))
+        
+        act(() => {
+            result.current.handleZoomChange()
+        })
+
+        // Should be debounced by 200ms
+        expect(onZoomChange).not.toHaveBeenCalled()
+
+        act(() => {
+            vi.advanceTimersByTime(200)
+        })
+
+        expect(onZoomChange).toHaveBeenCalledWith(3)
+        expect(onBoundsChange).toHaveBeenCalled()
+    })
+
+    it('should handle drag end', () => {
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange))
+        
+        act(() => {
+            result.current.handleDragEnd()
+        })
+
+        expect(onBoundsChange).toHaveBeenCalled()
+    })
+
+    it('should handle errors in dispatchBoundsUpdate without crashing', () => {
+        mockMap.getBounds.mockImplementation(() => { throw new Error('Bounds error') })
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange))
+        
+        expect(() => {
+            act(() => {
+                result.current.dispatchBoundsUpdate(true)
+            })
+        }).not.toThrow()
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith('Map bounds calculation error:', expect.any(Error))
+        consoleErrorSpy.mockRestore()
+    })
+
+    it('should handle errors in handleZoomChange without crashing', () => {
+        mockMap.getLevel.mockImplementation(() => { throw new Error('Zoom error') })
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange))
+        
+        act(() => {
+            result.current.handleZoomChange()
+        })
+
+        act(() => {
+            vi.advanceTimersByTime(200)
+        })
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith('Zoom level calculation error:', expect.any(Error))
+        consoleErrorSpy.mockRestore()
+    })
+
+    it('should not do anything if map is missing', () => {
+        const { result } = renderHook(() => useKakaoMapBounds(null, onBoundsChange))
+        
+        act(() => {
+            result.current.dispatchBoundsUpdate(true)
+            result.current.handleMapBoundsChange()
+            result.current.handleZoomChange()
+        })
+
+        act(() => {
+            vi.advanceTimersByTime(200)
+        })
+
+        expect(onBoundsChange).not.toHaveBeenCalled()
+    })
 })

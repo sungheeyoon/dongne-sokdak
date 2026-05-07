@@ -108,7 +108,7 @@ export function MapMarkerLayer({
       map.panTo(moveLatLng)
 
       const currentLevel = map.getLevel()
-      const targetLevel = Math.max(currentLevel, 3)
+      const targetLevel = Math.min(currentLevel, 3) // Changed from Math.max to Math.min
 
       if (currentLevel > targetLevel) {
         setTimeout(() => {

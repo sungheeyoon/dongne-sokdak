@@ -34,7 +34,8 @@
       "Bash(npm run *)",
       "Bash(pnpm install *)",
       "Bash(timeout 120 npx eslint src)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(ANALYZE=true npm run build)"
     ],
     "deny": []
   }

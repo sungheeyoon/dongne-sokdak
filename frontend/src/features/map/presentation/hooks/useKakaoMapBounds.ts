@@ -59,9 +59,7 @@ export function useKakaoMapBounds(
                 lng: mapCenter.getLng()
             }
 
-            if (process.env.NODE_ENV === 'development') {
-                console.log(`🗺️ MapBounds: updated (${isImmediate ? 'immediate' : 'debounced'}) [Zoom: ${currentZoomLevel}]`)
-            }
+            if (process.env.NODE_ENV === 'development') console.log(`🗺️ MapBounds: updated (${isImmediate ? 'immediate' : 'debounced'}) [Zoom: ${currentZoomLevel}]`)
 
             setCurrentBounds(newBounds)
 
