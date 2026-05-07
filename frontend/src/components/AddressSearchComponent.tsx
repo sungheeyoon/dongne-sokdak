@@ -130,7 +130,7 @@ export default function AddressSearchComponent({
     // 콜백 호출
     onAddressSelect(selectedAddress)
 
-    console.log('✅ 주소 선택 완료 및 검색 결과 정리됨')
+    if (process.env.NODE_ENV === 'development') console.log('✅ 주소 선택 완료 및 검색 결과 정리됨')
   }
 
   // 검색창 초기화

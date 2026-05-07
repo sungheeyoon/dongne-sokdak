@@ -49,3 +49,48 @@ export interface AdminInfo {
     loginCount: number;
     createdAt: string;
 }
+
+export interface ReportManagement {
+  id: string;
+  title: string;
+  description: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
+  category: 'NOISE' | 'TRASH' | 'FACILITY' | 'TRAFFIC' | 'OTHER';
+  userId: string;
+  userNickname: string;
+  userEmail: string;
+  address: string | null;
+  imageUrl: string | null;
+  votesCount: number;
+  commentsCount: number;
+  createdAt: string;
+  updatedAt: string;
+  adminComment: string | null;
+  assignedAdminId: string | null;
+  assignedAdminNickname: string | null;
+}
+
+export interface ReportDetail extends ReportManagement {
+  location: { lat: number; lng: number } | null;
+  viewCount: number;
+  recentComments: Array<{
+    id: string;
+    content: string;
+    userNickname: string;
+    createdAt: string;
+  }>;
+  statusHistory: Array<{
+    status: string;
+    changedAt: string;
+    adminNickname: string;
+  }>;
+}
+
+export interface ReportFilters {
+  skip?: number;
+  limit?: number;
+  status?: string;
+  category?: string;
+  search?: string;
+  assignedAdminId?: string;
+}

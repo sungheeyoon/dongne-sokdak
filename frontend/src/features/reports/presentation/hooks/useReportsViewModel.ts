@@ -179,3 +179,43 @@ export function useReportViewModel(id: string) {
         error
     }
 }
+
+export interface UseMyReportsParams {
+    userId?: string
+    status?: string
+    page: number
+    limit?: number
+}
+
+// 내 제보 목록 조회 (ViewModel)
+export function useMyReportsViewModel({
+    userId,
+    status,
+    page,
+    limit = 9
+}: UseMyReportsParams) {
+    const { data, isLoading, error, refetch } = useQuery({
+        queryKey: ['my-reports', userId, status, page],
+        queryFn: async () => {
+            if (!userId) return null;
+            return reportUseCases.getReports({
+                userId,
+                status: status === 'all' ? undefined : status as any,
+                page,
+                limit
+            })
+        },
+        enabled: !!userId,
+        refetchInterval: 30000,
+    })
+
+    return {
+        reports: data?.items || [],
+        totalCount: data?.totalCount || 0,
+        totalPages: data?.totalPages || 1,
+        currentPage: data?.page || 1,
+        isLoading,
+        error,
+        refetch,
+    }
+}

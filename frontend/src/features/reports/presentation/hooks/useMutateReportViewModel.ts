@@ -25,6 +25,14 @@ export function useMutateReportViewModel() {
         }
     })
 
+    const deleteReportMutation = useMutation({
+        mutationFn: (id: string) => reportMutateUseCases.deleteReport(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['reports'] })
+            queryClient.invalidateQueries({ queryKey: ['my-reports'] })
+        }
+    })
+
     return {
         createReport: createReportMutation.mutateAsync,
         isCreating: createReportMutation.isPending,
@@ -32,5 +40,8 @@ export function useMutateReportViewModel() {
         updateReport: updateReportMutation.mutateAsync,
         isUpdating: updateReportMutation.isPending,
         updateError: updateReportMutation.error,
+        deleteReport: deleteReportMutation.mutateAsync,
+        isDeleting: deleteReportMutation.isPending,
+        deleteError: deleteReportMutation.error,
     }
 }

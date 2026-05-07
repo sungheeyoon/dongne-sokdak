@@ -4,12 +4,13 @@ import React, { useState } from 'react'
 import {
   UiButton as Button, UiInput as Input, UiAlert as Alert, UiBadge as Badge,
   BaseModal, ReportDetailModal,
-  UnifiedSearch, CurrentRegionButton, RefreshSearchButton,
-  demoReports
+  UnifiedSearch, CurrentRegionButton, RefreshSearchButton
 } from '../index'
+import { demoReports } from './DemoData'
 import { ReportCard as UIReportCard } from '../ReportCard'
 import { Mail, Home, Settings, Bell } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { Report } from '@/types'
 
 export const UIShowcase: React.FC = () => {
   const router = useRouter()
@@ -232,10 +233,10 @@ export const UIShowcase: React.FC = () => {
                 <Alert
                   type="error"
                   title="오류"
-                  message="네트워크 연결을 확인해주세요."
-                  dismissible
-                  onDismiss={() => console.log('Alert dismissed')}
-                />
+                                    message="네트워크 연결 을 확인해주세요."
+                                    dismissible
+                                    onDismiss={() => process.env.NODE_ENV === 'development' && console.log('Alert dismissed')}
+                                  />
               </div>
             </div>
           </div>
@@ -326,11 +327,11 @@ export const UIShowcase: React.FC = () => {
                 <div>
                   <h4 className="font-medium mb-3">위치 검색 모드</h4>
                   <UnifiedSearch
-                    searchMode="location"
-                    onLocationSelect={(location) => {
-                      console.log('위치 선택:', location)
-                      alert(`선택된 위치: ${location.placeName}`)
-                    }}
+                                        searchMode="location"
+                                        onLocationSelect={(location) => {
+                                          if (process.env.NODE_ENV === 'development') console.log('위치  선택:', location)
+                                          alert(`선택된 위치: ${location.placeName}`)
+                                        }}
                     onTextSearch={() => { }}
                   />
                 </div>
@@ -341,7 +342,7 @@ export const UIShowcase: React.FC = () => {
                     searchMode="text"
                     onLocationSelect={() => { }}
                     onTextSearch={(query) => {
-                      console.log('텍스트 검색:', query)
+                      if (process.env.NODE_ENV === 'development') console.log('텍스트 검색:', query)
                       alert(`검색어: ${query}`)
                     }}
                   />
@@ -406,7 +407,7 @@ export const UIShowcase: React.FC = () => {
           <div className="bg-white rounded-xl p-8 shadow-sm border">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* 컴팩트 카드들 */}
-              {demoReports.slice(0, 3).map((report) => (
+              {demoReports.slice(0, 3).map((report: Report) => (
                 <div key={report.id} className="space-y-2">
                   <h4 className="font-medium text-sm text-center">
                     {report.category} - {report.status}
@@ -464,7 +465,7 @@ export const UIShowcase: React.FC = () => {
         reports={demoReports.slice(0, 3)}
         locationName="명동 일대"
         onReportClick={(id) => {
-          console.log('Report clicked:', id)
+          if (process.env.NODE_ENV === 'development') console.log('Report clicked:', id)
           setShowReportModal(false)
           router.push(`/reports/${id}`)
         }}

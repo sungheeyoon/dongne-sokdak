@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useReportManagement, ReportFilters } from '@/hooks/useReportManagement'
+import { useReportManagementViewModel } from '@/features/admin/presentation/hooks/useReportManagementViewModel'
+import { ReportFilters } from '@/features/admin/domain/entities'
 import ReportDetailModal from './ReportDetailModal'
 import {
   FileText, Search, Filter, Eye, Trash2, CheckCircle,
@@ -20,7 +21,7 @@ export default function ReportManagementComponent() {
     updateReportStatus,
     deleteReport,
     bulkReportAction
-  } = useReportManagement()
+  } = useReportManagementViewModel()
 
   const [filters, setFilters] = useState<ReportFilters>({
     skip: 0,
@@ -277,7 +278,7 @@ export default function ReportManagementComponent() {
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
                           {getCategoryLabel(report.category)}
                         </span>
-                        {report.image_url && (
+                        {report.imageUrl && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                             <Camera className="w-3 h-3 mr-1" />
                             이미지
@@ -293,11 +294,11 @@ export default function ReportManagementComponent() {
                       </div>
                       <div>
                         <div className="font-medium text-gray-900">
-                          {report.user_nickname}
+                          {report.userNickname}
                         </div>
                         <div className="text-sm text-gray-500 flex items-center">
                           <Mail className="w-3 h-3 mr-1" />
-                          {report.user_email}
+                          {report.userEmail}
                         </div>
                       </div>
                     </div>
@@ -317,20 +318,20 @@ export default function ReportManagementComponent() {
                     <div className="flex gap-4">
                       <span className="flex items-center">
                         <ThumbsUp className="w-4 h-4 mr-1 text-blue-500" />
-                        {report.votes_count}
+                        {report.votesCount}
                       </span>
                       <span className="flex items-center">
                         <MessageCircle className="w-4 h-4 mr-1 text-green-500" />
-                        {report.comments_count}
+                        {report.commentsCount}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     <div>
-                      {new Date(report.created_at).toLocaleDateString()}
+                      {new Date(report.createdAt).toLocaleDateString()}
                     </div>
                     <div className="text-xs">
-                      {new Date(report.created_at).toLocaleTimeString()}
+                      {new Date(report.createdAt).toLocaleTimeString()}
                     </div>
                   </td>
                   <td className="px-6 py-4">

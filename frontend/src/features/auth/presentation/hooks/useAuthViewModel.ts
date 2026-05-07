@@ -33,7 +33,7 @@ export function useAuthViewModel() {
                 const provider = session.user.provider;
                 if (provider === 'google' || provider === 'kakao') {
                     const providerName = provider === 'google' ? '구글' : '카카오';
-                    console.log(`✅ ${providerName} 로그인 완료`);
+                    if (process.env.NODE_ENV === 'development') console.log(`✅ ${providerName} 로그인 완료`);
                 }
             }
 

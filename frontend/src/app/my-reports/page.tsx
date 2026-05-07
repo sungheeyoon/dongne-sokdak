@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
-import { getReports } from '@/lib/api/reports'
+import { useMyReportsViewModel } from '@/features/reports/presentation/hooks/useReportsViewModel'
 import { Report, ReportStatus } from '@/types'
 import Header from '@/components/Header'
 import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
@@ -31,24 +30,17 @@ export default function MyReportsPage() {
   }, [selectedStatus])
 
   const {
-    data,
+    reports,
+    totalCount,
+    totalPages,
     isLoading,
     error
-  } = useQuery({
-    queryKey: ['my-reports', user?.id, selectedStatus, paginationPage],
-    queryFn: () => getReports({
-      userId: user?.id,
-      status: selectedStatus === 'all' ? undefined : selectedStatus as ReportStatus,
-      page: paginationPage,
-      limit: 9
-    }),
-    enabled: !!user?.id,
-    refetchInterval: 30000,
+  } = useMyReportsViewModel({
+    userId: user?.id,
+    status: selectedStatus,
+    page: paginationPage,
+    limit: 9
   })
-
-  const reports = data?.items || []
-  const totalCount = data?.totalCount || 0
-  const totalPages = data?.totalPages || 1
 
   if (!user) {
     return (

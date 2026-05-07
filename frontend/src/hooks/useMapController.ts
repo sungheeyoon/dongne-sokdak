@@ -31,14 +31,14 @@ export function useMapController() {
         setCurrentMapCenter(null);
         setSelectedMapMarker(null);
         if (process.env.NODE_ENV === 'development') {
-            console.log('🏠 내 동네로 돌아가기');
+            if (process.env.NODE_ENV === 'development') console.log('🏠 내 동네로 돌아가기');
         }
     }, [setMapCenter, setSearchedLocation, setUserCurrentLocation, setCurrentMapBounds, setCurrentMapCenter, setSelectedMapMarker]);
 
     const handleLocationSearch = useCallback((location: { lat: number; lng: number; address: string; placeName: string }) => {
         if (process.env.NODE_ENV === 'development') {
-            console.log('🗺️ 위치 선택됨:', location.placeName);
-            console.log('📍 좌표:', location.lat, location.lng);
+            if (process.env.NODE_ENV === 'development') console.log('🗺️ 위치 선택됨:', location.placeName);
+            if (process.env.NODE_ENV === 'development') console.log('📍 좌표:', location.lat, location.lng);
         }
 
         setMapCenter({ lat: location.lat, lng: location.lng });
@@ -49,7 +49,7 @@ export function useMapController() {
 
         setTimeout(() => {
             if (process.env.NODE_ENV === 'development') {
-                console.log('🔄', location.placeName, '지역에서 제보 검색 시작');
+                if (process.env.NODE_ENV === 'development') console.log('🔄', location.placeName, '지역에서 제보 검색 시작');
             }
             setTriggerMapSearch(prev => prev + 1);
         }, 800);

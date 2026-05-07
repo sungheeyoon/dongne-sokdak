@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import withBundleAnalyzerInit from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = withBundleAnalyzerInit({
+  enabled: process.env.ANALYZE === 'true',
+});
 
 const nextConfig: NextConfig = {
   // 이미지 최적화
@@ -53,8 +58,8 @@ const nextConfig: NextConfig = {
 
   // 실험적 기능
   experimental: {
-    optimizePackageImports: ['lucide-react', '@tanstack/react-query'],
+    optimizePackageImports: ['lucide-react', '@tanstack/react-query', 'react-kakao-maps-sdk'],
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

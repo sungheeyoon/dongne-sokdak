@@ -1,26 +1,44 @@
 import { VoteRepository } from '../domain/repositories'
-import {
-    addVote,
-    removeVote,
-    checkUserVote,
-    getVoteCount
-} from '@/lib/api/votes'
+import { createApiUrl, authenticatedRequest, apiRequest } from '@/lib/api/config'
 
 export class ApiVoteRepository implements VoteRepository {
     async addVote(reportId: string): Promise<void> {
-        return addVote(reportId)
+        await authenticatedRequest(
+            createApiUrl('/votes/'),
+            {
+                method: 'POST',
+                body: JSON.stringify({ report_id: reportId })
+            }
+        )
     }
 
     async removeVote(reportId: string): Promise<void> {
-        return removeVote(reportId)
+        await authenticatedRequest(
+            createApiUrl(`/votes/report/${reportId}`),
+            { method: 'DELETE' }
+        )
     }
 
     async checkUserVote(reportId: string): Promise<boolean> {
-        return checkUserVote(reportId)
+        try {
+            const response = await authenticatedRequest(
+                createApiUrl(`/votes/check/${reportId}`)
+            ) as any
+            return response.voted || false
+        } catch (error) {
+            return false
+        }
     }
 
     async getVoteCount(reportId: string): Promise<number> {
-        return getVoteCount(reportId)
+        try {
+            const response = await apiRequest(
+                createApiUrl(`/votes/count/${reportId}`)
+            ) as any
+            return response.count || 0
+        } catch (error) {
+            return 0
+        }
     }
 }
 

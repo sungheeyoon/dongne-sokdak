@@ -1,9 +1,9 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getReport, deleteReport } from '@/lib/api/reports'
 import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
+import { useReportViewModel } from '@/features/reports/presentation/hooks/useReportsViewModel'
+import { useMutateReportViewModel } from '@/features/reports/presentation/hooks/useMutateReportViewModel'
 import Header from '@/components/Header'
 import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
 import ReportModal from '@/features/reports/presentation/components/ReportModal'
@@ -50,34 +50,21 @@ export default function ReportDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useAuthViewModel()
-  const queryClient = useQueryClient()
   const reportId = params.id as string
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
-  const { data: report, isLoading, error } = useQuery({
-    queryKey: ['report', reportId],
-    queryFn: () => getReport(reportId),
-    enabled: !!reportId
-  })
+  const { report, isLoading, error } = useReportViewModel(reportId)
+  const { deleteReport } = useMutateReportViewModel()
 
-  const deleteReportMutation = useMutation({
-    mutationFn: () => deleteReport(reportId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reports'] })
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteReport(reportId)
       setShowDeleteDialog(false)
-      // Toast replacement would be good here, but relying on alert for now or just redirect
-      // alert('제보가 삭제되었습니다.') 
       router.push('/')
-    },
-    onError: (error: any) => {
-      // alert(`삭제 중 오류가 발생했습니다: ${error.message}`)
-      console.error(error)
+    } catch (err) {
+      console.error(err)
     }
-  })
-
-  const handleDeleteConfirm = () => {
-    deleteReportMutation.mutate()
   }
 
   const formatDate = (dateString: string) => {

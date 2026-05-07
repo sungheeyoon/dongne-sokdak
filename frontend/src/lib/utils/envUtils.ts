@@ -73,16 +73,16 @@ export function logEnvironmentStatus() {
   REQUIRED_ENV_VARS.forEach(envVar => {
     const value = process.env[envVar]
     if (value) {
-      console.log(`✅ ${envVar}: ${value.substring(0, 20)}...`)
+      if (process.env.NODE_ENV === 'development') console.log(`✅ ${envVar}: ${value.substring(0, 20)}...`)
     }
   })
 
   OPTIONAL_ENV_VARS.forEach(envVar => {
     const value = process.env[envVar]
     if (value) {
-      console.log(`✅ ${envVar}: ${value}`)
+      if (process.env.NODE_ENV === 'development') console.log(`✅ ${envVar}: ${value}`)
     } else {
-      console.log(`⚠️ ${envVar}: 설정되지 않음 (선택사항)`)
+      if (process.env.NODE_ENV === 'development') console.log(`⚠️ ${envVar}: 설정되지 않음 (선택사항)`)
     }
   })
 

@@ -37,9 +37,9 @@ export default function LocationPicker({
         setKakaoReady(true)
         // 아이콘 파일로 마커 이미지 설정
         setCenterMarkerImage('/icon.png')
-        console.log('✅ 카카오맵 API 준비 완료')
+        if (process.env.NODE_ENV === 'development') console.log('✅ 카카오맵 API 준비 완료')
       } else {
-        console.log('⏳ 카카오맵 API 로딩 중...')
+        if (process.env.NODE_ENV === 'development') console.log('⏳ 카카오맵 API 로딩 중...')
         setTimeout(checkKakaoReady, 100)
       }
     }

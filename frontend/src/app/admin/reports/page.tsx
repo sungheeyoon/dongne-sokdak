@@ -2,12 +2,12 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAdmin } from '../../../hooks/useAdmin';
+import { useAdminViewModel } from '@/features/admin/presentation/hooks/useAdminViewModel';
 import ReportManagement from '@/components/admin/ReportManagement';
 
 export default function AdminReportsPage() {
   const router = useRouter();
-  const { isAdmin, adminInfo } = useAdmin();
+  const { isAdmin, adminInfo } = useAdminViewModel();
 
   useEffect(() => {
     // adminInfo가 로드되었는데 관리자가 아니면 홈으로 리다이렉트

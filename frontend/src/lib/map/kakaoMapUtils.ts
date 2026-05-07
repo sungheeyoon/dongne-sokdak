@@ -18,7 +18,7 @@ export const checkKakaoMapStatus = () => {
     scriptLoaded: typeof window !== 'undefined' && !!document.querySelector('script[src*="dapi.kakao.com"]')
   }
   
-  console.log('🔍 카카오맵 상태 체크:', status)
+  if (process.env.NODE_ENV === 'development') console.log('🔍 카카오맵 상태 체크:', status)
   return status
 }
 
@@ -29,7 +29,7 @@ export const waitForKakaoMaps = (): Promise<boolean> => {
         window.kakao && 
         window.kakao.maps && 
         window.kakao.maps.LatLng) {
-      console.log('✅ 카카오맵 이미 로드됨')
+      if (process.env.NODE_ENV === 'development') console.log('✅ 카카오맵 이미 로드됨')
       resolve(true)
       return
     }
@@ -69,7 +69,7 @@ export const waitForKakaoMaps = (): Promise<boolean> => {
             // window.kakao 존재 확인
             if (!window.kakao) {
               if (attempts % 50 === 0) {
-                console.log('⏳ window.kakao 객체 대기 중... (시도:', attempts, ')')
+                if (process.env.NODE_ENV === 'development') console.log('⏳ window.kakao 객체 대기 중... (시도:', attempts, ')')
               }
               if (attempts >= maxAttempts) {
                 console.error('❌ window.kakao 로드 타임아웃')
@@ -84,10 +84,10 @@ export const waitForKakaoMaps = (): Promise<boolean> => {
             if (!window.kakao.maps) {
               // autoload=false인 경우 수동으로 load 호출
               if (typeof window.kakao.load === 'function') {
-                console.log('🔄 카카오맵 수동 로드 시도...')
+                if (process.env.NODE_ENV === 'development') console.log('🔄 카카오맵 수동 로드 시도...')
                 try {
                   window.kakao.load(() => {
-                    console.log('✅ 카카오맵 수동 로드 완료')
+                    if (process.env.NODE_ENV === 'development') console.log('✅ 카카오맵 수동 로드 완료')
                     setTimeout(checkKakaoScript, 100)
                   })
                 } catch (loadError) {
@@ -101,10 +101,10 @@ export const waitForKakaoMaps = (): Promise<boolean> => {
               if (window.kakao && !window.kakao.maps) {
                 // kakao 객체는 있지만 maps가 아직 로드되지 않은 경우
                 if (window.kakao.load) {
-                  console.log('🔄 카카오맵 수동 로드 재시도...')
+                  if (process.env.NODE_ENV === 'development') console.log('🔄 카카오맵 수동 로드 재시도...')
                   try {
                     window.kakao.load(() => {
-                      console.log('✅ 카카오맵 수동 로드 완료 (재시도)')
+                      if (process.env.NODE_ENV === 'development') console.log('✅ 카카오맵 수동 로드 완료 (재시도)')
                       setTimeout(checkKakaoScript, 100)
                     })
                   } catch (loadError) {
@@ -116,10 +116,10 @@ export const waitForKakaoMaps = (): Promise<boolean> => {
                 
                 // maps 객체가 완전히 없는 경우, 강제로 로드 시도
                 try {
-                  console.log('🔄 카카오맵 강제 로드 시도...')
+                  if (process.env.NODE_ENV === 'development') console.log('🔄 카카오맵 강제 로드 시도...')
                   if ((window as any).kakao?.maps?.load) {
                     (window as any).kakao.maps.load(() => {
-                      console.log('✅ 카카오맵 강제 로드 완료')
+                      if (process.env.NODE_ENV === 'development') console.log('✅ 카카오맵 강제 로드 완료')
                       setTimeout(checkKakaoScript, 100)
                     })
                     return
@@ -130,8 +130,8 @@ export const waitForKakaoMaps = (): Promise<boolean> => {
               }
               
               if (attempts % 50 === 0) {
-                console.log('⏳ window.kakao.maps 객체 대기 중... (시도:', attempts, ')')
-                console.log('📊 kakao 객체 상태:', {
+                if (process.env.NODE_ENV === 'development') console.log('⏳ window.kakao.maps 객체 대기 중... (시도:', attempts, ')')
+                if (process.env.NODE_ENV === 'development') console.log('📊 kakao 객체 상태:', {
                   kakao: !!window.kakao,
                   maps: !!window.kakao.maps,
                   loadFunction: typeof window.kakao.load,
@@ -158,13 +158,13 @@ export const waitForKakaoMaps = (): Promise<boolean> => {
             )
 
             if (hasRequiredAPIs) {
-              console.log('✅ 카카오맵 API 준비 완료 (시도:', attempts, ')')
+              if (process.env.NODE_ENV === 'development') console.log('✅ 카카오맵 API 준비 완료 (시도:', attempts, ')')
               resolve(true)
               return
             } else {
               if (attempts % 50 === 0) {
-                console.log('⏳ 카카오맵 필수 API 로딩 중... (시도:', attempts, ')')
-                console.log('📊 API 상태:', {
+                if (process.env.NODE_ENV === 'development') console.log('⏳ 카카오맵 필수 API 로딩 중... (시도:', attempts, ')')
+                if (process.env.NODE_ENV === 'development') console.log('📊 API 상태:', {
                   LatLng: !!window.kakao.maps.LatLng,
                   Map: !!window.kakao.maps.Map,
                   Marker: !!window.kakao.maps.Marker,
