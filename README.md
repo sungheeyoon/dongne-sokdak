@@ -173,33 +173,64 @@ uvicorn app.main:app --reload
 
 ## 📁 프로젝트 구조
 
+프론트엔드는 feature 슬라이스별 Clean Architecture(`domain → data → presentation`), 백엔드는 service 레이어 패턴을 따릅니다. 자세한 규칙은 [`docs/FRONTEND_CLEAN_ARCHITECTURE.md`](./docs/FRONTEND_CLEAN_ARCHITECTURE.md) 와 [`CLAUDE.md`](./CLAUDE.md) 를 참조하세요.
+
 ```
 dongne-sokdak/
-├── frontend/                 # Next.js 프론트엔드
+├── frontend/                            # Next.js 16 + TypeScript
 │   ├── src/
-│   │   ├── app/             # App Router 페이지
-│   │   ├── components/      # React 컴포넌트
-│   │   ├── hooks/           # 커스텀 훅
-│   │   ├── lib/             # 유틸리티 및 설정
-│   │   └── styles/          # 스타일 파일
-│   ├── public/              # 정적 파일
+│   │   ├── app/                         # App Router 페이지 (조립만)
+│   │   ├── features/<slice>/            # admin | auth | map | profile | reports
+│   │   │   ├── domain/                  #   엔티티 + use case (순수 로직)
+│   │   │   ├── data/                    #   repository (fetch / Supabase / Kakao)
+│   │   │   └── presentation/
+│   │   │       ├── components/          #     UI
+│   │   │       └── hooks/               #     use*ViewModel
+│   │   ├── shared/                      # 공통 UI atoms + 글로벌 스토어
+│   │   ├── components/                  # 레거시 (점진적 이전)
+│   │   └── lib/                         # logger, supabase, kakao utils, formatters
+│   ├── __tests__/                       # Vitest + RTL (src 트리 미러링)
 │   └── package.json
 │
-├── backend/                  # FastAPI 백엔드
+├── backend/                             # FastAPI + Pydantic v2
 │   ├── app/
-│   │   ├── api/             # API 라우터
-│   │   ├── core/            # 핵심 설정
-│   │   ├── db/              # 데이터베이스 설정
-│   │   ├── middleware/      # 미들웨어
-│   │   ├── schemas/         # Pydantic 스키마
-│   │   └── services/        # 비즈니스 로직
-│   ├── config/              # 환경별 설정
-│   ├── supabase/migrations/ # 데이터베이스 마이그레이션
+│   │   ├── api/v1/                      # thin route handlers
+│   │   ├── api/admin/                   # routes_dashboard / users / reports / settings
+│   │   ├── services/                    # 비즈니스 로직
+│   │   │   ├── report_service.py
+│   │   │   ├── comment_service.py
+│   │   │   ├── vote_service.py
+│   │   │   ├── profile_service.py
+│   │   │   └── admin/                   #   dashboard / user / report / log
+│   │   ├── schemas/                     # Pydantic v2
+│   │   └── core/, db/, middleware/, utils/
+│   ├── tests/                           # pytest (서비스 단위 + 통합)
+│   ├── supabase/migrations/             # SQL RPC 포함
 │   └── requirements.txt
 │
-├── docs/                     # 문서
-├── .gitignore
+├── docs/
+│   ├── FRONTEND_CLEAN_ARCHITECTURE.md   # 레이어 규칙 / feature 매핑
+│   └── plans/                           # 진행 중인 플랜
+│       └── archive/                     # 완료된 플랜
+├── CLAUDE.md                            # Claude Code 컨텍스트
+├── README_SECURITY.md
 └── README.md
+```
+
+### 테스트 & 빌드 명령
+
+```bash
+# Frontend
+cd frontend
+npm run dev / build / lint / tsc:check
+npm test -- --run
+npm run test:coverage -- --run
+ANALYZE=true npm run build -- --webpack   # 번들 분석 (.next/analyze/*.html)
+
+# Backend
+cd backend
+uvicorn app.main:app --reload
+.venv/Scripts/python -m pytest -q
 ```
 
 ## 🔐 보안 및 환경 설정
