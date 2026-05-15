@@ -49,6 +49,12 @@ export {
 export { BaseModal } from './UiBaseModal'
 export { Modal } from './UiModal' // 기존 Modal 유지
 export { default as ReportDetailModal } from './ReportDetailModal'
+export {
+  PortfolioNoticeModal,
+  PORTFOLIO_NOTICE_STORAGE_KEY,
+  PORTFOLIO_NOTICE_VERSION,
+} from './PortfolioNoticeModal'
+export type { PortfolioNoticeModalProps } from './PortfolioNoticeModal'
 
 // 검색 컴포넌트
 export { UnifiedSearch } from './UnifiedSearch'

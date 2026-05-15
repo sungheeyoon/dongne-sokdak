@@ -4,6 +4,7 @@ import "./globals.css";
 import QueryProvider from "@/lib/providers/QueryProvider";
 import AuthProvider from "@/lib/providers/AuthProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import PortfolioNoticeMount from "@/components/PortfolioNoticeMount";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -43,6 +44,7 @@ export default function RootLayout({
           <QueryProvider>
             <AuthProvider>
               {children}
+              <PortfolioNoticeMount />
             </AuthProvider>
           </QueryProvider>
         </ErrorBoundary>
