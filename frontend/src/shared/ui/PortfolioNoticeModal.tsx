@@ -12,12 +12,13 @@ export const PORTFOLIO_NOTICE_VERSION = 'v1'
 type WakeStatus = 'pending' | 'ready' | 'failed'
 
 const getHealthCheckUrl = (): string => {
+  // /health/live는 DB 호출이 없는 liveness 엔드포인트라 Supabase 장애 시에도 hang 없이 빠르게 응답한다.
   // API_BASE_URL은 ".../api/v1"까지 포함되어 있을 수 있으므로 루트 도메인을 추출한다.
   try {
     const url = new URL(API_BASE_URL)
-    return `${url.origin}/health`
+    return `${url.origin}/health/live`
   } catch {
-    return `${API_BASE_URL.replace(/\/api\/v\d+\/?$/, '')}/health`
+    return `${API_BASE_URL.replace(/\/api\/v\d+\/?$/, '')}/health/live`
   }
 }
 

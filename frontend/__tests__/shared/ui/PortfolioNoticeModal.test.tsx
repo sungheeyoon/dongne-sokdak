@@ -27,15 +27,15 @@ describe('PortfolioNoticeModal', () => {
     expect(screen.getByRole('button', { name: '확인하고 시작하기' })).toBeInTheDocument()
   })
 
-  it('triggers a wake-up fetch to /health on open', async () => {
+  it('triggers a wake-up fetch to /health/live on open', async () => {
     render(<PortfolioNoticeModal isOpen={true} onClose={() => {}} />)
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledTimes(1)
     })
     const calledUrl = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
-    expect(calledUrl).toMatch(/\/health$/)
-    expect(calledUrl).not.toMatch(/\/api\/v\d+\/health$/)
+    expect(calledUrl).toMatch(/\/health\/live$/)
+    expect(calledUrl).not.toMatch(/\/api\/v\d+\/health/)
   })
 
   it('shows ready status after a successful wake-up', async () => {

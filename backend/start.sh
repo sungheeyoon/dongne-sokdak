@@ -3,4 +3,4 @@
 # alembic upgrade head
 
 # Start Gunicorn with Uvicorn workers
-exec gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+exec gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 60 --graceful-timeout 30

@@ -3,7 +3,8 @@ services:
     name: dongne-sokdak-backend
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    startCommand: gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 60 --graceful-timeout 30
+    healthCheckPath: /health/live
     envVars:
       - key: ENVIRONMENT
         value: production

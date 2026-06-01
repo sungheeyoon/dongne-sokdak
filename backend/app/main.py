@@ -74,6 +74,17 @@ async def root():
     logger.info("루트 엔드포인트 호출")
     return {"message": "동네속닥 API에 오신 것을 환영합니다!"}
 
+@app.get("/health/live")
+async def health_live():
+    # Liveness probe: 프로세스 생존만 확인. DB 호출 없음 → Supabase 장애여도 200.
+    return {"status": "alive", "api_version": "0.1.0"}
+
+
+@app.get("/health/ready")
+async def health_ready():
+    return await health_check()
+
+
 @app.get("/health")
 async def health_check():
     try:
