@@ -1,269 +1,101 @@
-#  동네속닥 (Dongne Sokdak)
+# 동네속닥 (Dongne Sokdak)
 
-**우리 동네의 불편사항과 이슈를 쉽게 제보하고 공유하는 커뮤니티 플랫폼**
+> 우리 동네의 불편사항을 지도 위에 제보하고 함께 공감·해결하는 지역 커뮤니티 서비스 — 무거운 공식 민원 채널 대신 가볍고 직관적인 제보 경험을 목표로 합니다.
 
-##  프로젝트 소개
+- 🔗 **Live**: https://dongne-sokdak.vercel.app
+  > 포트폴리오 데모입니다. 백엔드가 Render 무료 플랜으로 동작해 첫 요청 시 콜드 스타트(30초~1분)가 발생할 수 있고, 표시되는 제보·댓글은 모두 더미 데이터입니다.
 
-동네속닥은 지역 주민들이 일상에서 마주치는 불편사항이나 문제점을 간편하게 제보하고 공유할 수 있는 웹 서비스입니다. 기존의 공식 민원 채널은 절차가 복잡하고 무거운 반면, 동네속닥은 가볍고 직관적인 사용자 경험을 제공합니다.
+**Stack**: Next.js 16 (App Router) · TypeScript · FastAPI · Supabase (PostgreSQL + PostGIS / Auth / Storage) · Kakao Maps · Vercel + Render
 
-##  주요 기능
+---
 
-###  **위치 기반 제보**
-- **카카오맵 연동**: 정확한 위치 선택 및 지도 표시
-- **행정동 매핑**: 법정동을 실제 행정동으로 자동 변환
-- **지역 필터링**: 내 동네 중심의 제보 확인
+## Architecture
 
-###  **간편한 제보 시스템**
-- **이미지 업로드**: 현장 사진과 함께 상황 공유
-- **카테고리별 분류**: 소음, 쓰레기, 시설물 고장, 교통, 기타
-- **상태 관리**: 접수됨 → 처리중 → 해결됨 단계별 진행 상황
+프론트엔드와 백엔드 모두 레이어드 아키텍처를 따르며 **의존성은 안쪽으로만 흐릅니다.** 페이지는 ViewModel 훅만 호출하고, 성능이 중요한 경로는 Python이 아니라 PostgreSQL RPC에서 끝냅니다.
 
-### 👥 **커뮤니티 기능**
-- **공감과 투표**: 다른 주민들의 의견 및 공감 표시
-- **댓글 시스템**: 실시간 의견 교환 및 정보 공유
-- **소셜 로그인**: 카카오 및 구글 계정으로 간편 로그인 (백엔드 인증 방식)
-
-###  **관리자 시스템**
-- **실시간 대시보드**: 통계 시각화 및 현황 모니터링
-- **제보 관리**: 상태 변경, 담당자 배정, 일괄 처리
-- **사용자 관리**: 권한 변경, 계정 관리, 역할 기반 접근 제어
-- **활동 로그**: 모든 관리자 활동 추적 및 CSV 내보내기
-- **시스템 설정**: 공지사항, 카테고리 관리, 백업 및 모니터링
-
-## 🛠️ 기술 스택
-
-### **프론트엔드**
-- **Framework**: Next.js 16 (App Router) + TypeScript
-- **Styling**: TailwindCSS + 반응형 디자인
-- **State Management**: Zustand (UI 상태), TanStack Query (서버 상태)
-- **Maps**: Kakao Map API (위치 기반 서비스)
-- **Authentication**: Supabase Auth + 소셜 로그인 (카카오, 구글)
-
-### **백엔드**
-- **API**: FastAPI (Python) + Pydantic
-- **Authentication**: JWT + Supabase Auth + OAuth2 Code Exchange
-- **Database**: PostgreSQL (Supabase) + PostGIS (위치 정보)
-- **Storage**: Supabase Storage (이미지 저장)
-- **Security**: RBAC (역할 기반 접근 제어) + RLS (행 수준 보안)
-
-### **배포**
-- **Frontend**: Vercel (배포 준비 완료)
-- **Backend**: FastAPI 서버 (Render/Railway 배포 예정)
-- **Database**: Supabase (클라우드 PostgreSQL)
-
-## 💾 데이터 모델
-
-### **주요 데이터 구조**
-
-```typescript
-// 사용자 프로필
-interface Profile {
-  id: string;
-  nickname: string;
-  email: string;
-  avatar_url?: string;
-  role: 'user' | 'moderator' | 'admin';
-  is_active: boolean;
-  neighborhood?: {
-    name: string;
-    coordinates: [number, number];
-  };
-  created_at: Date;
-  last_login_at?: Date;
-}
-
-// 제보
-interface Report {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string;
-  image_url?: string;
-  location: {
-    lat: number;
-    lng: number;
-  };
-  address: string;
-  category: 'NOISE' | 'TRASH' | 'FACILITY' | 'TRAFFIC' | 'OTHER';
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
-  admin_comment?: string;
-  assigned_admin_id?: string;
-  created_at: Date;
-  updated_at: Date;
-}
-
-// 댓글
-interface Comment {
-  id: string;
-  report_id: string;
-  user_id: string;
-  content: string;
-  created_at: Date;
-  updated_at: Date;
-}
-
-// 투표 (공감)
-interface Vote {
-  id: string;
-  user_id: string;
-  report_id: string;
-  created_at: Date;
-}
-
-// 관리자 활동 로그
-interface AdminActivityLog {
-  id: string;
-  admin_id: string;
-  action: string;
-  target_type: 'user' | 'report';
-  target_id: string;
-  details: Record<string, any>;
-  ip_address?: string;
-  user_agent?: string;
-  created_at: Date;
-}
+```mermaid
+flowchart LR
+    Page[App Router Page] --> VM[ViewModel Hook]
+    VM --> Repo[Repository]
+    Repo -->|HTTP| Route[FastAPI Route]
+    Route --> Svc[Service]
+    Svc --> RPC[(PostGIS RPC)]
+    RPC --> DB[(Supabase / PostgreSQL)]
 ```
 
-## 🚀 시작하기
+- **프론트엔드 — feature 슬라이스별 Clean Architecture**: `domain`(순수 use case) → `data`(repository) → `presentation`(ViewModel 훅 + UI). 페이지는 repository·Supabase를 직접 import하지 않고, Kakao Maps SDK는 데이터 레이어에만 둡니다.
+- **백엔드 — service 레이어**: 라우트는 얇게 유지하고 비즈니스 로직은 service가 소유합니다. 무거운 조회는 `supabase/migrations/`의 SQL RPC로 위임합니다.
 
-### 필수 조건
-- Node.js 18+
-- Python 3.8+
-- PostgreSQL (Supabase 사용)
+상세 규칙은 [docs/FRONTEND_CLEAN_ARCHITECTURE.md](docs/FRONTEND_CLEAN_ARCHITECTURE.md) · [CLAUDE.md](CLAUDE.md).
 
-### 1. 리포지토리 클론
-```bash
-git clone https://github.com/sungheeyoon/dongne-sokdak.git
-cd dongne-sokdak
-```
+## Performance engineering
 
-### 2. 환경 변수 설정
-```bash
-# 프론트엔드
-cp frontend/.env.example frontend/.env.local
-# 실제 API 키들로 변경
+이 프로젝트의 핵심은 기능 개수가 아니라 **"지도를 움직일 때마다 발생하는 쿼리·렌더링 병목을 어떻게 측정하고 걷어냈는가"** 입니다.
 
-# 백엔드  
-cp backend/.env.example backend/.env
-# 실제 데이터베이스 정보로 변경
-```
+### 1. 거리 기반 공간 쿼리 최적화 (PostGIS)
 
-### 3. 의존성 설치 및 실행
+데이터가 늘면서 지도 영역 이동 시 응답이 수 초~수십 초까지 지연됐습니다. 원인은 RPC가 `location::geometry`로 캐스팅하며 **GiST 공간 인덱스를 타지 못하고 풀 스캔**으로 동작한 것. `get_reports_within_radius`를 `&&` 바운딩 박스로 1차 필터(GiST) → `ST_DWithin`으로 2차 정밀 필터하도록 재작성하고, `LANGUAGE sql STABLE SECURITY DEFINER`로 실행 계획을 인라이닝했습니다.
 
-#### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
+Locust 부하 테스트(강남 고밀집 지역, 동시 100명 · 약 10,225회 요청, 초당 ~30건)에서 기존 REST + Python 연산 방식 대비:
 
-#### Backend
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
+| 지표 | V1 (REST + Python) | V3 (RPC + PostGIS) | 개선 |
+|---|---|---|---|
+| 평균 응답 | 1,272 ms | 993 ms | **~28% ↓** |
+| 95%ile | 2,000 ms | 1,600 ms | **20% ↓** |
+| 실패율 | 16.1% (830건) | 9.6% (492건) | **~41% ↓** |
 
-### 4. 접속
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API 문서: http://localhost:8000/docs
+연산이 `O(N)` Python 루프에서 `O(log N)` 인덱스 스캔으로 바뀌면서 DB 커넥션을 빨리 반환 → 포화 트래픽에서의 **서버 생존율**이 핵심적으로 개선됐습니다. → [docs/20260220_optimization_summary.md](docs/20260220_optimization_summary.md)
 
-## 📁 프로젝트 구조
+### 2. RPC 기반 N+1 제거
 
-프론트엔드는 feature 슬라이스별 Clean Architecture(`domain → data → presentation`), 백엔드는 service 레이어 패턴을 따릅니다. 자세한 규칙은 [`docs/FRONTEND_CLEAN_ARCHITECTURE.md`](./docs/FRONTEND_CLEAN_ARCHITECTURE.md) 와 [`CLAUDE.md`](./CLAUDE.md) 를 참조하세요.
+목록·대시보드 조회가 행마다 추가 쿼리를 날리는 N+1 구조였습니다. 집계를 DB 한 번의 호출로 묶었습니다.
 
-```
-dongne-sokdak/
-├── frontend/                            # Next.js 16 + TypeScript
-│   ├── src/
-│   │   ├── app/                         # App Router 페이지 (조립만)
-│   │   ├── features/<slice>/            # admin | auth | map | profile | reports
-│   │   │   ├── domain/                  #   엔티티 + use case (순수 로직)
-│   │   │   ├── data/                    #   repository (fetch / Supabase / Kakao)
-│   │   │   └── presentation/
-│   │   │       ├── components/          #     UI
-│   │   │       └── hooks/               #     use*ViewModel
-│   │   ├── shared/                      # 공통 UI atoms + 글로벌 스토어
-│   │   ├── components/                  # 레거시 (점진적 이전)
-│   │   └── lib/                         # logger, supabase, kakao utils, formatters
-│   ├── __tests__/                       # Vitest + RTL (src 트리 미러링)
-│   └── package.json
-│
-├── backend/                             # FastAPI + Pydantic v2
-│   ├── app/
-│   │   ├── api/v1/                      # thin route handlers
-│   │   ├── api/admin/                   # routes_dashboard / users / reports / settings
-│   │   ├── services/                    # 비즈니스 로직
-│   │   │   ├── report_service.py
-│   │   │   ├── comment_service.py
-│   │   │   ├── vote_service.py
-│   │   │   ├── profile_service.py
-│   │   │   └── admin/                   #   dashboard / user / report / log
-│   │   ├── schemas/                     # Pydantic v2
-│   │   └── core/, db/, middleware/, utils/
-│   ├── tests/                           # pytest (서비스 단위 + 통합)
-│   ├── supabase/migrations/             # SQL RPC 포함
-│   └── requirements.txt
-│
-├── docs/
-│   ├── FRONTEND_CLEAN_ARCHITECTURE.md   # 레이어 규칙 / feature 매핑
-│   └── plans/                           # 진행 중인 플랜
-│       └── archive/                     # 완료된 플랜
-├── CLAUDE.md                            # Claude Code 컨텍스트
-├── README_SECURITY.md
-└── README.md
-```
+- `get_reports_within_radius` / `get_reports_in_bounds` — 제보 + `vote_count` + `comment_count`를 한 RPC에서 집계 반환 ([20260508_update_spatial_rpcs_with_counts.sql](backend/supabase/migrations/20260508_update_spatial_rpcs_with_counts.sql)).
+- `get_admin_dashboard_stats` — 12종 통계(유저/제보/댓글/투표/관리자 활동)를 **단일 호출**의 `json_build_object`로 반환.
+- `get_reports_paginated`, `get_profile_with_stats` — 페이지네이션·프로필 통계도 RPC로 일원화.
 
-### 테스트 & 빌드 명령
+### 3. 지도 렌더링 구조 최적화
+
+마커 100~500개를 드래그할 때 React 재조정으로 인한 프레임 드랍을 제거했습니다.
+
+- **Strict memoization** — `position={{lat,lng}}` 같은 객체 리터럴/인라인 함수를 primitive prop(`lat=`, `lng=`) + `useCallback`으로 평탄화해 `React.memo` 격리를 복원.
+- **Viewport culling** — 화면 밖 마커를 렌더 배열에서 아예 제거(500 → ~80 노드).
+- **Concurrent rendering** — 무거운 오버레이 재조정을 `useTransition`으로 저우선 스케줄링해 Kakao 맵 패닝 애니메이션을 막지 않도록.
+- **API 스팸 차단** — `center_changed`(프레임마다 발동) 리스너를 제거하고 `dragend`/`zoom_changed`로만 fetch, 이전 좌표와 0.002도(~200m) 미만 이동은 drop해 무한 리페치 루프 차단.
+
+→ [docs/plans/PLAN_marker_rendering_optimization.md](docs/plans/PLAN_marker_rendering_optimization.md)
+
+## Beyond performance
+
+- **인증/보안** — Supabase Auth + 카카오·구글 OAuth2 Code Exchange, JWT, RBAC + RLS, 관리자 활동 로깅. 상세는 [README_SECURITY.md](README_SECURITY.md).
+- **관리자 시스템** — 실시간 대시보드, 제보 상태/담당자 관리, 역할 기반 사용자 관리, 활동 로그 CSV 내보내기.
+- **테스트** — 프론트 Vitest + RTL(ViewModel·Repository ≥80% Lines), 백엔드 pytest(서비스 단위 + 통합).
+
+## Quick start
 
 ```bash
 # Frontend
 cd frontend
-npm run dev / build / lint / tsc:check
-npm test -- --run
-npm run test:coverage -- --run
-ANALYZE=true npm run build -- --webpack   # 번들 분석 (.next/analyze/*.html)
+cp .env.example .env.local        # Supabase / Kakao / API URL 채우기
+npm install && npm run dev        # http://localhost:3000
 
 # Backend
 cd backend
-uvicorn app.main:app --reload
-.venv/Scripts/python -m pytest -q
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload     # http://localhost:8000 (docs: /docs)
 ```
 
-## 🔐 보안 및 환경 설정
+**필수 환경 변수** — 프론트: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_KAKAO_MAP_API_KEY`, `NEXT_PUBLIC_KAKAO_REST_API_KEY` / 백엔드: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_KEY`, `JWT_SECRET`, `CORS_ORIGINS`, 카카오·구글 OAuth 자격 증명.
 
-상세한 보안 설정은 [README_SECURITY.md](./README_SECURITY.md)를 참조하세요.
+```bash
+# 품질 게이트
+cd frontend && npm run lint && npm run tsc:check && npm test -- --run
+cd backend  && python -m pytest -q
+```
 
-### 주요 보안 기능
-- JWT 기반 인증 시스템
-- Role-Based Access Control (RBAC)
-- Row Level Security (RLS) 
-- 관리자 활동 로깅
-- CORS 보안 설정
+---
 
-## 🎨 주요 특징
-
-### 📱 모바일 최적화
-- 반응형 디자인
-- 터치 친화적 인터페이스
-- 모바일 카카오맵 최적화
-
-### 🗺️ 지도 기능
-- 카카오맵 API 통합
-- 실시간 위치 표시
-- 행정동 기반 지역 관리
-
-### 📊 관리자 대시보드
-- 실시간 통계 시각화
-- CSV 데이터 내보내기
-- 자동 새로고침 기능
-- 상세 활동 추적
-
-
-## 📄 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 `LICENSE` 파일을 참조하세요.
-
+> 본 저장소는 **포트폴리오 공개용**이며 별도 라이선스를 부여하지 않습니다 (All Rights Reserved). 코드 열람은 자유로우나 복제·재배포·상업적 사용은 금지합니다.
+</content>
+</invoke>
