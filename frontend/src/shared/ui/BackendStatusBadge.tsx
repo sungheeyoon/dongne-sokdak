@@ -63,7 +63,7 @@ export function BackendStatusBadge() {
   const meta = STATUS_META[status]
 
   return (
-    <div className="group fixed right-3 top-3 z-50 select-none">
+    <div className="group fixed right-3 top-20 z-40 select-none">
       <div
         role="status"
         aria-label={`데모 서버 상태: ${meta.label}`}
