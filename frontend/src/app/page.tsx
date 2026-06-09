@@ -300,6 +300,7 @@ export default function Home() {
               <MapComponent
                 reports={mapReports}
                 height="450px"
+                zoom={5} // 초기 줌: 동네 단위(3)는 너무 확대되어 주변을 좀 더 넓게 보여줌
                 center={activeLocation ?? undefined}
                 onBoundsChange={handleMapBoundsChange}
                 onZoomChange={setMapZoom}
