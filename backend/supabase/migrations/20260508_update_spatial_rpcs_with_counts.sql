@@ -2,8 +2,11 @@
 -- Description: Updates get_reports_within_radius and get_reports_in_bounds to include vote and comment counts.
 
 -- Drop existing functions first because we are changing the return type (adding columns)
+-- We drop both the 7/8 parameter versions AND any potentially overloaded versions (like those with current_user_id)
 DROP FUNCTION IF EXISTS public.get_reports_within_radius(FLOAT, FLOAT, FLOAT, TEXT, TEXT, INT, INT);
+DROP FUNCTION IF EXISTS public.get_reports_within_radius(FLOAT, FLOAT, FLOAT, TEXT, TEXT, INT, INT, UUID);
 DROP FUNCTION IF EXISTS public.get_reports_in_bounds(FLOAT, FLOAT, FLOAT, FLOAT, TEXT, TEXT, INT, INT);
+DROP FUNCTION IF EXISTS public.get_reports_in_bounds(FLOAT, FLOAT, FLOAT, FLOAT, TEXT, TEXT, INT, INT, UUID);
 
 -- Function 1: get_reports_within_radius (updated to include counts)
 CREATE OR REPLACE FUNCTION public.get_reports_within_radius(
