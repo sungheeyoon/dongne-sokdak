@@ -32,7 +32,22 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\dev\\\\web_projects\\\\dongne-sokdak\" -Force | Select-Object -Property Name, @{Name=\"IsDir\";Expression={$_.PSIsContainer}})",
       "Bash(xargs wc -l)",
       "Bash(.venv/Scripts/python -m pytest -q)",
-      "Bash(.venv/Scripts/python -m pytest --cov=app --cov-report=term-missing)"
+      "Bash(.venv/Scripts/python -m pytest --cov=app --cov-report=term-missing)",
+      "Bash(git rebase *)",
+      "Bash(git stash *)",
+      "Bash(git reset *)",
+      "Bash(backend/.venv/Scripts/python -m locust --version)",
+      "Bash(.venv/Scripts/python -m locust -f scripts/locustfile-benchmark.py --headless -u 100 -r 10 -t 3m --host http://127.0.0.1:8000 --csv results/locust/benchmark_100 --only-summary)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell($pids = \\(Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique\\); foreach \\($p in $pids\\) { try { Stop-Process -Id $p -Force -ErrorAction Stop; \"killed $p\" } catch { \"fail $p\" } }; Start-Sleep -Milliseconds 1000; $still = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue; if \\($still\\) { \"still: \" + \\($still.OwningProcess -join ','\\) } else { \"OK: port 8000 free\" })",
+      "PowerShell(taskkill *)",
+      "Bash(git check-ignore *)",
+      "Read(//c/dev/web_projects//**)",
+      "Read(//c/dev/**)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Read(//c/Users/torus/AppData/Local/Temp/claude/C--dev-web-projects-dongne-sokdak/bcb55943-f906-42c5-9631-360647ae79b1/scratchpad/**)",
+      "Bash(rm -rf profile-readme)",
+      "Bash(gh repo *)"
     ],
     "deny": []
   }
