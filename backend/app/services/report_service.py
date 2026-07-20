@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from typing import Any, List, Optional, Dict
 from supabase.client import Client
 from app.schemas.report import ReportCreate, ReportStatus
-from app.services.spatial_report_cache import SpatialReportCache, spatial_report_cache
+from app.services.spatial_report_cache import SpatialReportCache
 from app.utils.wkb_parser import convert_wkb_to_location
 from app.core.logging import get_logger
 from app.db.supabase_client import supabase as default_supabase
@@ -92,6 +92,11 @@ class ReportService:
     def __init__(self, supabase: Client, cache: SpatialReportCache) -> None:
         self._supabase = supabase
         self._cache = cache
+
+    @property
+    def cache(self) -> SpatialReportCache:
+        """지도 조회 캐시. admin 기본 인스턴스가 무효화 경로를 공유하기 위한 composition seam."""
+        return self._cache
 
     def _apply_user_voted(self, items: List[Dict[str, Any]], current_user_id: str) -> List[Dict[str, Any]]:
         """Helper to batch-apply user_voted status to a list of reports."""
@@ -477,4 +482,4 @@ class ReportService:
         return nearby_reports[:limit]
 
 
-report_service = ReportService(default_supabase, spatial_report_cache)
+report_service = ReportService(default_supabase, SpatialReportCache())

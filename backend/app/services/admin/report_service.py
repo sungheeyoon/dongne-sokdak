@@ -5,7 +5,8 @@ from fastapi import HTTPException, status
 from app.middleware.admin_auth import log_admin_activity
 from app.core.logging import get_logger
 from app.db.supabase_client import supabase as default_supabase
-from app.services.spatial_report_cache import SpatialReportCache, spatial_report_cache
+from app.services.report_service import report_service
+from app.services.spatial_report_cache import SpatialReportCache
 
 logger = get_logger(__name__)
 
@@ -252,4 +253,5 @@ class AdminReportService:
         return {"success_count": success_count, "error_count": error_count, "results": results}
 
 
-admin_report_service = AdminReportService(default_supabase, spatial_report_cache)
+# 기본 인스턴스는 report_service의 캐시를 공유한다 — admin 상태 변경이 지도 조회 무효화에 합류(ADR-0001)
+admin_report_service = AdminReportService(default_supabase, report_service.cache)

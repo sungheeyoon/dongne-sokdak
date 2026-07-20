@@ -80,6 +80,3 @@ class SpatialReportCache:
     def invalidate_all(self) -> None:
         self._nearby.clear()
         self._bounds.clear()
-
-
-spatial_report_cache = SpatialReportCache()
