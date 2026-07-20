@@ -13,8 +13,7 @@ describe('useKakaoMapBounds', () => {
         mockMap = {}
         adapter = {
             getBounds: vi.fn().mockReturnValue({ south: 37.4, west: 126.9, north: 37.6, east: 127.1 }),
-            getLevel: vi.fn().mockReturnValue(3),
-            getCenter: vi.fn().mockReturnValue({ lat: 37.5, lng: 127.0 })
+            getLevel: vi.fn().mockReturnValue(3)
         }
     })
 
@@ -35,10 +34,6 @@ describe('useKakaoMapBounds', () => {
                 west: 126.9,
                 north: 37.6,
                 east: 127.1
-            }),
-            expect.objectContaining({
-                lat: 37.5,
-                lng: 127.0
             })
         )
     })
@@ -79,8 +74,7 @@ describe('useKakaoMapBounds', () => {
                 west: 127.0, // rounded
                 north: 37.6667,
                 east: 127.1111
-            }),
-            expect.anything()
+            })
         )
     })
 

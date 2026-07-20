@@ -23,7 +23,7 @@ export default function LocationPicker({
 }: LocationPickerProps) {
   const [map, setMap] = useState<any>(null)
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [centerLocation, setCenterLocation] = useState<{ lat: number; lng: number }>(initialCenter)
+  const [crosshairLocation, setCrosshairLocation] = useState<{ lat: number; lng: number }>(initialCenter)
   const [centerMarkerImage, setCenterMarkerImage] = useState<string>('')
   const [kakaoReady, setKakaoReady] = useState(false)
 
@@ -51,7 +51,7 @@ export default function LocationPicker({
 
     const handleMapMove = () => {
       const { lat, lng } = adapter.getCenter(map)
-      setCenterLocation({ lat, lng })
+      setCrosshairLocation({ lat, lng })
     }
 
     // 카카오맵 이벤트 등록
@@ -165,7 +165,7 @@ export default function LocationPicker({
       return
     }
 
-    const { lat, lng } = centerLocation
+    const { lat, lng } = crosshairLocation
     setSelectedLocation({ lat, lng })
 
     try {
@@ -174,7 +174,7 @@ export default function LocationPicker({
     } catch (error) {
       onLocationSelect({ lat, lng, address: '주소 정보 없음' })
     }
-  }, [kakaoReady, centerLocation, onLocationSelect, getAddressFromCoords])
+  }, [kakaoReady, crosshairLocation, onLocationSelect, getAddressFromCoords])
 
   if (!kakaoReady) {
     return (
@@ -204,7 +204,7 @@ export default function LocationPicker({
           {/* 가운데 고정 마커 (항상 중심에 위치) */}
           {centerMarkerImage && (
             <MapMarker
-              position={centerLocation}
+              position={crosshairLocation}
               image={{
                 src: centerMarkerImage,
                 size: { width: 40, height: 40 },
@@ -265,7 +265,7 @@ export default function LocationPicker({
           <span className="text-sm font-medium">현재 중심 위치</span>
         </div>
         <div className="text-xs text-gray-600 mt-1">
-          위도: {centerLocation.lat.toFixed(6)}, 경도: {centerLocation.lng.toFixed(6)}
+          위도: {crosshairLocation.lat.toFixed(6)}, 경도: {crosshairLocation.lng.toFixed(6)}
         </div>
       </div>
 

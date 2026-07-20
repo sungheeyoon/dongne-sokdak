@@ -10,7 +10,7 @@ export interface MapBounds {
 
 export function useKakaoMapBounds(
     map: any,
-    onBoundsChange?: (bounds: MapBounds, center: { lat: number; lng: number }) => void,
+    onBoundsChange?: (bounds: MapBounds) => void,
     onZoomChange?: (zoom: number) => void,
     adapter: KakaoMapAdapter = defaultKakaoMapAdapter
 ) {
@@ -49,14 +49,12 @@ export function useKakaoMapBounds(
                 east: Number(east.toFixed(precision))
             }
 
-            const newCenter = adapter.getCenter(map)
-
             if (process.env.NODE_ENV === 'development') console.log(`🗺️ MapBounds: updated (${isImmediate ? 'immediate' : 'debounced'}) [Zoom: ${currentZoomLevel}]`)
 
             setCurrentBounds(newBounds)
 
             if (onBoundsChange) {
-                onBoundsChange(newBounds, newCenter)
+                onBoundsChange(newBounds)
             }
         } catch (error) {
             console.error('Map bounds calculation error:', error)

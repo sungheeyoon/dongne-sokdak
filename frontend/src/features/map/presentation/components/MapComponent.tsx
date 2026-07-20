@@ -14,7 +14,7 @@ interface MapComponentProps {
   zoom?: number
   height?: string
   onLocationSelect?: (location: { lat: number; lng: number; address?: string }) => void
-  onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }, center?: { lat: number, lng: number }) => void
+  onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void
   onZoomChange?: (zoom: number) => void
   onMarkerClick?: (report: ReportType) => void
   selectedMarkerId?: string
