@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { KakaoMapAdapter, defaultKakaoMapAdapter } from '@/features/map/data/kakaoMapAdapter'
 
 export interface MapBounds {
     north: number
@@ -10,7 +11,8 @@ export interface MapBounds {
 export function useKakaoMapBounds(
     map: any,
     onBoundsChange?: (bounds: MapBounds, center: { lat: number; lng: number }) => void,
-    onZoomChange?: (zoom: number) => void
+    onZoomChange?: (zoom: number) => void,
+    adapter: KakaoMapAdapter = defaultKakaoMapAdapter
 ) {
     const [currentBounds, setCurrentBounds] = useState<MapBounds | null>(null)
     const lastBoundsKeyRef = useRef<string | null>(null)
@@ -27,19 +29,13 @@ export function useKakaoMapBounds(
         if (!map) return
 
         try {
-            const bounds = map.getBounds()
+            const bounds = adapter.getBounds(map)
             if (!bounds) return
 
-            const swLatLng = bounds.getSouthWest()
-            const neLatLng = bounds.getNorthEast()
-
-            const currentZoomLevel = map.getLevel()
+            const currentZoomLevel = adapter.getLevel(map)
             const precision = precisionByZoom(currentZoomLevel)
 
-            const south = swLatLng.getLat()
-            const west = swLatLng.getLng()
-            const north = neLatLng.getLat()
-            const east = neLatLng.getLng()
+            const { south, west, north, east } = bounds
 
             const newKey = `${south.toFixed(precision)},${west.toFixed(precision)},${north.toFixed(precision)},${east.toFixed(precision)}`
 
@@ -53,11 +49,7 @@ export function useKakaoMapBounds(
                 east: Number(east.toFixed(precision))
             }
 
-            const mapCenter = map.getCenter()
-            const newCenter = {
-                lat: mapCenter.getLat(),
-                lng: mapCenter.getLng()
-            }
+            const newCenter = adapter.getCenter(map)
 
             if (process.env.NODE_ENV === 'development') console.log(`🗺️ MapBounds: updated (${isImmediate ? 'immediate' : 'debounced'}) [Zoom: ${currentZoomLevel}]`)
 
@@ -69,7 +61,7 @@ export function useKakaoMapBounds(
         } catch (error) {
             console.error('Map bounds calculation error:', error)
         }
-    }, [map, onBoundsChange, precisionByZoom])
+    }, [map, onBoundsChange, precisionByZoom, adapter])
 
     const handleMapBoundsChange = useCallback(() => {
         if (!map) return
@@ -94,7 +86,7 @@ export function useKakaoMapBounds(
 
         timeoutRefs.current.zoom = setTimeout(() => {
             try {
-                const currentZoomLevel = map.getLevel()
+                const currentZoomLevel = adapter.getLevel(map)
                 if (onZoomChange) {
                     onZoomChange(currentZoomLevel)
                 }
@@ -103,7 +95,7 @@ export function useKakaoMapBounds(
                 console.error('Zoom level calculation error:', error)
             }
         }, 200)
-    }, [map, onZoomChange, dispatchBoundsUpdate])
+    }, [map, onZoomChange, dispatchBoundsUpdate, adapter])
 
     return {
         currentBounds,

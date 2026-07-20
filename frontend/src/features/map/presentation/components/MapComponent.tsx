@@ -6,6 +6,7 @@ import { Report as ReportType } from '@/types'
 import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
 import { useKakaoMapBounds } from '@/features/map/presentation/hooks/useKakaoMapBounds'
 import { MapMarkerLayer } from '@/features/map/presentation/components/MapMarkerLayer'
+import { KakaoMapAdapter, defaultKakaoMapAdapter } from '@/features/map/data/kakaoMapAdapter'
 
 interface MapComponentProps {
   reports: ReportType[]
@@ -17,6 +18,7 @@ interface MapComponentProps {
   onZoomChange?: (zoom: number) => void
   onMarkerClick?: (report: ReportType) => void
   selectedMarkerId?: string
+  adapter?: KakaoMapAdapter
 }
 
 export default function MapComponent({
@@ -28,7 +30,8 @@ export default function MapComponent({
   onBoundsChange,
   onZoomChange,
   onMarkerClick,
-  selectedMarkerId
+  selectedMarkerId,
+  adapter = defaultKakaoMapAdapter
 }: MapComponentProps) {
   const safeCenter = center && center.lat && center.lng ? center : { lat: 37.5665, lng: 126.9780 }
   const [map, setMap] = useState<any>(null)
@@ -43,85 +46,39 @@ export default function MapComponent({
     handleMapBoundsChange,
     handleDragEnd,
     handleZoomChange
-  } = useKakaoMapBounds(map, onBoundsChange, onZoomChange)
+  } = useKakaoMapBounds(map, onBoundsChange, onZoomChange, adapter)
 
   // 카카오맵 로딩 확인
   useEffect(() => {
+    let cancelled = false
+
     const initializeKakaoMap = async () => {
+      const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY
+      if (!apiKey) {
+        setMapError('카카오맵 API 키가 설정되지 않았습니다')
+        return
+      }
+
       try {
-        const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY
-        if (!apiKey) {
-          setMapError('카카오맵 API 키가 설정되지 않았습니다')
-          return
-        }
+        const isReady = await adapter.ready()
+        if (cancelled) return
 
-        let attempts = 0
-        const maxAttempts = 150
-
-        const checkKakaoReady = () => {
-          attempts++
-          if (typeof window === 'undefined') return
-          
-          if (!window.kakao || !window.kakao.maps) {
-            if (attempts >= maxAttempts) {
-              setMapError('카카오 SDK 로딩 실패')
-              return
-            }
-            setTimeout(checkKakaoReady, 100)
-            return
-          }
-
-          if (!window.kakao.maps.LatLng) {
-            if (typeof window.kakao.maps.load === 'function') {
-              window.kakao.maps.load(() => {
-                setTimeout(() => {
-                  if (window.kakao.maps.LatLng) setKakaoLoaded(true)
-                  else setMapError('카카오맵 LatLng 로딩 실패')
-                }, 500)
-              })
-              return
-            }
-            if (attempts >= maxAttempts) {
-              setMapError('카카오맵 LatLng 로딩 실패')
-              return
-            }
-            setTimeout(checkKakaoReady, 100)
-            return
-          }
-
-          const requiredAPIs = ['LatLng', 'Map', 'Marker', 'InfoWindow', 'services']
-          const missingAPIs = requiredAPIs.filter(api => !(api in window.kakao.maps))
-          
-          if (missingAPIs.length > 0) {
-            if (attempts >= maxAttempts) {
-              setMapError(`카카오맵 API 로딩 실패: ${missingAPIs.join(', ')}`)
-              return
-            }
-            setTimeout(checkKakaoReady, 100)
-            return
-          }
-
-          if (!window.kakao.maps.services || !window.kakao.maps.services.Geocoder) {
-            if (attempts >= maxAttempts) {
-              setMapError('카카오맵 Geocoder 로딩 실패')
-              return
-            }
-            setTimeout(checkKakaoReady, 100)
-            return
-          }
-
+        if (isReady) {
           setKakaoLoaded(true)
+        } else {
+          setMapError('카카오 SDK 로딩 실패')
         }
-
-        checkKakaoReady()
       } catch (error) {
-        setMapError('카카오맵 초기화 오류')
+        if (!cancelled) setMapError('카카오맵 초기화 오류')
       }
     }
 
     const timer = setTimeout(initializeKakaoMap, 1000)
-    return () => clearTimeout(timer)
-  }, [])
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [adapter])
 
   // 기본 지도 로드가 완료되었을 때 정확히 1회의 Data Fetch를 보장
   useEffect(() => {
@@ -143,10 +100,9 @@ export default function MapComponent({
       return
     }
 
-    const moveToCenter = new window.kakao.maps.LatLng(center.lat, center.lng)
-    map.panTo(moveToCenter)
+    adapter.panTo(map, center.lat, center.lng)
     setLastSetCenter(center)
-  }, [center, map, handleMapBoundsChange, lastSetCenter])
+  }, [center, map, handleMapBoundsChange, lastSetCenter, adapter])
 
   // 지도 클릭 이벤트 (제보 위치 선택용)
   const handleMapClick = async (event: any) => {
@@ -217,6 +173,7 @@ export default function MapComponent({
               currentBounds={currentBounds}
               selectedMarkerId={selectedMarkerId}
               onMarkerClick={onInternalMarkerClick}
+              adapter={adapter}
             />
           )}
         </Map>

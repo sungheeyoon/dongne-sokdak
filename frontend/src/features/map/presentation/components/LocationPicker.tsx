@@ -4,19 +4,22 @@ import { useState, useCallback, useEffect } from 'react'
 import { Map, MapMarker } from 'react-kakao-maps-sdk'
 import { MapPin, Navigation } from 'lucide-react'
 import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
+import { KakaoMapAdapter, defaultKakaoMapAdapter } from '@/features/map/data/kakaoMapAdapter'
 
 interface LocationPickerProps {
   onLocationSelect: (location: { lat: number; lng: number; address: string }) => void
   initialCenter?: { lat: number; lng: number }
   height?: string
   className?: string
+  adapter?: KakaoMapAdapter
 }
 
 export default function LocationPicker({
   onLocationSelect,
   initialCenter = { lat: 37.5665, lng: 126.9780 },
   height = '300px',
-  className = ""
+  className = "",
+  adapter = defaultKakaoMapAdapter
 }: LocationPickerProps) {
   const [map, setMap] = useState<any>(null)
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -28,39 +31,32 @@ export default function LocationPicker({
 
   // 카카오맵 API 준비 상태 확인
   useEffect(() => {
-    const checkKakaoReady = () => {
-      if (typeof window !== 'undefined' &&
-        window.kakao &&
-        window.kakao.maps &&
-        window.kakao.maps.LatLng &&
-        window.kakao.maps.services) {
-        setKakaoReady(true)
-        // 아이콘 파일로 마커 이미지 설정
-        setCenterMarkerImage('/icon.png')
-        if (process.env.NODE_ENV === 'development') console.log('✅ 카카오맵 API 준비 완료')
-      } else {
-        if (process.env.NODE_ENV === 'development') console.log('⏳ 카카오맵 API 로딩 중...')
-        setTimeout(checkKakaoReady, 100)
-      }
-    }
+    let cancelled = false
 
-    checkKakaoReady()
-  }, [])
+    adapter.ready().then((isReady) => {
+      if (cancelled || !isReady) return
+      setKakaoReady(true)
+      // 아이콘 파일로 마커 이미지 설정
+      setCenterMarkerImage('/icon.png')
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [adapter])
 
   // 맵 중심 변경 감지 및 업데이트
   useEffect(() => {
     if (!map) return
 
     const handleMapMove = () => {
-      const center = map.getCenter()
-      const lat = center.getLat()
-      const lng = center.getLng()
+      const { lat, lng } = adapter.getCenter(map)
       setCenterLocation({ lat, lng })
     }
 
     // 카카오맵 이벤트 등록
-    window.kakao.maps.event.addListener(map, 'center_changed', handleMapMove)
-    window.kakao.maps.event.addListener(map, 'dragend', handleMapMove)
+    adapter.addListener(map, 'center_changed', handleMapMove)
+    adapter.addListener(map, 'dragend', handleMapMove)
 
     // 카카오 로고 숨기기 (안전한 방법)
     const hideKakaoLogo = () => {
@@ -84,10 +80,10 @@ export default function LocationPicker({
 
     return () => {
       // 이벤트 제거
-      window.kakao.maps.event.removeListener(map, 'center_changed', handleMapMove)
-      window.kakao.maps.event.removeListener(map, 'dragend', handleMapMove)
+      adapter.removeListener(map, 'center_changed', handleMapMove)
+      adapter.removeListener(map, 'dragend', handleMapMove)
     }
-  }, [map])
+  }, [map, adapter])
 
   // 주소 가져오기 (역지오코딩)
   const getAddressFromCoords = useCallback(async (lat: number, lng: number) => {
@@ -144,8 +140,7 @@ export default function LocationPicker({
         const lng = position.coords.longitude
 
         // 지도 중심 이동
-        const moveLatLon = new window.kakao.maps.LatLng(lat, lng)
-        map.setCenter(moveLatLon)
+        adapter.setCenter(map, lat, lng)
 
         // 위치 설정 및 주소 가져오기
         setSelectedLocation({ lat, lng })
@@ -162,7 +157,7 @@ export default function LocationPicker({
         alert('현재 위치를 가져올 수 없습니다.')
       }
     )
-  }, [map, getAddressFromCoords, onLocationSelect])
+  }, [map, getAddressFromCoords, onLocationSelect, adapter])
 
   // 지도 중심으로 위치 선택
   const selectMapCenter = useCallback(async () => {

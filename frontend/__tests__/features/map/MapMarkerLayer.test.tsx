@@ -51,10 +51,11 @@ describe('MapMarkerLayer', () => {
     expect(markers.length).toBe(50) // Only the 50 inside should be rendered
   })
 
-  it('should handle marker click and call map panTo and setLevel if needed', async () => {
+  it('should handle marker click and pan/zoom via the injected map adapter, never touching window.kakao', async () => {
     vi.useFakeTimers()
 
-    const mockMap = {
+    const mockMap = {}
+    const adapter = {
       panTo: vi.fn(),
       getLevel: vi.fn().mockReturnValue(6), // current level 6 > target level 3
       setLevel: vi.fn()
@@ -68,43 +69,30 @@ describe('MapMarkerLayer', () => {
 
     const onMarkerClick = vi.fn()
 
-    // Mock kakao maps window object
-    window.kakao = {
-      maps: {
-        LatLng: class {
-          lat: number;
-          lng: number;
-          constructor(lat: number, lng: number) {
-            this.lat = lat;
-            this.lng = lng;
-          }
-        } as any
-      }
-    } as any
-
     const { getByTestId } = render(
-      <MapMarkerLayer 
-        map={mockMap} 
-        reports={[mockReport]} 
-        currentBounds={null} 
-        onMarkerClick={onMarkerClick} 
+      <MapMarkerLayer
+        map={mockMap}
+        reports={[mockReport]}
+        currentBounds={null}
+        onMarkerClick={onMarkerClick}
+        adapter={adapter as any}
       />
     )
 
     const marker = getByTestId('marker')
-    
+
     act(() => {
       fireEvent.click(marker)
     })
 
-    expect(mockMap.panTo).toHaveBeenCalled()
+    expect(adapter.panTo).toHaveBeenCalledWith(mockMap, 37.5, 127.0)
     expect(onMarkerClick).toHaveBeenCalledWith(mockReport)
 
     act(() => {
       vi.advanceTimersByTime(200)
     })
 
-    expect(mockMap.setLevel).toHaveBeenCalledWith(3, { animate: { duration: 500 } })
+    expect(adapter.setLevel).toHaveBeenCalledWith(mockMap, 3, { animate: { duration: 500 } })
 
     vi.useRealTimers()
   })

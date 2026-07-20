@@ -5,20 +5,16 @@ import { useKakaoMapBounds } from '@/features/map/presentation/hooks/useKakaoMap
 describe('useKakaoMapBounds', () => {
     let mockMap: any
     let onBoundsChange: any
+    let adapter: any
 
     beforeEach(() => {
         vi.useFakeTimers()
         onBoundsChange = vi.fn()
-        mockMap = {
-            getBounds: vi.fn().mockReturnValue({
-                getSouthWest: () => ({ getLat: () => 37.4, getLng: () => 126.9 }),
-                getNorthEast: () => ({ getLat: () => 37.6, getLng: () => 127.1 })
-            }),
+        mockMap = {}
+        adapter = {
+            getBounds: vi.fn().mockReturnValue({ south: 37.4, west: 126.9, north: 37.6, east: 127.1 }),
             getLevel: vi.fn().mockReturnValue(3),
-            getCenter: vi.fn().mockReturnValue({
-                getLat: () => 37.5,
-                getLng: () => 127.0
-            })
+            getCenter: vi.fn().mockReturnValue({ lat: 37.5, lng: 127.0 })
         }
     })
 
@@ -27,8 +23,8 @@ describe('useKakaoMapBounds', () => {
     })
 
     it('should dispatch bounds update correctly', () => {
-        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange))
-        
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
+
         act(() => {
             result.current.dispatchBoundsUpdate(true)
         })
@@ -48,8 +44,8 @@ describe('useKakaoMapBounds', () => {
     })
 
     it('should debounce non-immediate updates', () => {
-        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange))
-        
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
+
         act(() => {
             result.current.handleMapBoundsChange()
         })
@@ -65,14 +61,13 @@ describe('useKakaoMapBounds', () => {
 
     it('should normalize coordinates based on zoom level', () => {
         // High zoom level (low precision)
-        mockMap.getLevel.mockReturnValue(10)
-        mockMap.getBounds.mockReturnValue({
-            getSouthWest: () => ({ getLat: () => 37.444444, getLng: () => 126.999999 }),
-            getNorthEast: () => ({ getLat: () => 37.666666, getLng: () => 127.111111 })
+        adapter.getLevel.mockReturnValue(10)
+        adapter.getBounds.mockReturnValue({
+            south: 37.444444, west: 126.999999, north: 37.666666, east: 127.111111
         })
 
-        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange))
-        
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
+
         act(() => {
             result.current.dispatchBoundsUpdate(true)
         })
@@ -90,9 +85,9 @@ describe('useKakaoMapBounds', () => {
     })
 
     it('should test precisionByZoom for mid level', () => {
-        mockMap.getLevel.mockReturnValue(5)
-        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange))
-        
+        adapter.getLevel.mockReturnValue(5)
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
+
         act(() => {
             result.current.dispatchBoundsUpdate(true)
         })
@@ -103,8 +98,8 @@ describe('useKakaoMapBounds', () => {
 
     it('should call onZoomChange and dispatch update on handleZoomChange', () => {
         const onZoomChange = vi.fn()
-        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, onZoomChange))
-        
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, onZoomChange, adapter))
+
         act(() => {
             result.current.handleZoomChange()
         })
@@ -121,8 +116,8 @@ describe('useKakaoMapBounds', () => {
     })
 
     it('should handle drag end', () => {
-        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange))
-        
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
+
         act(() => {
             result.current.handleDragEnd()
         })
@@ -131,11 +126,11 @@ describe('useKakaoMapBounds', () => {
     })
 
     it('should handle errors in dispatchBoundsUpdate without crashing', () => {
-        mockMap.getBounds.mockImplementation(() => { throw new Error('Bounds error') })
+        adapter.getBounds.mockImplementation(() => { throw new Error('Bounds error') })
         const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange))
-        
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
+
         expect(() => {
             act(() => {
                 result.current.dispatchBoundsUpdate(true)
@@ -147,11 +142,11 @@ describe('useKakaoMapBounds', () => {
     })
 
     it('should handle errors in handleZoomChange without crashing', () => {
-        mockMap.getLevel.mockImplementation(() => { throw new Error('Zoom error') })
+        adapter.getLevel.mockImplementation(() => { throw new Error('Zoom error') })
         const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange))
-        
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
+
         act(() => {
             result.current.handleZoomChange()
         })
@@ -165,8 +160,8 @@ describe('useKakaoMapBounds', () => {
     })
 
     it('should not do anything if map is missing', () => {
-        const { result } = renderHook(() => useKakaoMapBounds(null, onBoundsChange))
-        
+        const { result } = renderHook(() => useKakaoMapBounds(null, onBoundsChange, undefined, adapter))
+
         act(() => {
             result.current.dispatchBoundsUpdate(true)
             result.current.handleMapBoundsChange()

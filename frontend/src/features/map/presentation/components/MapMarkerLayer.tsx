@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback, useRef, useTransition } from
 import { MarkerClusterer } from 'react-kakao-maps-sdk'
 import { Report as ReportType } from '@/types'
 import MemoizedMapMarker from '@/components/MemoizedMapMarker'
+import { KakaoMapAdapter, defaultKakaoMapAdapter } from '@/features/map/data/kakaoMapAdapter'
 
 const CLUSTER_CALCULATOR = [10, 30, 50]
 const CLUSTER_STYLES = [
@@ -57,6 +58,7 @@ interface MapMarkerLayerProps {
   currentBounds: { north: number; south: number; east: number; west: number } | null
   selectedMarkerId?: string
   onMarkerClick: (report: ReportType) => void
+  adapter?: KakaoMapAdapter
 }
 
 export function MapMarkerLayer({
@@ -64,7 +66,8 @@ export function MapMarkerLayer({
   reports,
   currentBounds,
   selectedMarkerId,
-  onMarkerClick
+  onMarkerClick,
+  adapter = defaultKakaoMapAdapter
 }: MapMarkerLayerProps) {
   // 개별 마커를 클러스터링하기 위한 데이터 준비
   const validReports = useMemo(() => {
@@ -104,21 +107,20 @@ export function MapMarkerLayer({
     if (!report) return
 
     if (map) {
-      const moveLatLng = new window.kakao.maps.LatLng(report.location.lat, report.location.lng)
-      map.panTo(moveLatLng)
+      adapter.panTo(map, report.location.lat, report.location.lng)
 
-      const currentLevel = map.getLevel()
+      const currentLevel = adapter.getLevel(map)
       const targetLevel = Math.min(currentLevel, 3) // Changed from Math.max to Math.min
 
       if (currentLevel > targetLevel) {
         setTimeout(() => {
-          map.setLevel(targetLevel, { animate: { duration: 500 } })
+          adapter.setLevel(map, targetLevel, { animate: { duration: 500 } })
         }, 200)
       }
     }
 
     onMarkerClick(report)
-  }, [map, onMarkerClick])
+  }, [map, onMarkerClick, adapter])
 
   return (
     <MarkerClusterer

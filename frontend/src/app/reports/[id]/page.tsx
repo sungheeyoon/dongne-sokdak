@@ -27,7 +27,7 @@ import {
   UiDialogDescription as DialogDescription
 } from "@/shared/ui"
 
-const MapComponent = dynamic(() => import('@/components/MapComponent'), {
+const MapComponent = dynamic(() => import('@/features/map/presentation/components/MapComponent'), {
   ssr: false,
   loading: () => <div className="h-64 bg-gray-100 rounded-lg animate-pulse"></div>
 })

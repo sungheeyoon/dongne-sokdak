@@ -1,17 +1,18 @@
 type LatLng = { lat: number; lng: number }
 
+/**
+ * 지도 초점(Map Focus) 우선순위 해석 — CONTEXT.md 참고.
+ */
 export function getActiveLocation({
     focusedLocation,
     isInitialLoadDone,
     myNeighborhoodLocation,
-    cachedLastCenter,
     userCurrentLocation,
     fallbackCenter,
 }: {
     focusedLocation: LatLng | null
     isInitialLoadDone: boolean
     myNeighborhoodLocation: LatLng | null
-    cachedLastCenter: LatLng | null
     userCurrentLocation: LatLng | null
     fallbackCenter: LatLng
 }): LatLng {
@@ -25,16 +26,11 @@ export function getActiveLocation({
         return myNeighborhoodLocation
     }
 
-    // 3. 마지막으로 보고 있던 위치 (페이지 복귀)
-    if (cachedLastCenter) {
-        return cachedLastCenter
-    }
-
-    // 4. 사용자 현재 위치
+    // 3. 사용자 현재 위치
     if (userCurrentLocation) {
         return userCurrentLocation
     }
 
-    // 5. 앱내 개발자가 설정한 기본 위치 (보험)
+    // 4. 앱내 개발자가 설정한 기본 위치 (보험)
     return fallbackCenter
 }

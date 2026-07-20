@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useUIStore } from '@/shared/stores/useUIStore'
 import Header from '@/components/Header'
@@ -11,7 +11,6 @@ import ReportModal from '@/features/reports/presentation/components/ReportModal'
 import dynamic from 'next/dynamic'
 import { ReportCategory } from '@/types'
 import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
-import { useMapController } from '@/hooks/useMapController'
 import { getActiveLocation } from '@/lib/map/getActiveLocation'
 import { useMapReportsViewModel, useListReportsViewModel } from '@/features/reports/presentation/hooks/useReportsViewModel'
 import ReportList from '@/features/reports/presentation/components/ReportList'
@@ -28,7 +27,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'react-hot-toast'
 // LocationReportItem은 존재하지 않거나 경로가 다름, 어차피 안쓰이므로 제거
 
-const MapComponent = dynamic(() => import('@/components/MapComponent'), {
+const MapComponent = dynamic(() => import('@/features/map/presentation/components/MapComponent'), {
   ssr: false,
   loading: () => (
     <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -53,22 +52,55 @@ export default function Home() {
     openReportModal,
     searchQuery, setSearchQuery,
     searchMode, setSearchMode,
-  } = useUIStore()
-
-  const {
-    mapCenter,
-    mapZoom,
-    searchedLocation,
-    userCurrentLocation,
-    currentMapBounds,
+    focusedLocation, setFocusedLocation,
+    mapZoom, setMapZoom,
+    searchedLocation, setSearchedLocation,
+    userCurrentLocation, setUserCurrentLocation,
+    currentMapBounds, setCurrentMapBounds,
     triggerMapSearch, setTriggerMapSearch,
     useMapBoundsFilter, setUseMapBoundsFilter,
     selectedMapMarker, setSelectedMapMarker,
-    handleMapBoundsChange,
-    resetToMyNeighborhood,
-    handleLocationSearch,
-    setMapZoom
-  } = useMapController()
+  } = useUIStore()
+
+  // 지도 영역(bounds)이 바뀌면 해당 영역 기준으로 제보를 다시 검색한다
+  const handleMapBoundsChange = useCallback((bounds: { north: number; south: number; east: number; west: number }) => {
+    setCurrentMapBounds(bounds)
+    setUseMapBoundsFilter(true)
+    setTriggerMapSearch(t => t + 1)
+  }, [setCurrentMapBounds, setUseMapBoundsFilter, setTriggerMapSearch])
+
+  // 검색·위치 상태를 모두 초기화하고 내 동네 지도 초점으로 되돌린다
+  const resetToMyNeighborhood = useCallback(() => {
+    setFocusedLocation(null)
+    setSearchedLocation(null)
+    setUserCurrentLocation(null)
+    setCurrentMapBounds(null) // 맵 영역을 초기화하여 지도 초점이 내 동네로 이동하게 만듦
+    setSelectedMapMarker(null)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🏠 내 동네로 돌아가기')
+    }
+  }, [setFocusedLocation, setSearchedLocation, setUserCurrentLocation, setCurrentMapBounds, setSelectedMapMarker])
+
+  // 검색으로 선택된 위치를 지도 초점으로 설정하고, 잠시 후 그 지역 기준으로 재검색한다
+  const handleLocationSearch = useCallback((location: { lat: number; lng: number; address: string; placeName: string }) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🗺️ 위치 선택됨:', location.placeName)
+      console.log('📍 좌표:', location.lat, location.lng)
+    }
+
+    setFocusedLocation({ lat: location.lat, lng: location.lng })
+    setSearchedLocation({ placeName: location.placeName, address: location.address })
+    setUserCurrentLocation(null)
+
+    setUseMapBoundsFilter(true)
+
+    setTimeout(() => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄', location.placeName, '지역에서 제보 검색 시작')
+      }
+      setTriggerMapSearch(prev => prev + 1)
+    }, 800)
+  }, [setFocusedLocation, setSearchedLocation, setUserCurrentLocation, setUseMapBoundsFilter, setTriggerMapSearch])
 
   // 행정동 기반 동네 표시명 계산 함수
   const getNeighborhoodDisplayName = (profile: { neighborhood?: { address: string; placeName: string } }) => {
@@ -152,17 +184,16 @@ export default function Home() {
   const [isInitialLoadDone, setIsInitialLoadDone] = useState(false)
 
   // 현재 사용 중인 위치 (외부 통제: 검색된 위치, 내 동네, 등)
-  const activeLocation = useMemo(() => {
+  const mapFocus = useMemo(() => {
     return getActiveLocation({
-      focusedLocation: mapCenter,
+      focusedLocation,
       isInitialLoadDone,
       myNeighborhoodLocation,
-      cachedLastCenter: null, // 지도의 현재 뷰가 피드백 루프를 발생시키지 않도록 null 고정
       userCurrentLocation,
       // fallback을 서울시청 대신 내 동네가 있으면 내 동네로, 없으면 서울시청으로 설정
       fallbackCenter: myNeighborhoodLocation || { lat: 37.5665, lng: 126.9780 }
     });
-  }, [mapCenter, isInitialLoadDone, myNeighborhoodLocation, userCurrentLocation])
+  }, [focusedLocation, isInitialLoadDone, myNeighborhoodLocation, userCurrentLocation])
 
   useEffect(() => {
     if (!isInitialLoadDone && myNeighborhoodLocation) {
@@ -312,7 +343,7 @@ export default function Home() {
                 reports={mapReports}
                 height="450px"
                 zoom={5} // 초기 줌: 동네 단위(3)는 너무 확대되어 주변을 좀 더 넓게 보여줌
-                center={activeLocation ?? undefined}
+                center={mapFocus ?? undefined}
                 onBoundsChange={handleMapBoundsChange}
                 onZoomChange={setMapZoom}
                 onMarkerClick={handleMarkerClick as any}

@@ -5,7 +5,7 @@ import { useUIStore } from '@/shared/stores/useUIStore'
 import { ReportCategory } from '@/types'
 import { useMutateReportViewModel } from '../hooks/useMutateReportViewModel'
 import ImageUpload from './ImageUpload'
-import LocationPicker from '@/components/map/LocationPicker'
+import LocationPicker from '@/features/map/presentation/components/LocationPicker'
 import LocationSearch from '@/components/map/LocationSearch'
 import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
 import { MapPin, Loader2, ArrowLeft, Send, Check, Megaphone, Trash2, Construction, Car, FileText } from 'lucide-react'
@@ -39,7 +39,7 @@ const categoryOptions = [
 ]
 
 export default function ReportModal() {
-  const { isReportModalOpen, closeReportModal, selectedLocation, setSelectedLocation, mapCenter } = useUIStore()
+  const { isReportModalOpen, closeReportModal, selectedLocation, setSelectedLocation, focusedLocation } = useUIStore()
   const { reverseGeocode } = useLocationViewModel()
   const { createReport, isCreating } = useMutateReportViewModel()
 
@@ -257,7 +257,7 @@ export default function ReportModal() {
                     <LocationPicker
                       onLocationSelect={handleLocationSelect}
                       height="350px"
-                      initialCenter={location ? { lat: location.lat, lng: location.lng } : (mapCenter || undefined)}
+                      initialCenter={location ? { lat: location.lat, lng: location.lng } : (focusedLocation || undefined)}
                     />
                   </div>
                 )}
