@@ -84,18 +84,6 @@ export function useAuthViewModel() {
         await authUseCases.signInWithGoogle();
     }, []);
 
-    const loginWithSocial = useCallback(async (provider: 'kakao' | 'google', code: string) => {
-        setLoading(true);
-        try {
-            const session = await authUseCases.loginWithSocial(provider, code);
-            if (session) {
-                setUser(session.user);
-            }
-        } finally {
-            setLoading(false);
-        }
-    }, [setLoading, setUser]);
-
     const getToken = useCallback(async () => {
         return await authUseCases.getToken();
     }, []);
@@ -108,7 +96,6 @@ export function useAuthViewModel() {
         signOut,
         signInWithKakao,
         signInWithGoogle,
-        loginWithSocial,
         getToken
     };
 }

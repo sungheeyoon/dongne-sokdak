@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useUIStore } from '@/shared/stores/useUIStore'
 import Header from '@/components/Header'
 import ReportCard from '@/features/reports/presentation/components/ReportCard'
@@ -46,6 +47,8 @@ const categories = [
 ]
 
 export default function Home() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const {
     openReportModal,
     searchQuery, setSearchQuery,
@@ -124,6 +127,14 @@ export default function Home() {
   useEffect(() => {
     setPaginationPage(1)
   }, [currentMapBounds, selectedCategory, searchQuery, triggerMapSearch, searchMode, useMapBoundsFilter])
+
+  // 소셜 로그인 콜백 실패 시 토스트로 안내 (route.ts가 ?authError=1을 붙여 리다이렉트)
+  useEffect(() => {
+    if (searchParams.get('authError')) {
+      toast.error('소셜 로그인에 실패했습니다. 다시 시도해주세요.')
+      router.replace('/')
+    }
+  }, [searchParams, router])
 
   // 제보 데이터 최대치 도달 시 토스트 경고 표시 (UX 피드백)
   useEffect(() => {

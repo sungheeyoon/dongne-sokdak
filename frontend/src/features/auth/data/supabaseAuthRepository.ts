@@ -76,18 +76,6 @@ export const supabaseAuthRepository: AuthRepository = {
         if (error) throw new Error(error.message);
     },
 
-    async loginWithSocial(provider: 'kakao' | 'google', code: string): Promise<AuthSession> {
-        if (process.env.NODE_ENV === 'development') console.log(`OAuth login with ${provider}`);
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) throw new Error(error.message);
-        if (!data.session) throw new Error("Failed to exchange code for session");
-
-        return {
-            user: mapUser(data.session.user),
-            accessToken: data.session.access_token
-        };
-    },
-
     async signOut(): Promise<void> {
         const { error } = await supabase.auth.signOut();
         if (error) throw new Error(error.message);

@@ -28,11 +28,6 @@ export class AuthUseCases {
         return this.repository.signInWithGoogle();
     }
 
-    async loginWithSocial(provider: 'kakao' | 'google', code: string) {
-        if (!code) throw new Error("Authorization code is required");
-        return this.repository.loginWithSocial(provider, code);
-    }
-
     async signOut() {
         return this.repository.signOut();
     }

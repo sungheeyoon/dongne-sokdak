@@ -14,7 +14,6 @@ export interface AuthRepository {
     signUpWithEmail(credentials: SignUpCredentials): Promise<AuthSession>;
     signInWithKakao(): Promise<void>;
     signInWithGoogle(): Promise<void>;
-    loginWithSocial(provider: 'kakao' | 'google', code: string): Promise<AuthSession>;
     signOut(): Promise<void>;
     getSession(): Promise<AuthSession | null>;
     getToken(): Promise<string | null>;
