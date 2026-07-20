@@ -47,7 +47,7 @@ backend/app/
 ```
 
 **Rules**
-- Routes are thin — delegate to services. Services raise `HTTPException` directly.
+- Routes are thin — delegate to services. Services raise `HTTPException` directly for domain/permission/validation errors. Exception: single-item lookups return `None` on not-found, and some thin write paths return `None`/`bool` on failure — the route maps these to 404/400 (e.g. `get_report_by_id`, `get_user_profile`, `create_report`, `delete_neighborhood`).
 - DB access goes through Supabase client. Performance-critical paths use SQL RPCs in `supabase/migrations/`.
 - Key RPCs: `get_reports_paginated`, `get_admin_dashboard_stats`, `get_profile_with_stats`, `get_reports_within_radius`, `get_reports_in_bounds`.
 - No `print()` — use `logger`. No `datetime.utcnow()` — use timezone-aware `datetime.now(UTC)`.
