@@ -6,7 +6,8 @@ from app.services.admin.user_service import AdminUserService
 
 def make_service(mocker):
     mock_supabase = mocker.Mock()
-    return AdminUserService(mock_supabase), mock_supabase
+    mock_log_admin_activity = mocker.AsyncMock()
+    return AdminUserService(mock_supabase, log_admin_activity=mock_log_admin_activity), mock_supabase
 
 
 @pytest.mark.asyncio
@@ -21,8 +22,6 @@ async def test_update_user_role_success(mocker):
     }
     # Mock update
     mock_supabase.table.return_value.update.return_value.eq.return_value.execute.return_value.data = [{"id": user_id, "role": "admin"}]
-    # Mock activity log
-    mocker.patch("app.services.admin.user_service.log_admin_activity")
 
     result = await service.update_user_role(user_id, "admin", "Test reason", admin_id)
 
@@ -63,7 +62,6 @@ async def test_bulk_user_action_success(mocker):
         return mock
 
     mock_supabase.table.side_effect = mock_table
-    mocker.patch("app.services.admin.user_service.log_admin_activity")
 
     result = await service.bulk_user_action(
         user_ids, "deactivate", "Spam", None, admin_id, "admin"
@@ -96,7 +94,6 @@ async def test_set_user_active_status_success(mocker):
         "id": user_id, "is_active": True, "role": "user"
     }
     mock_supabase.table.return_value.update.return_value.eq.return_value.execute.return_value.data = [{"id": user_id, "is_active": False}]
-    mocker.patch("app.services.admin.user_service.log_admin_activity")
 
     result = await service.set_user_active_status(user_id, False, admin_id, "admin")
 
@@ -111,7 +108,6 @@ async def test_bulk_user_action_role_change_success(mocker):
     mock_supabase.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
         {"id": u1, "role": "user"}
     ]
-    mocker.patch("app.services.admin.user_service.log_admin_activity")
 
     result = await service.bulk_user_action(
         [u1], "change_role", "Promote", "moderator", admin_id, "admin"
@@ -119,3 +115,29 @@ async def test_bulk_user_action_role_change_success(mocker):
 
     assert result["success_count"] == 1
     mock_supabase.table.return_value.update.return_value.in_.return_value.execute.assert_called()
+
+@pytest.mark.asyncio
+async def test_get_my_info_success(mocker):
+    service, mock_supabase = make_service(mocker)
+    user_id = str(uuid4())
+
+    mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+        "id": user_id, "email": "me@test.com", "nickname": "Me", "role": "admin", "is_active": True
+    }
+
+    result = await service.get_my_info(user_id)
+
+    assert result["id"] == user_id
+    assert result["email"] == "me@test.com"
+    assert result["role"] == "admin"
+
+@pytest.mark.asyncio
+async def test_get_my_info_not_found(mocker):
+    service, mock_supabase = make_service(mocker)
+    user_id = str(uuid4())
+
+    mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = None
+
+    result = await service.get_my_info(user_id)
+
+    assert result is None

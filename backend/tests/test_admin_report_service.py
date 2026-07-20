@@ -8,7 +8,11 @@ from tests.fakes import FakeSpatialReportCache
 
 def make_admin_service(mocker):
     mock_supabase = mocker.Mock()
-    return AdminReportService(mock_supabase, FakeSpatialReportCache()), mock_supabase
+    mock_log_admin_activity = mocker.AsyncMock()
+    return (
+        AdminReportService(mock_supabase, FakeSpatialReportCache(), log_admin_activity=mock_log_admin_activity),
+        mock_supabase,
+    )
 
 
 @pytest.mark.asyncio
@@ -53,8 +57,6 @@ async def test_update_report_status_success(mocker):
     }
     # Mock update
     mock_supabase.table.return_value.update.return_value.eq.return_value.execute.return_value.data = [{"id": report_id, "status": "RESOLVED"}]
-    # Mock activity log
-    mocker.patch("app.services.admin.report_service.log_admin_activity")
 
     result = await service.update_report_status(
         report_id, "RESOLVED", "Fixed", None, admin_id
@@ -72,7 +74,6 @@ async def test_perform_report_action_delete_success(mocker):
     mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
         "id": report_id, "title": "To Delete"
     }
-    mocker.patch("app.services.admin.report_service.log_admin_activity")
 
     result = await service.perform_report_action(
         report_id, "delete", None, "Spam", None, None, admin_id, "admin"
@@ -92,7 +93,6 @@ async def test_bulk_report_action_success(mocker):
         {"id": r1, "title": "R1"},
         {"id": r2, "title": "R2"}
     ]
-    mocker.patch("app.services.admin.report_service.log_admin_activity")
 
     result = await service.bulk_report_action(
         report_ids, "change_status", "RESOLVED", None, "Comment", None, admin_id, "admin"
@@ -111,7 +111,6 @@ async def test_perform_report_action_assign_success(mocker):
     mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
         "id": report_id, "title": "Assign Me"
     }
-    mocker.patch("app.services.admin.report_service.log_admin_activity")
 
     result = await service.perform_report_action(
         report_id, "assign", "Help", None, None, target_admin_id, admin_id, "admin"
@@ -129,7 +128,6 @@ async def test_bulk_report_action_delete_success(mocker):
     mock_supabase.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
         {"id": r1, "title": "R1"}
     ]
-    mocker.patch("app.services.admin.report_service.log_admin_activity")
 
     result = await service.bulk_report_action(
         [r1], "delete", None, None, None, "Spam", admin_id, "admin"
@@ -147,7 +145,6 @@ async def test_perform_report_action_update_status_success(mocker):
     mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
         "id": report_id, "title": "Status Update"
     }
-    mocker.patch("app.services.admin.report_service.log_admin_activity")
 
     result = await service.perform_report_action(
         report_id, "update_status", "Nice", None, "RESOLVED", None, admin_id, "admin"
@@ -211,7 +208,7 @@ async def test_admin_status_change_immediately_visible_in_map_query(mocker):
     map_service = make_map_service(cache, report_state)
 
     mock_supabase = mocker.Mock()
-    admin_service = AdminReportService(mock_supabase, cache)
+    admin_service = AdminReportService(mock_supabase, cache, log_admin_activity=mocker.AsyncMock())
     mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
         "id": "r1", "status": "OPEN", "title": "Test"
     }
@@ -221,7 +218,6 @@ async def test_admin_status_change_immediately_visible_in_map_query(mocker):
         return MagicMock(data=[{"id": "r1", "status": "RESOLVED"}])
 
     mock_supabase.table.return_value.update.return_value.eq.return_value.execute.side_effect = do_update
-    mocker.patch("app.services.admin.report_service.log_admin_activity")
 
     first = await map_service.get_nearby_reports(**NEARBY)
     assert first["items"][0]["status"] == "OPEN"
@@ -239,7 +235,7 @@ async def test_admin_bulk_action_immediately_visible_in_map_query(mocker):
     map_service = make_map_service(cache, report_state)
 
     mock_supabase = mocker.Mock()
-    admin_service = AdminReportService(mock_supabase, cache)
+    admin_service = AdminReportService(mock_supabase, cache, log_admin_activity=mocker.AsyncMock())
     mock_supabase.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
         {"id": "r1", "title": "R1"}
     ]
@@ -249,7 +245,6 @@ async def test_admin_bulk_action_immediately_visible_in_map_query(mocker):
         return MagicMock(data=[{"id": "r1", "status": "RESOLVED"}])
 
     mock_supabase.table.return_value.update.return_value.in_.return_value.execute.side_effect = do_bulk_update
-    mocker.patch("app.services.admin.report_service.log_admin_activity")
 
     first = await map_service.get_nearby_reports(**NEARBY)
     assert first["items"][0]["status"] == "OPEN"

@@ -1,8 +1,8 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Callable, Awaitable
 from datetime import datetime, timezone
 from supabase import Client
 from fastapi import HTTPException, status
-from app.middleware.admin_auth import log_admin_activity
+from app.middleware.admin_auth import log_admin_activity as default_log_admin_activity
 from app.core.logging import get_logger
 from app.db.supabase_client import supabase as default_supabase
 
@@ -12,8 +12,31 @@ logger = get_logger(__name__)
 class AdminUserService:
     """admin 사용자 관리. 주입 관용구는 ADR-0002."""
 
-    def __init__(self, supabase: Client) -> None:
+    def __init__(
+        self,
+        supabase: Client,
+        log_admin_activity: Callable[..., Awaitable[None]] = default_log_admin_activity,
+    ) -> None:
         self._supabase = supabase
+        self._log_admin_activity = log_admin_activity
+
+    async def get_my_info(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """현재 사용자 정보 조회 (관리자 여부 확인용)"""
+        response = self._supabase.table("profiles").select("*").eq("id", user_id).single().execute()
+        if not response.data:
+            return None
+
+        user = response.data
+        return {
+            "id": user.get("id"),
+            "email": user.get("email"),
+            "nickname": user.get("nickname"),
+            "role": user.get("role", "user"),
+            "is_active": user.get("is_active"),
+            "last_login_at": user.get("last_login_at"),
+            "login_count": user.get("login_count"),
+            "created_at": user.get("created_at")
+        }
 
     async def get_users(
         self,
@@ -70,7 +93,7 @@ class AdminUserService:
             if not update_response.data:
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="역할 변경에 실패했습니다")
 
-            await log_admin_activity(
+            await self._log_admin_activity(
                 admin_id=admin_id,
                 action="ROLE_CHANGE",
                 target_type="user",
@@ -131,7 +154,7 @@ class AdminUserService:
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="계정 상태 변경에 실패했습니다")
 
             action = "ACTIVATE_USER" if is_active else "DEACTIVATE_USER"
-            await log_admin_activity(
+            await self._log_admin_activity(
                 admin_id=admin_id,
                 action=action,
                 target_type="user",
@@ -217,7 +240,7 @@ class AdminUserService:
                 for uid in ids_to_update:
                     success_count += 1
                     results.append({"user_id": uid, "status": "success", "message": "작업이 완료되었습니다"})
-                    await log_admin_activity(
+                    await self._log_admin_activity(
                         admin_id=admin_id, action=action_detail, target_type="user", target_id=uid,
                         details={"bulk_action": action, "reason": reason, "new_value": update_payload.get("is_active") or update_payload.get("role")},
                         ip_address=ip_address, user_agent=user_agent

@@ -1,8 +1,8 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Callable, Awaitable
 from datetime import datetime, timezone
 from supabase import Client
 from fastapi import HTTPException, status
-from app.middleware.admin_auth import log_admin_activity
+from app.middleware.admin_auth import log_admin_activity as default_log_admin_activity
 from app.core.logging import get_logger
 from app.db.supabase_client import supabase as default_supabase
 from app.services.report_service import report_service
@@ -14,9 +14,15 @@ logger = get_logger(__name__)
 class AdminReportService:
     """admin 제보 관리. 제보 변이 시 지도 조회 캐시를 전체 무효화한다(ADR-0001), 주입 관용구는 ADR-0002."""
 
-    def __init__(self, supabase: Client, cache: SpatialReportCache) -> None:
+    def __init__(
+        self,
+        supabase: Client,
+        cache: SpatialReportCache,
+        log_admin_activity: Callable[..., Awaitable[None]] = default_log_admin_activity,
+    ) -> None:
         self._supabase = supabase
         self._cache = cache
+        self._log_admin_activity = log_admin_activity
 
     async def get_reports(
         self,
@@ -90,7 +96,7 @@ class AdminReportService:
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="제보 상태 변경에 실패했습니다")
             self._cache.invalidate_all()
 
-            await log_admin_activity(
+            await self._log_admin_activity(
                 admin_id=admin_id, action="REPORT_STATUS_CHANGE", target_type="report", target_id=report_id,
                 details={"old_status": old_status, "new_status": status_val, "admin_comment": admin_comment, "assigned_admin_id": assigned_admin_id, "report_title": report.get("title", "")},
                 ip_address=ip_address, user_agent=user_agent
@@ -148,7 +154,7 @@ class AdminReportService:
 
             self._cache.invalidate_all()
 
-            await log_admin_activity(
+            await self._log_admin_activity(
                 admin_id=admin_id, action=action_detail, target_type="report", target_id=report_id,
                 details={"action": action, "admin_comment": admin_comment, "reason": reason, "new_status": new_status, "assigned_admin_id": assigned_admin_id, "report_title": report.get("title", "")},
                 ip_address=ip_address, user_agent=user_agent
@@ -223,7 +229,7 @@ class AdminReportService:
                 for rid in targets:
                     success_count += 1
                     results.append({"report_id": rid, "status": "success", "message": "제보가 삭제되었습니다"})
-                    await log_admin_activity(
+                    await self._log_admin_activity(
                         admin_id=admin_id, action="BULK_REPORT_DELETE", target_type="report", target_id=rid,
                         details={"bulk_action": action, "reason": reason, "report_title": targets[rid].get("title", "")},
                         ip_address=ip_address, user_agent=user_agent
@@ -240,7 +246,7 @@ class AdminReportService:
                 for rid in ids_to_update:
                     success_count += 1
                     results.append({"report_id": rid, "status": "success", "message": success_msg})
-                    await log_admin_activity(
+                    await self._log_admin_activity(
                         admin_id=admin_id, action=action_detail, target_type="report", target_id=rid,
                         details={"bulk_action": action, "admin_comment": admin_comment, "reason": reason, "new_status": new_status, "assigned_admin_id": assigned_admin_id, "report_title": targets[rid].get("title", "")},
                         ip_address=ip_address, user_agent=user_agent

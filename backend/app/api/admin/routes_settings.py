@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Optional
 import uuid
-from app.db.supabase_client import supabase
 from app.core.security import get_current_user
 from app.middleware.admin_auth import get_admin_user
-from app.services import admin_log_service
+from app.services import admin_log_service, admin_user_service
 from app.api.admin.schemas import AdminActivityResponse
 
 router = APIRouter(tags=["admin"])
@@ -43,22 +42,12 @@ async def get_admin_info(
     current_user_id: str = Depends(get_current_user)
 ):
     """현재 사용자 정보 조회 (관리자 여부 확인용)"""
-    response = supabase.table("profiles").select("*").eq("id", current_user_id).single().execute()
-    
-    if not response.data:
+    user = await admin_user_service.get_my_info(current_user_id)
+
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="사용자를 찾을 수 없습니다"
         )
-    
-    user = response.data
-    return {
-        "id": user.get("id"),
-        "email": user.get("email"),
-        "nickname": user.get("nickname"),
-        "role": user.get("role", "user"),
-        "is_active": user.get("is_active"),
-        "last_login_at": user.get("last_login_at"),
-        "login_count": user.get("login_count"),
-        "created_at": user.get("created_at")
-    }
+
+    return user
