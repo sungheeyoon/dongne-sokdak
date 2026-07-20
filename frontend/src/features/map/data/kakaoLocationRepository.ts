@@ -1,11 +1,11 @@
 import { LocationRepository } from '../domain/repositories';
 import { Coordinates, PlaceSearchResult } from '../domain/entities';
-import { waitForKakaoMaps } from '@/lib/map/kakaoMapUtils';
+import { defaultKakaoMapAdapter } from './kakaoMapAdapter';
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils';
 
 export class KakaoLocationRepository implements LocationRepository {
     async searchPlaces(query: string, options?: { location?: Coordinates; radius?: number }): Promise<PlaceSearchResult[]> {
-        const isLoaded = await waitForKakaoMaps();
+        const isLoaded = await defaultKakaoMapAdapter.ready();
         if (!isLoaded) throw new Error("Kakao Maps API is not loaded.");
 
         return new Promise((resolve, reject) => {
@@ -44,7 +44,7 @@ export class KakaoLocationRepository implements LocationRepository {
     }
 
     async reverseGeocode(coords: Coordinates): Promise<string> {
-        const isLoaded = await waitForKakaoMaps();
+        const isLoaded = await defaultKakaoMapAdapter.ready();
         if (!isLoaded) throw new Error("Kakao Maps API is not loaded.");
 
         return new Promise((resolve, reject) => {
