@@ -7,6 +7,7 @@ from app.core.logging import get_logger
 from app.db.supabase_client import supabase as default_supabase
 from app.services.report_service import report_service
 from app.services.spatial_report_cache import SpatialReportCache
+from app.services.admin.bulk_utils import record_bulk_success, AdminActionContext
 
 logger = get_logger(__name__)
 
@@ -112,14 +113,13 @@ class AdminReportService:
         action: str,
         admin_comment: Optional[str],
         reason: Optional[str],
-        new_status: Optional[str],
         assigned_admin_id: Optional[str],
         admin_id: str,
         admin_role: str,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None
     ) -> Dict[str, Any]:
-        """제보에 대한 관리자 액션 수행"""
+        """제보에 대한 관리자 액션 수행 (delete/assign). 상태 변경은 update_report_status(PUT /status)가 유일 경로다."""
         try:
             report_response = self._supabase.table("reports").select("*").eq("id", report_id).single().execute()
             if not report_response.data:
@@ -142,13 +142,6 @@ class AdminReportService:
                 self._supabase.table("reports").update(update_data).eq("id", report_id).execute()
                 message = "담당자가 배정되었습니다"
                 action_detail = "REPORT_ASSIGN"
-            elif action == "update_status":
-                if not new_status: raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="새로운 상태가 필요합니다")
-                update_data = {"status": new_status, "updated_at": datetime.now(timezone.utc).isoformat()}
-                if admin_comment: update_data["admin_comment"] = admin_comment
-                self._supabase.table("reports").update(update_data).eq("id", report_id).execute()
-                message = f"제보 상태가 {new_status}로 변경되었습니다"
-                action_detail = "REPORT_STATUS_UPDATE"
             else:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"지원하지 않는 액션입니다: {action}")
 
@@ -156,7 +149,7 @@ class AdminReportService:
 
             await self._log_admin_activity(
                 admin_id=admin_id, action=action_detail, target_type="report", target_id=report_id,
-                details={"action": action, "admin_comment": admin_comment, "reason": reason, "new_status": new_status, "assigned_admin_id": assigned_admin_id, "report_title": report.get("title", "")},
+                details={"action": action, "admin_comment": admin_comment, "reason": reason, "assigned_admin_id": assigned_admin_id, "report_title": report.get("title", "")},
                 ip_address=ip_address, user_agent=user_agent
             )
             return {"report_id": report_id, "action": action, "message": message}
@@ -186,6 +179,7 @@ class AdminReportService:
         error_count = 0
 
         try:
+            context = AdminActionContext(admin_id, ip_address, user_agent)
             targets_res = self._supabase.table("reports").select("*").in_("id", report_ids).execute()
             targets = {t["id"]: t for t in targets_res.data}
 
@@ -226,14 +220,14 @@ class AdminReportService:
 
                 self._supabase.table("reports").delete().in_("id", list(targets.keys())).execute()
                 self._cache.invalidate_all()
-                for rid in targets:
-                    success_count += 1
-                    results.append({"report_id": rid, "status": "success", "message": "제보가 삭제되었습니다"})
-                    await self._log_admin_activity(
-                        admin_id=admin_id, action="BULK_REPORT_DELETE", target_type="report", target_id=rid,
-                        details={"bulk_action": action, "reason": reason, "report_title": targets[rid].get("title", "")},
-                        ip_address=ip_address, user_agent=user_agent
-                    )
+                delete_count, delete_results = await record_bulk_success(
+                    list(targets.keys()), id_field="report_id", message="제보가 삭제되었습니다",
+                    action="BULK_REPORT_DELETE", target_type="report", context=context,
+                    log_admin_activity=self._log_admin_activity,
+                    build_details=lambda rid: {"bulk_action": action, "reason": reason, "report_title": targets[rid].get("title", "")},
+                )
+                success_count += delete_count
+                results += delete_results
                 return {"success_count": success_count, "error_count": error_count, "results": results}
 
             else:
@@ -243,14 +237,14 @@ class AdminReportService:
                 self._supabase.table("reports").update(update_payload).in_("id", ids_to_update).execute()
                 self._cache.invalidate_all()
 
-                for rid in ids_to_update:
-                    success_count += 1
-                    results.append({"report_id": rid, "status": "success", "message": success_msg})
-                    await self._log_admin_activity(
-                        admin_id=admin_id, action=action_detail, target_type="report", target_id=rid,
-                        details={"bulk_action": action, "admin_comment": admin_comment, "reason": reason, "new_status": new_status, "assigned_admin_id": assigned_admin_id, "report_title": targets[rid].get("title", "")},
-                        ip_address=ip_address, user_agent=user_agent
-                    )
+                update_count, update_results = await record_bulk_success(
+                    ids_to_update, id_field="report_id", message=success_msg,
+                    action=action_detail, target_type="report", context=context,
+                    log_admin_activity=self._log_admin_activity,
+                    build_details=lambda rid: {"bulk_action": action, "admin_comment": admin_comment, "reason": reason, "new_status": new_status, "assigned_admin_id": assigned_admin_id, "report_title": targets[rid].get("title", "")},
+                )
+                success_count += update_count
+                results += update_results
 
         except Exception as e:
             logger.error(f"Error in bulk_report_action: {e}")

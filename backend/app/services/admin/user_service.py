@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from app.middleware.admin_auth import log_admin_activity as default_log_admin_activity
 from app.core.logging import get_logger
 from app.db.supabase_client import supabase as default_supabase
+from app.services.admin.bulk_utils import record_bulk_success, AdminActionContext
 
 logger = get_logger(__name__)
 
@@ -194,6 +195,7 @@ class AdminUserService:
 
         # Filter out admin_id and fetch target users to check permissions
         try:
+            context = AdminActionContext(admin_id, ip_address, user_agent)
             valid_user_ids = [uid for uid in user_ids if uid != admin_id]
             if len(valid_user_ids) < len(user_ids):
                 for uid in set(user_ids) - set(valid_user_ids):
@@ -237,14 +239,15 @@ class AdminUserService:
             if ids_to_update:
                 self._supabase.table("profiles").update(update_payload).in_("id", ids_to_update).execute()
 
-                for uid in ids_to_update:
-                    success_count += 1
-                    results.append({"user_id": uid, "status": "success", "message": "작업이 완료되었습니다"})
-                    await self._log_admin_activity(
-                        admin_id=admin_id, action=action_detail, target_type="user", target_id=uid,
-                        details={"bulk_action": action, "reason": reason, "new_value": update_payload.get("is_active") or update_payload.get("role")},
-                        ip_address=ip_address, user_agent=user_agent
-                    )
+                new_value = update_payload.get("is_active") or update_payload.get("role")
+                update_count, update_results = await record_bulk_success(
+                    ids_to_update, id_field="user_id", message="작업이 완료되었습니다",
+                    action=action_detail, target_type="user", context=context,
+                    log_admin_activity=self._log_admin_activity,
+                    build_details=lambda uid: {"bulk_action": action, "reason": reason, "new_value": new_value},
+                )
+                success_count += update_count
+                results += update_results
 
             # Add skipped status for those already in target state
             processed_ids = set(ids_to_update) | {r["user_id"] for r in results if r["status"] == "error"} | {admin_id}

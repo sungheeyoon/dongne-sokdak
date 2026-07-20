@@ -139,7 +139,7 @@ async def perform_report_action(
     """제보에 대한 관리자 액션 수행"""
     result = await admin_report_service.perform_report_action(
         str(report_id), action_request.action, action_request.admin_comment,
-        action_request.reason, action_request.new_status,
+        action_request.reason,
         str(action_request.assigned_admin_id) if action_request.assigned_admin_id else None,
         admin_user.get("id"), admin_user.get("role"),
         request.client.host if request.client else None, request.headers.get("user-agent")

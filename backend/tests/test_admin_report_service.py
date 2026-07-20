@@ -76,7 +76,7 @@ async def test_perform_report_action_delete_success(mocker):
     }
 
     result = await service.perform_report_action(
-        report_id, "delete", None, "Spam", None, None, admin_id, "admin"
+        report_id, "delete", None, "Spam", None, admin_id, "admin"
     )
 
     assert result["action"] == "delete"
@@ -113,7 +113,7 @@ async def test_perform_report_action_assign_success(mocker):
     }
 
     result = await service.perform_report_action(
-        report_id, "assign", "Help", None, None, target_admin_id, admin_id, "admin"
+        report_id, "assign", "Help", None, target_admin_id, admin_id, "admin"
     )
 
     assert result["action"] == "assign"
@@ -135,23 +135,6 @@ async def test_bulk_report_action_delete_success(mocker):
 
     assert result["success_count"] == 1
     mock_supabase.table.return_value.delete.return_value.in_.return_value.execute.assert_called()
-
-@pytest.mark.asyncio
-async def test_perform_report_action_update_status_success(mocker):
-    service, mock_supabase = make_admin_service(mocker)
-    report_id = str(uuid4())
-    admin_id = str(uuid4())
-
-    mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
-        "id": report_id, "title": "Status Update"
-    }
-
-    result = await service.perform_report_action(
-        report_id, "update_status", "Nice", None, "RESOLVED", None, admin_id, "admin"
-    )
-
-    assert result["action"] == "update_status"
-    mock_supabase.table.return_value.update.return_value.eq.return_value.execute.assert_called()
 
 @pytest.mark.asyncio
 async def test_get_reports_error(mocker):
