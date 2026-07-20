@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Any, List, Optional, Dict
+from typing import Any, List, Optional
 from uuid import UUID
 from app.schemas.report import (
     Report, ReportCreate, ReportUpdate, ReportCategory, ReportStatus, PaginatedReportResponse
 )
-from app.api.deps import get_current_active_user, get_supabase
-from app.services import report_service
+from app.api.deps import get_current_active_user
+from app.services.report_service import report_service
 from app.core.logging import get_logger
-from supabase.client import Client
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -17,12 +16,11 @@ router = APIRouter()
 @router.post("/", response_model=Report)
 async def create_report(
     report_in: ReportCreate,
-    current_user_id: str = Depends(get_current_active_user),
-    supabase: Client = Depends(get_supabase)
+    current_user_id: str = Depends(get_current_active_user)
 ) -> Any:
     """Create a new report."""
     try:
-        result = await report_service.create_report(supabase, report_in, current_user_id)
+        result = await report_service.create_report(report_in, current_user_id)
         if not result:
             raise HTTPException(status_code=400, detail="Failed to create report")
         return result
@@ -40,15 +38,13 @@ async def get_reports(
     status: Optional[ReportStatus] = None,
     user_id: Optional[str] = None,
     search: Optional[str] = None,
-    current_user_id: Optional[str] = None,
-    supabase: Client = Depends(get_supabase)
+    current_user_id: Optional[str] = None
 ) -> Any:
     """List reports with filtering and search."""
     try:
         return await report_service.list_reports(
-            supabase, 
-            page=page, 
-            limit=limit, 
+            page=page,
+            limit=limit,
             category=category.value if category else None,
             status=status.value if status else None,
             user_id=user_id,
@@ -70,13 +66,12 @@ async def get_nearby_reports(
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
     limit: int = 50,
-    current_user_id: Optional[str] = None,
-    supabase: Client = Depends(get_supabase)
+    current_user_id: Optional[str] = None
 ) -> Any:
     """Get reports near a specific location."""
     try:
         return await report_service.get_nearby_reports(
-            supabase, lat, lng, radius_km,
+            lat, lng, radius_km,
             category.value if category else None,
             search, page, limit, current_user_id
         )
@@ -93,13 +88,12 @@ async def get_reports_in_bounds(
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
     limit: int = 100,
-    current_user_id: Optional[str] = None,
-    supabase: Client = Depends(get_supabase)
+    current_user_id: Optional[str] = None
 ) -> Any:
     """Get reports within map bounds."""
     try:
         return await report_service.get_reports_in_bounds(
-            supabase, north, south, east, west,
+            north, south, east, west,
             category.value if category else None,
             search, page, limit, current_user_id
         )
@@ -116,21 +110,15 @@ async def get_my_neighborhood_reports(
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
     limit: int = 50,
-    current_user_id: str = Depends(get_current_active_user),
-    supabase: Client = Depends(get_supabase)
+    current_user_id: str = Depends(get_current_active_user)
 ) -> Any:
     """Get reports for the user's registered neighborhood."""
     try:
-        res = supabase.table("profiles").select("neighborhood").eq("id", current_user_id).single().execute()
-        neighborhood = res.data.get("neighborhood") if res.data else None
-        
-        if not neighborhood or not isinstance(neighborhood, dict) or "lat" not in neighborhood:
-             raise HTTPException(status_code=400, detail="Neighborhood not set.")
-            
-        return await report_service.get_nearby_reports(
-            supabase, neighborhood["lat"], neighborhood["lng"], radius_km,
+        return await report_service.get_my_neighborhood_reports(
+            radius_km,
             category.value if category else None,
-            search, page, limit, current_user_id
+            search, page, limit,
+            current_user_id=current_user_id
         )
     except HTTPException:
         raise
@@ -141,12 +129,11 @@ async def get_my_neighborhood_reports(
 @router.get("/{report_id}", response_model=Report)
 async def get_report(
     report_id: UUID,
-    current_user_id: Optional[str] = None,
-    supabase: Client = Depends(get_supabase),
+    current_user_id: Optional[str] = None
 ) -> Any:
     """Get detailed report by ID."""
     try:
-        report = await report_service.get_report_by_id(supabase, str(report_id), current_user_id)
+        report = await report_service.get_report_by_id(str(report_id), current_user_id)
         if not report:
             raise HTTPException(status_code=404, detail="Report not found")
         return report
@@ -159,8 +146,7 @@ async def get_report(
 async def update_report(
     report_id: UUID,
     report_in: ReportUpdate,
-    current_user_id: str = Depends(get_current_active_user),
-    supabase: Client = Depends(get_supabase)
+    current_user_id: str = Depends(get_current_active_user)
 ) -> Any:
     """Update a report."""
     try:
@@ -169,8 +155,8 @@ async def update_report(
             update_data["category"] = update_data["category"].value
         if "status" in update_data:
             update_data["status"] = update_data["status"].value
-            
-        return await report_service.update_report(supabase, str(report_id), update_data, current_user_id)
+
+        return await report_service.update_report(str(report_id), update_data, current_user_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -179,12 +165,11 @@ async def update_report(
 @router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_report(
     report_id: UUID,
-    current_user_id: str = Depends(get_current_active_user),
-    supabase: Client = Depends(get_supabase)
+    current_user_id: str = Depends(get_current_active_user)
 ):
     """Delete a report."""
     try:
-        await report_service.delete_report(supabase, str(report_id), current_user_id)
+        await report_service.delete_report(str(report_id), current_user_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -196,13 +181,12 @@ async def get_benchmark_nearby_rest(
     lng: float,
     radius_km: float = 3.0,
     category: Optional[ReportCategory] = None,
-    limit: int = 50,
-    supabase: Client = Depends(get_supabase)
+    limit: int = 50
 ) -> Any:
     """[V1 Benchmark] Pure REST + Python Haversine calculation."""
     try:
         return await report_service.benchmark_nearby_rest_python(
-            supabase, lat, lng, radius_km,
+            lat, lng, radius_km,
             category.value if category else None,
             limit
         )
@@ -210,6 +194,3 @@ async def get_benchmark_nearby_rest(
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Bench error REST: {str(e)}")
-
-
-

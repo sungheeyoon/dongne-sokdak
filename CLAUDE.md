@@ -37,7 +37,7 @@ backend/app/
 ├── api/v1/                       # thin route handlers (delegate to services)
 ├── api/admin/                    # split: routes_dashboard / users / reports / settings
 ├── services/                     # business logic
-│   ├── report_service.py         # owns nearby_cache / bounds_cache
+│   ├── report_service.py         # ReportService(supabase, cache) — uses spatial_report_cache (ADR-0001/0002)
 │   ├── comment_service.py
 │   ├── vote_service.py
 │   ├── profile_service.py        # uses get_profile_with_stats RPC
