@@ -90,3 +90,17 @@ uvicorn app.main:app --reload
 - `docs/plans/archive/PLAN_frontend_refactor_perf.md` — completed Clean Arch migration + MapComponent split + test infra (2026-05)
 - `docs/plans/PLAN_backend_refactor_perf.md` — completed services layer split + N+1 fixes + Pydantic v2 (2026-05)
 - `README_SECURITY.md` — RBAC / RLS / JWT setup
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues (`sungheeyoon/dongne-sokdak`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary — `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
