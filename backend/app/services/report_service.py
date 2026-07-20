@@ -2,6 +2,7 @@ from fastapi import HTTPException, status
 from typing import Any, List, Optional, Dict
 from supabase.client import Client
 from app.schemas.report import ReportCreate, ReportStatus
+from app.schemas.spatial_query import RadiusQueryParams, BoundsQueryParams
 from app.services.spatial_report_cache import SpatialReportCache
 from app.utils.wkb_parser import convert_wkb_to_location
 from app.core.logging import get_logger
@@ -242,35 +243,23 @@ class ReportService:
             return self._overlay_user_voted(cached, current_user_id)
 
         radius_meters = radius_km * 1000
+        query_params = RadiusQueryParams(
+            target_lat=lat,
+            target_lng=lng,
+            radius_meters=radius_meters,
+            category_filter=category,
+            search_query=search,
+        )
 
         # 1. Count Total
-        count_params = {
-            "target_lat": lat,
-            "target_lng": lng,
-            "radius_meters": radius_meters,
-            "category_filter": category,
-            "search_query": search
-        }
-        try:
-            count_res = self._supabase.rpc("count_reports_within_radius", count_params).execute()
-            total_count = count_res.data if count_res.data is not None else 0
-        except Exception as e:
-            logger.error(f"Count RPC error: {e}")
-            total_count = 0
+        count_res = self._supabase.rpc("count_reports_within_radius", query_params.for_count()).execute()
+        total_count = count_res.data if count_res.data is not None else 0
 
         # 2. Fetch Page
         offset = (page - 1) * limit
-        rpc_params = {
-            "target_lat": lat,
-            "target_lng": lng,
-            "radius_meters": radius_meters,
-            "category_filter": category,
-            "search_query": search,
-            "result_offset": offset,
-            "result_limit": limit
-        }
-
-        response = self._supabase.rpc("get_reports_within_radius", rpc_params).execute()
+        response = self._supabase.rpc(
+            "get_reports_within_radius", query_params.for_get(offset, limit)
+        ).execute()
         nearby_reports = response.data or []
 
         # 3. Enrich and Merge
@@ -312,30 +301,21 @@ class ReportService:
         if cached is not None:
             return self._overlay_user_voted(cached, current_user_id)
 
+        query_params = BoundsQueryParams(
+            north=north, south=south, east=east, west=west,
+            category_filter=category,
+            search_query=search,
+        )
+
         # 1. Count Total
-        count_params = {
-            "north": north, "south": south, "east": east, "west": west,
-            "category_filter": category,
-            "search_query": search
-        }
-        try:
-            count_res = self._supabase.rpc("count_reports_in_bounds", count_params).execute()
-            total_count = count_res.data if count_res.data is not None else 0
-        except Exception as e:
-            logger.error(f"Count RPC error: {e}")
-            total_count = 0
+        count_res = self._supabase.rpc("count_reports_in_bounds", query_params.for_count()).execute()
+        total_count = count_res.data if count_res.data is not None else 0
 
         # 2. Fetch Page
         offset = (page - 1) * limit
-        rpc_params = {
-            "north": north, "south": south, "east": east, "west": west,
-            "category_filter": category,
-            "search_query": search,
-            "result_offset": offset,
-            "result_limit": limit,
-        }
-
-        response = self._supabase.rpc("get_reports_in_bounds", rpc_params).execute()
+        response = self._supabase.rpc(
+            "get_reports_in_bounds", query_params.for_get(offset, limit)
+        ).execute()
         bounded_reports = response.data or []
 
         # 3. Enrich and Merge

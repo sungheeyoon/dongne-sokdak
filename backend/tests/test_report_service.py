@@ -361,10 +361,10 @@ async def test_bounds_cache_hit_applies_user_voted_overlay():
     assert supabase.rpc.call_count == 2
 
 
-# --- map query count RPC failures degrade gracefully ---
+# --- map query count RPC failures raise, same as get RPC failures (ADR-0004) ---
 
 @pytest.mark.asyncio
-async def test_nearby_count_rpc_error_defaults_total_to_zero():
+async def test_nearby_count_rpc_error_raises():
     supabase = MagicMock()
 
     def rpc(name, params):
@@ -378,14 +378,12 @@ async def test_nearby_count_rpc_error_defaults_total_to_zero():
     supabase.rpc.side_effect = rpc
     service = ReportService(supabase, FakeSpatialReportCache())
 
-    result = await service.get_nearby_reports(**NEARBY)
-
-    assert result["totalCount"] == 0
-    assert len(result["items"]) == 1
+    with pytest.raises(Exception, match="boom"):
+        await service.get_nearby_reports(**NEARBY)
 
 
 @pytest.mark.asyncio
-async def test_bounds_count_rpc_error_defaults_total_to_zero():
+async def test_bounds_count_rpc_error_raises():
     supabase = MagicMock()
 
     def rpc(name, params):
@@ -399,10 +397,8 @@ async def test_bounds_count_rpc_error_defaults_total_to_zero():
     supabase.rpc.side_effect = rpc
     service = ReportService(supabase, FakeSpatialReportCache())
 
-    result = await service.get_reports_in_bounds(**BOUNDS)
-
-    assert result["totalCount"] == 0
-    assert len(result["items"]) == 1
+    with pytest.raises(Exception, match="boom"):
+        await service.get_reports_in_bounds(**BOUNDS)
 
 
 # --- my neighborhood ---
