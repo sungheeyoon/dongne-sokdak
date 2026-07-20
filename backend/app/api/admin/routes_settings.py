@@ -19,7 +19,7 @@ async def get_admin_activity_logs(
 ):
     """관리자 활동 로그 조회"""
     data = await admin_log_service.get_admin_activity_logs(
-        supabase, skip, limit, action, str(admin_id) if admin_id else None
+        skip, limit, action, str(admin_id) if admin_id else None
     )
     
     activity_logs = []
