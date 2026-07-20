@@ -5,14 +5,9 @@ from app.services.vote_service import VoteService
 from app.schemas.vote import VoteCreate
 
 
-def make_service(mocker):
-    mock_supabase = mocker.Mock()
-    return VoteService(mock_supabase), mock_supabase
-
-
 @pytest.mark.asyncio
-async def test_create_vote_success(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_create_vote_success(make_service, mocker):
+    service, mock_supabase = make_service(VoteService)
     report_id = uuid4()
     user_id = "user-123"
     vote_in = VoteCreate(report_id=report_id)
@@ -36,8 +31,8 @@ async def test_create_vote_success(mocker):
 
 
 @pytest.mark.asyncio
-async def test_create_vote_duplicate(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_create_vote_duplicate(make_service, mocker):
+    service, mock_supabase = make_service(VoteService)
     report_id = uuid4()
     user_id = "user-123"
     vote_in = VoteCreate(report_id=report_id)
@@ -60,8 +55,8 @@ async def test_create_vote_duplicate(mocker):
 
 
 @pytest.mark.asyncio
-async def test_delete_vote_success(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_delete_vote_success(make_service):
+    service, mock_supabase = make_service(VoteService)
     report_id = str(uuid4())
     user_id = "user-123"
 
@@ -74,8 +69,8 @@ async def test_delete_vote_success(mocker):
 
 
 @pytest.mark.asyncio
-async def test_get_vote_count(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_get_vote_count(make_service, mocker):
+    service, mock_supabase = make_service(VoteService)
     report_id = str(uuid4())
     mock_response = mocker.Mock()
     mock_response.count = 5
@@ -87,8 +82,8 @@ async def test_get_vote_count(mocker):
 
 
 @pytest.mark.asyncio
-async def test_check_vote_true(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_check_vote_true(make_service):
+    service, mock_supabase = make_service(VoteService)
     report_id = str(uuid4())
     user_id = "user-123"
     mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [{"id": "some-id"}]
@@ -99,8 +94,8 @@ async def test_check_vote_true(mocker):
 
 
 @pytest.mark.asyncio
-async def test_check_vote_false(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_check_vote_false(make_service):
+    service, mock_supabase = make_service(VoteService)
     report_id = str(uuid4())
     user_id = "user-123"
     mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = []

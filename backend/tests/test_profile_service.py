@@ -6,14 +6,9 @@ from app.services.profile_service import ProfileService
 from app.schemas.profile import ProfileUpdate, NeighborhoodUpdate, NeighborhoodInfo
 
 
-def make_service(mocker):
-    mock_supabase = mocker.Mock()
-    return ProfileService(mock_supabase), mock_supabase
-
-
 @pytest.mark.asyncio
-async def test_get_my_profile_existing(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_get_my_profile_existing(make_service, mocker):
+    service, mock_supabase = make_service(ProfileService)
     user_id = str(uuid4())
     mock_profile_with_stats = {
         "id": user_id,
@@ -39,8 +34,8 @@ async def test_get_my_profile_existing(mocker):
 
 
 @pytest.mark.asyncio
-async def test_get_my_profile_new(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_get_my_profile_new(make_service, mocker):
+    service, mock_supabase = make_service(ProfileService)
     user_id = str(uuid4())
 
     mock_profile_with_stats = {
@@ -75,8 +70,8 @@ async def test_get_my_profile_new(mocker):
 
 
 @pytest.mark.asyncio
-async def test_update_profile_duplicate_nickname(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_update_profile_duplicate_nickname(make_service):
+    service, mock_supabase = make_service(ProfileService)
     user_id = str(uuid4())
     profile_in = ProfileUpdate(nickname="existing_nick")
 
@@ -90,8 +85,8 @@ async def test_update_profile_duplicate_nickname(mocker):
 
 
 @pytest.mark.asyncio
-async def test_update_profile_success(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_update_profile_success(make_service, mocker):
+    service, mock_supabase = make_service(ProfileService)
     user_id = str(uuid4())
     profile_in = ProfileUpdate(nickname="new_nick")
 
@@ -112,8 +107,8 @@ async def test_update_profile_success(mocker):
 
 
 @pytest.mark.asyncio
-async def test_get_user_profile_success(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_get_user_profile_success(make_service, mocker):
+    service, mock_supabase = make_service(ProfileService)
     user_id = str(uuid4())
     mock_profile_with_stats = {
         "id": user_id,
@@ -139,8 +134,8 @@ async def test_get_user_profile_success(mocker):
 
 
 @pytest.mark.asyncio
-async def test_update_avatar(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_update_avatar(make_service):
+    service, mock_supabase = make_service(ProfileService)
     user_id = str(uuid4())
     avatar_url = "http://new-avatar.com"
 
@@ -152,8 +147,8 @@ async def test_update_avatar(mocker):
 
 
 @pytest.mark.asyncio
-async def test_update_neighborhood(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_update_neighborhood(make_service):
+    service, mock_supabase = make_service(ProfileService)
     user_id = str(uuid4())
     n_info = NeighborhoodInfo(place_name="My Home", address="123 Street", lat=37.5, lng=127.0)
     n_update = NeighborhoodUpdate(neighborhood=n_info)
@@ -166,8 +161,8 @@ async def test_update_neighborhood(mocker):
 
 
 @pytest.mark.asyncio
-async def test_delete_neighborhood(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_delete_neighborhood(make_service):
+    service, mock_supabase = make_service(ProfileService)
     user_id = str(uuid4())
     mock_supabase.table.return_value.update.return_value.eq.return_value.execute.return_value.data = [{"id": user_id}]
 

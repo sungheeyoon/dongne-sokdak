@@ -5,14 +5,9 @@ from app.services.comment_service import CommentService
 from app.schemas.comment import CommentCreate, CommentUpdate
 
 
-def make_service(mocker):
-    mock_supabase = mocker.Mock()
-    return CommentService(mock_supabase), mock_supabase
-
-
 @pytest.mark.asyncio
-async def test_create_comment_success(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_create_comment_success(make_service, mocker):
+    service, mock_supabase = make_service(CommentService)
     report_id = uuid4()
     user_id = "user-123"
     comment_in = CommentCreate(
@@ -48,8 +43,8 @@ async def test_create_comment_success(mocker):
 
 
 @pytest.mark.asyncio
-async def test_create_comment_report_not_found(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_create_comment_report_not_found(make_service):
+    service, mock_supabase = make_service(CommentService)
     comment_in = CommentCreate(
         report_id=uuid4(),
         content="Test comment"
@@ -64,8 +59,8 @@ async def test_create_comment_report_not_found(mocker):
 
 
 @pytest.mark.asyncio
-async def test_get_comments_by_report(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_get_comments_by_report(make_service, mocker):
+    service, mock_supabase = make_service(CommentService)
     report_id = str(uuid4())
     user_id = "user-123"
 
@@ -101,8 +96,8 @@ async def test_get_comments_by_report(mocker):
 
 
 @pytest.mark.asyncio
-async def test_update_comment_unauthorized(mocker):
-    service, mock_supabase = make_service(mocker)
+async def test_update_comment_unauthorized(make_service):
+    service, mock_supabase = make_service(CommentService)
     comment_id = str(uuid4())
     comment_update = CommentUpdate(content="Updated content")
 
