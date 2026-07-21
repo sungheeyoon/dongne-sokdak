@@ -8,6 +8,7 @@ import { useKakaoMapBounds } from '@/features/map/presentation/hooks/useKakaoMap
 import { MapMarkerLayer } from '@/features/map/presentation/components/MapMarkerLayer'
 import { KakaoMapAdapter, defaultKakaoMapAdapter } from '@/features/map/data/kakaoMapAdapter'
 import { RefreshSearchButton } from '@/shared/ui/RegionSearchButton'
+import { Coordinates, Location } from '@/features/map/domain/entities'
 
 // panTo 애니메이션이 끝날 때까지 기다린 뒤 커밋한다 — Kakao SDK 이벤트만으로는
 // "프로그래매틱 이동"과 "사용자 드래그"를 구분할 수 없어 이벤트에 의존하지 않는다 (ADR-0007).
@@ -16,18 +17,18 @@ const ALREADY_THERE_COMMIT_DELAY_MS = 100
 
 interface MapComponentProps {
   reports: ReportType[]
-  center?: { lat: number; lng: number }
+  center?: Coordinates
   zoom?: number
   height?: string
-  onLocationSelect?: (location: { lat: number; lng: number; address?: string }) => void
+  onLocationSelect?: (location: Location) => void
   onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void
   onZoomChange?: (zoom: number) => void
   onMarkerClick?: (report: ReportType) => void
-  onGroupClick?: (reports: ReportType[], center: { lat: number; lng: number }) => void
+  onGroupClick?: (reports: ReportType[], center: Coordinates) => void
   selectedMarkerId?: string
   adapter?: KakaoMapAdapter
   isBoundsQueryLoading?: boolean
-  myNeighborhoodLocation?: { lat: number; lng: number } | null
+  myNeighborhoodLocation?: Coordinates | null
   onFarFromHomeChange?: (isFarFromHome: boolean) => void
 }
 
