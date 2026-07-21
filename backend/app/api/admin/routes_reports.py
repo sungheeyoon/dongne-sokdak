@@ -30,11 +30,11 @@ async def get_reports_for_management(
         profile_data = report.get("profiles", [])
         user_nickname = profile_data[0].get("nickname", "알 수 없음") if profile_data else "알 수 없음"
         
-        votes_data = report.get("votes_count", [])
-        comments_data = report.get("comments_count", [])
-        votes_count = len(votes_data) if isinstance(votes_data, list) else 0
-        comments_count = len(comments_data) if isinstance(comments_data, list) else 0
-        
+        votes_data = report.get("vote_count", [])
+        comments_data = report.get("comment_count", [])
+        vote_count = len(votes_data) if isinstance(votes_data, list) else 0
+        comment_count = len(comments_data) if isinstance(comments_data, list) else 0
+
         reports.append(ReportManagementResponse(
             id=report.get("id"),
             title=report.get("title", ""),
@@ -46,8 +46,8 @@ async def get_reports_for_management(
             user_email=user_data.get("email", ""),
             address=report.get("address"),
             image_url=report.get("image_url"),
-            votes_count=votes_count,
-            comments_count=comments_count,
+            vote_count=vote_count,
+            comment_count=comment_count,
             created_at=report.get("created_at"),
             updated_at=report.get("updated_at"),
             admin_comment=report.get("admin_comment"),
@@ -83,9 +83,9 @@ async def get_report_detail(
         })
     
     votes = report.get("votes", [])
-    votes_count = len(votes) if isinstance(votes, list) else 0
-    comments_count = len(comments) if isinstance(comments, list) else 0
-    
+    vote_count = len(votes) if isinstance(votes, list) else 0
+    comment_count = len(comments) if isinstance(comments, list) else 0
+
     return ReportDetailResponse(
         id=report.get("id"),
         title=report.get("title", ""),
@@ -100,8 +100,8 @@ async def get_report_detail(
         location=location,
         created_at=report.get("created_at"),
         updated_at=report.get("updated_at"),
-        votes_count=votes_count,
-        comments_count=comments_count,
+        vote_count=vote_count,
+        comment_count=comment_count,
         view_count=0,
         admin_comment=report.get("admin_comment"),
         assigned_admin_id=report.get("assigned_admin_id"),

@@ -77,11 +77,11 @@ class ReportManagementResponse(BaseModel):
     user_email: str
     address: Optional[str]
     image_url: Optional[str]
-    votes_count: int
-    comments_count: int
+    vote_count: int
+    comment_count: int
     created_at: datetime
     updated_at: datetime
-    
+
     # 관리자 전용 필드
     admin_comment: Optional[str] = None
     assigned_admin_id: Optional[uuid.UUID] = None
@@ -133,8 +133,8 @@ class ReportDetailResponse(BaseModel):
     updated_at: datetime
     
     # 통계 정보
-    votes_count: int
-    comments_count: int
+    vote_count: int
+    comment_count: int
     view_count: int
     
     # 관리자 정보

@@ -39,8 +39,8 @@ class AdminReportService:
                 *,
                 user:user_id(id, email),
                 profiles!reports_user_id_fkey(nickname),
-                votes_count:votes(count),
-                comments_count:comments(count)
+                vote_count:votes(count),
+                comment_count:comments(count)
             """)
             if status_filter: query = query.eq("status", status_filter)
             if category: query = query.eq("category", category)

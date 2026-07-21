@@ -194,11 +194,11 @@ export default function ReportDetailModal({ reportId, isOpen, onClose }: ReportD
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">통계 정보</h3>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="bg-blue-50 p-3 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-blue-600">{reportDetail.votesCount}</div>
+                      <div className="text-2xl font-bold text-blue-600">{reportDetail.voteCount}</div>
                       <div className="text-sm text-blue-700">투표</div>
                     </div>
                     <div className="bg-green-50 p-3 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-green-600">{reportDetail.commentsCount}</div>
+                      <div className="text-2xl font-bold text-green-600">{reportDetail.commentCount}</div>
                       <div className="text-sm text-green-700">댓글</div>
                     </div>
                     <div className="bg-purple-50 p-3 rounded-lg text-center">

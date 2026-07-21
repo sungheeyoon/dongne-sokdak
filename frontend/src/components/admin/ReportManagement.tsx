@@ -318,11 +318,11 @@ export default function ReportManagementComponent() {
                     <div className="flex gap-4">
                       <span className="flex items-center">
                         <ThumbsUp className="w-4 h-4 mr-1 text-blue-500" />
-                        {report.votesCount}
+                        {report.voteCount}
                       </span>
                       <span className="flex items-center">
                         <MessageCircle className="w-4 h-4 mr-1 text-green-500" />
-                        {report.commentsCount}
+                        {report.commentCount}
                       </span>
                     </div>
                   </td>

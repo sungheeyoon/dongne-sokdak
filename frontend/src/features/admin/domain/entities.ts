@@ -1,3 +1,5 @@
+import type { Report } from '@/types';
+
 export type AdminRole = 'user' | 'moderator' | 'admin';
 
 export interface AdminStats {
@@ -50,28 +52,18 @@ export interface AdminInfo {
     createdAt: string;
 }
 
-export interface ReportManagement {
-  id: string;
-  title: string;
-  description: string;
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
-  category: 'NOISE' | 'TRASH' | 'FACILITY' | 'TRAFFIC' | 'OTHER';
-  userId: string;
+// 제보(Report) 도메인 개념의 canonical 타입은 @/types의 Report다.
+// admin 목록 응답에는 location이 없어 이것만 Omit하고, admin 전용 필드를 확장한다.
+export interface ReportManagement extends Omit<Report, 'location'> {
   userNickname: string;
   userEmail: string;
-  address: string | null;
-  imageUrl: string | null;
-  votesCount: number;
-  commentsCount: number;
-  createdAt: string;
-  updatedAt: string;
   adminComment: string | null;
   assignedAdminId: string | null;
   assignedAdminNickname: string | null;
 }
 
 export interface ReportDetail extends ReportManagement {
-  location: { lat: number; lng: number } | null;
+  location: Report['location'] | null;
   viewCount: number;
   recentComments: Array<{
     id: string;
