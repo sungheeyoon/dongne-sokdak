@@ -110,6 +110,18 @@ describe('KakaoMapAdapter', () => {
     })
   })
 
+  describe('setBounds', () => {
+    it('fits the given map to the given bounds', () => {
+      const map = { setBounds: vi.fn() }
+      const adapter = new KakaoMapAdapter()
+      const bounds = { getSouthWest: () => ({}), getNorthEast: () => ({}) }
+
+      adapter.setBounds(map, bounds as any)
+
+      expect(map.setBounds).toHaveBeenCalledWith(bounds)
+    })
+  })
+
   describe('getCenter', () => {
     it('returns the center of the given map as a plain coordinate', () => {
       const map = { getCenter: () => ({ getLat: () => 37.5, getLng: () => 127.0 }) }

@@ -130,6 +130,10 @@ export class KakaoMapAdapter {
         map.setLevel(level, options)
     }
 
+    setBounds(map: any, bounds: any): void {
+        map.setBounds(bounds)
+    }
+
     getBounds(map: any): { north: number; south: number; east: number; west: number } | null {
         const bounds = map.getBounds()
         if (!bounds) return null
