@@ -66,7 +66,9 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
     const location = {
       lat: place.location.lat,
       lng: place.location.lng,
-      address: place.address,
+      // 지번주소(address_name)가 없는 장소(신축 건물 등)는 도로명주소로 대체 —
+      // 비워두면 네브바에 동 이름 대신 장소명(상호명)이 표시된다.
+      address: place.address || place.roadAddress || '',
       placeName: place.placeName
     }
     handleNeighborhoodSelect(location)

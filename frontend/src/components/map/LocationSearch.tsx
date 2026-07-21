@@ -111,7 +111,8 @@ export default function LocationSearch({
     const location = {
       lat: place.location.lat,
       lng: place.location.lng,
-      address: place.address,
+      // 지번주소(address_name)가 없는 장소는 도로명주소로 대체
+      address: place.address || place.roadAddress || '',
       placeName: place.placeName
     }
 

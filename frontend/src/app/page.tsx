@@ -11,11 +11,12 @@ import ReportModal from '@/features/reports/presentation/components/ReportModal'
 import dynamic from 'next/dynamic'
 import { ReportCategory } from '@/types'
 import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
-import { getActiveLocation } from '@/lib/map/getActiveLocation'
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import { useMapReportsViewModel, useListReportsViewModel } from '@/features/reports/presentation/hooks/useReportsViewModel'
 import ReportList from '@/features/reports/presentation/components/ReportList'
 import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
 import { useMapControllerViewModel } from '@/features/map/presentation/hooks/useMapControllerViewModel'
+import { useMapFocusViewModel } from '@/features/map/presentation/hooks/useMapFocusViewModel'
 import UnifiedSearch from '@/components/UnifiedSearch'
 import { MapPin, FileText, X } from 'lucide-react'
 import LoadingSpinner from '@/shared/ui/LoadingSpinner'
@@ -77,6 +78,7 @@ export default function Home() {
   const [selectedLocation, setSelectedLocation] = useState<string>('') // 선택된 위치명
 
   const { profile, isLoading: isLoadingProfile } = useProfileViewModel()
+  const { initialized: isAuthInitialized } = useAuthViewModel()
   const { reverseGeocode, searchPlaces, isSearching } = useLocationViewModel()
 
   // 내 동네 위치 (로그인된 사용자의 설정된 동네)
@@ -143,31 +145,14 @@ export default function Home() {
   }, [mapReports.length, mapLimit])
 
 
-  // 첫 로드 여부를 추적하여 초기 내 동네 이동을 1회 보장
-  const [isInitialLoadDone, setIsInitialLoadDone] = useState(false)
-
-  // 최초 로드가 끝나는 시점의 내 동네 위치를 fallback 후보값으로 1회 고정한다.
-  // 이후 내 동네가 바뀌거나 삭제되어도 이 값은 갱신하지 않는다 — 기본 컨텍스트(내 동네)의 변화 자체가
-  // 지도 초점을 흔드는 트리거가 되어서는 안 되기 때문 (ADR-0003). 명시적 변경/복귀는 resetToMyNeighborhood가 담당한다.
-  const [frozenFallbackCenter, setFrozenFallbackCenter] = useState<{ lat: number; lng: number } | null>(null)
-
   // 현재 사용 중인 위치 (외부 통제: 검색된 위치, 내 동네, 등)
-  const mapFocus = useMemo(() => {
-    return getActiveLocation({
-      focusedLocation,
-      isInitialLoadDone,
-      myNeighborhoodLocation,
-      userCurrentLocation,
-      fallbackCenter: frozenFallbackCenter || { lat: 37.5665, lng: 126.9780 }
-    });
-  }, [focusedLocation, isInitialLoadDone, myNeighborhoodLocation, userCurrentLocation, frozenFallbackCenter])
-
-  useEffect(() => {
-    if (!isInitialLoadDone && !isLoadingProfile) {
-      setFrozenFallbackCenter(myNeighborhoodLocation)
-      setIsInitialLoadDone(true)
-    }
-  }, [isLoadingProfile, myNeighborhoodLocation, isInitialLoadDone])
+  const mapFocus = useMapFocusViewModel({
+    focusedLocation,
+    myNeighborhoodLocation,
+    userCurrentLocation,
+    isAuthInitialized,
+    isLoadingProfile,
+  })
 
   // 마커 클릭 핸들러
   const handleMarkerClick = async (report: ReportType) => {

@@ -26,3 +26,7 @@
 - fallback 후보값 재계산, 내부 상태 재계산
 
 현재 구현은 `MapComponent`가 `center` prop 변화 자체를 감지해 무조건 재이동(`panTo`)하므로, fallback 후보값(=내 동네)이 바뀌기만 해도 지도가 따라 움직인다 — "내 동네 삭제" 같은 비트리거 상황에서도 지도가 의도치 않게 움직이는 원인이다. 지도 초점 상태(`focusedLocation` 등 명시적 상태)와 기본 컨텍스트(내 동네)는 분리하고, 위에 나열된 명시적 트리거만 지도 초점을 갱신하도록 구현해야 한다.
+
+## Consequences (추가) — fallback freeze는 auth 초기화 완료를 기준으로 판단해야 한다
+
+초기 로드 1회 fallback 고정(`useMapFocusViewModel`)은 "프로필 로딩이 끝났다"를 기준으로 판단하면 안 된다 — 인증 세션이 아직 복구되기 전(`useAuthViewModel().initialized === false`)에는 프로필 쿼리가 `enabled: false`로 대기 중이라서 `isLoading`이 `false`로 뜨는 것(TanStack Query에서 비활성 쿼리는 `isFetching`도 `false`이므로 `isLoading = isPending && isFetching`이 `false`)을 "로딩 완료"로 오해하기 쉽다. 이 경우 내 동네 좌표가 도착하기도 전에 fallback이 `null`(하드코딩된 기본 좌표)로 영구 고정되어, 새로고침할 때마다 내 동네 대신 기본 위치로 돌아가는 버그가 된다. fallback 고정 조건은 반드시 auth 초기화 완료 여부를 프로필 로딩 상태와 함께 검사해야 한다.

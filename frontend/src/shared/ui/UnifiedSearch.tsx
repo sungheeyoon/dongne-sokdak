@@ -128,8 +128,8 @@ export const UnifiedSearch: React.FC<UnifiedSearchProps> = ({
 
   // 장소 선택 처리
   const handlePlaceSelect = (place: UnifiedSearchPlaceResult) => {
-    // 행정동 변환
-    const adminAddress = place.address
+    // 지번주소가 없는 장소는 도로명주소로 대체
+    const adminAddress = place.address || place.roadAddress || ''
 
     const location = {
       lat: place.location.lat,
