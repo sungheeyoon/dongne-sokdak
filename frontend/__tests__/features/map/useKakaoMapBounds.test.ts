@@ -224,6 +224,59 @@ describe('useKakaoMapBounds', () => {
         consoleErrorSpy.mockRestore()
     })
 
+    it('defaults isFarFromHome to false when no homeLocation is given', () => {
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
+
+        act(() => {
+            result.current.dispatchBoundsUpdate(true)
+        })
+
+        expect(result.current.isFarFromHome).toBe(false)
+    })
+
+    it('marks isFarFromHome true once the committed bounds center is over 500m from home', () => {
+        // bounds center ≈ (37.5, 127.0); home far away in Busan
+        const home = { lat: 35.1796, lng: 129.0756 }
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter, home))
+
+        act(() => {
+            result.current.dispatchBoundsUpdate(true)
+        })
+
+        expect(result.current.isFarFromHome).toBe(true)
+    })
+
+    it('keeps isFarFromHome false when the committed bounds center is within 500m of home', () => {
+        // bounds: south 37.4, west 126.9, north 37.6, east 127.1 → center (37.5, 127.0)
+        const home = { lat: 37.5, lng: 127.0 }
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter, home))
+
+        act(() => {
+            result.current.dispatchBoundsUpdate(true)
+        })
+
+        expect(result.current.isFarFromHome).toBe(false)
+    })
+
+    it('recomputes isFarFromHome on drag (handleDragEnd) without requiring a commit', () => {
+        const home = { lat: 37.5, lng: 127.0 }
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter, home))
+
+        act(() => {
+            result.current.dispatchBoundsUpdate(true)
+        })
+        expect(result.current.isFarFromHome).toBe(false)
+
+        // 사용자가 홈에서 먼 지역(부산 인근)으로 드래그
+        adapter.getBounds.mockReturnValue({ south: 35.08, west: 128.98, north: 35.28, east: 129.18 })
+
+        act(() => {
+            result.current.handleDragEnd()
+        })
+
+        expect(result.current.isFarFromHome).toBe(true)
+    })
+
     it('should not do anything if map is missing', () => {
         const { result } = renderHook(() => useKakaoMapBounds(null, onBoundsChange, undefined, adapter))
 

@@ -61,6 +61,10 @@ export default function Home() {
     handleLocationSearch,
   } = useMapControllerViewModel()
 
+  // 지도가 내 동네 좌표에서 500m 넘게 멀어졌는지 — "내 동네로 돌아가기" 버튼 노출 조건에 쓰인다.
+  // MapComponent가 실시간으로 갱신해 올려보낸다 (grilling 세션에서 합의된 설계).
+  const [isFarFromHome, setIsFarFromHome] = useState(false)
+
   // 행정동 기반 동네 표시명 계산 함수
   const getNeighborhoodDisplayName = (profile: { neighborhood?: { address: string; placeName: string } }) => {
     if (!profile?.neighborhood) return '내 동네'
@@ -225,7 +229,7 @@ export default function Home() {
                     '동네 이슈 지도'}
               </h2>
             </div>
-            {(searchedLocation || userCurrentLocation || useMapBoundsFilter) && (
+            {(searchedLocation || userCurrentLocation || isFarFromHome) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -289,6 +293,8 @@ export default function Home() {
                 onGroupClick={handleGroupClick as any}
                 selectedMarkerId={selectedMapMarkers?.length === 1 ? (selectedMapMarkers[0] as any)?.id : undefined}
                 isBoundsQueryLoading={isMapLoading || isListLoading}
+                myNeighborhoodLocation={myNeighborhoodLocation}
+                onFarFromHomeChange={setIsFarFromHome}
               />
             </MapInitializationGate>
           </Card>

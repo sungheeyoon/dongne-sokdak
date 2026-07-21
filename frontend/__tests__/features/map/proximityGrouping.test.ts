@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeProximityGroups } from '@/features/map/domain/proximityGrouping'
+import { computeProximityGroups, distanceMeters } from '@/features/map/domain/proximityGrouping'
 
 interface FakeReport {
   id: string
@@ -84,5 +84,15 @@ describe('computeProximityGroups', () => {
 
   it('returns an empty array for no reports', () => {
     expect(computeProximityGroups([])).toEqual([])
+  })
+})
+
+describe('distanceMeters', () => {
+  it('returns ~0 for the same coordinate', () => {
+    expect(distanceMeters(BASE, BASE)).toBeCloseTo(0, 5)
+  })
+
+  it('matches the offset used to construct the test coordinate', () => {
+    expect(distanceMeters(BASE, north(500))).toBeCloseTo(500, -1)
   })
 })

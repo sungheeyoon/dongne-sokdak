@@ -14,7 +14,7 @@ function toRadians(degrees: number): number {
   return (degrees * Math.PI) / 180
 }
 
-function distanceMeters(a: Coordinates, b: Coordinates): number {
+export function distanceMeters(a: Coordinates, b: Coordinates): number {
   const dLat = toRadians(b.lat - a.lat)
   const dLng = toRadians(b.lng - a.lng)
   const lat1 = toRadians(a.lat)

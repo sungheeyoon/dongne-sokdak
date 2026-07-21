@@ -27,6 +27,8 @@ interface MapComponentProps {
   selectedMarkerId?: string
   adapter?: KakaoMapAdapter
   isBoundsQueryLoading?: boolean
+  myNeighborhoodLocation?: { lat: number; lng: number } | null
+  onFarFromHomeChange?: (isFarFromHome: boolean) => void
 }
 
 export default function MapComponent({
@@ -41,7 +43,9 @@ export default function MapComponent({
   onGroupClick,
   selectedMarkerId,
   adapter = defaultKakaoMapAdapter,
-  isBoundsQueryLoading = false
+  isBoundsQueryLoading = false,
+  myNeighborhoodLocation = null,
+  onFarFromHomeChange
 }: MapComponentProps) {
   const safeCenter = center && center.lat && center.lng ? center : { lat: 37.5665, lng: 126.9780 }
   const [map, setMap] = useState<any>(null)
@@ -50,11 +54,17 @@ export default function MapComponent({
   const {
     currentBounds,
     isDirty,
+    isFarFromHome,
     dispatchBoundsUpdate,
     handleMapBoundsChange,
     handleDragEnd,
     handleZoomChange
-  } = useKakaoMapBounds(map, onBoundsChange, onZoomChange, adapter)
+  } = useKakaoMapBounds(map, onBoundsChange, onZoomChange, adapter, myNeighborhoodLocation)
+
+  // "내 동네로 돌아가기" 버튼(page.tsx)이 지도 바깥에 있어, 실시간 거리 판정을 콜백으로 올려보낸다.
+  useEffect(() => {
+    onFarFromHomeChange?.(isFarFromHome)
+  }, [isFarFromHome, onFarFromHomeChange])
 
   // 기본 지도 로드가 완료되었을 때 정확히 1회의 Data Fetch를 보장
   useEffect(() => {
@@ -75,18 +85,22 @@ export default function MapComponent({
       Math.abs(actualCenter.lat - center.lat) < 0.0001 &&
       Math.abs(actualCenter.lng - center.lng) < 0.0001
 
+    // 짧은 간격으로 이 effect가 다시 실행되면(예: "내 동네로 돌아가기" 연타) 이전에 예약된
+    // 커밋 타이머를 반드시 취소해야 한다 — 그렇지 않으면 지도가 아직 새 pan 애니메이션
+    // 중일 때 먼저 만료된 이전 타이머가 잘못된(전환 중) bounds를 커밋해버린다.
     if (alreadyThere) {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         dispatchBoundsUpdate(true)
       }, ALREADY_THERE_COMMIT_DELAY_MS)
-      return
+      return () => clearTimeout(timeoutId)
     }
 
     adapter.panTo(map, center.lat, center.lng)
     // 지도 초점 이동은 명시적 사용자 의도이므로, 애니메이션이 끝난 뒤 바로 커밋한다 (ADR-0007).
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       dispatchBoundsUpdate(true)
     }, PAN_SETTLE_DELAY_MS)
+    return () => clearTimeout(timeoutId)
   }, [center, map, dispatchBoundsUpdate, adapter])
 
   // 지도 클릭 이벤트 (제보 위치 선택용)

@@ -1,5 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { KakaoMapAdapter, defaultKakaoMapAdapter } from '@/features/map/data/kakaoMapAdapter'
+import { distanceMeters } from '@/features/map/domain/proximityGrouping'
+import { Coordinates } from '@/features/map/domain/entities'
 
 export interface MapBounds {
     north: number
@@ -8,17 +10,39 @@ export interface MapBounds {
     west: number
 }
 
+// "내 동네로 돌아가기" 버튼을 활성화하는 거리 기준 (grilling 세션에서 합의된 값)
+const FAR_FROM_HOME_THRESHOLD_METERS = 500
+
+function centerOfBounds(bounds: MapBounds): Coordinates {
+    return {
+        lat: (bounds.north + bounds.south) / 2,
+        lng: (bounds.east + bounds.west) / 2,
+    }
+}
+
 export function useKakaoMapBounds(
     map: any,
     onBoundsChange?: (bounds: MapBounds) => void,
     onZoomChange?: (zoom: number) => void,
-    adapter: KakaoMapAdapter = defaultKakaoMapAdapter
+    adapter: KakaoMapAdapter = defaultKakaoMapAdapter,
+    homeLocation?: Coordinates | null
 ) {
     const [currentBounds, setCurrentBounds] = useState<MapBounds | null>(null)
     // 마지막으로 "커밋"(재조회로 반영)된 영역과 지금 화면이 다른지 — true면 재검색 버튼을 노출한다
     const [isDirty, setIsDirty] = useState(false)
+    // 현재 화면 중심이 내 동네 좌표에서 500m 넘게 떨어져 있는지 — true면 "내 동네로 돌아가기" 버튼을 노출한다
+    const [isFarFromHome, setIsFarFromHome] = useState(false)
     const lastCommittedKeyRef = useRef<string | null>(null)
     const timeoutRefs = useRef<{ [key: string]: NodeJS.Timeout }>({})
+
+    const updateFarFromHome = useCallback((bounds: MapBounds) => {
+        if (!homeLocation) {
+            setIsFarFromHome(false)
+            return
+        }
+        const distance = distanceMeters(centerOfBounds(bounds), homeLocation)
+        setIsFarFromHome(distance > FAR_FROM_HOME_THRESHOLD_METERS)
+    }, [homeLocation])
 
     // Zoom에 따른 동적 정밀도 지원
     const precisionByZoom = useCallback((level: number) => {
@@ -49,6 +73,8 @@ export function useKakaoMapBounds(
             if (!read) return
             const { bounds, precision, key: newKey } = read
 
+            updateFarFromHome(bounds)
+
             if (lastCommittedKeyRef.current === newKey) {
                 setIsDirty(false)
                 return
@@ -74,7 +100,7 @@ export function useKakaoMapBounds(
         } catch (error) {
             console.error('Map bounds calculation error:', error)
         }
-    }, [map, onBoundsChange, readBoundsKey])
+    }, [map, onBoundsChange, readBoundsKey, updateFarFromHome])
 
     // 추적: 드래그/줌으로 화면이 마지막 커밋 지점과 다른지만 표시한다. store는 건드리지 않는다 — 재조회는 일으키지 않는다.
     // 사용자가 드래그로 원래 커밋된 영역까지 되돌아오면 dirty도 다시 꺼진다.
@@ -86,10 +112,11 @@ export function useKakaoMapBounds(
             if (!read) return
 
             setIsDirty(read.key !== lastCommittedKeyRef.current)
+            updateFarFromHome(read.bounds)
         } catch (error) {
             console.error('Map bounds calculation error:', error)
         }
-    }, [map, readBoundsKey])
+    }, [map, readBoundsKey, updateFarFromHome])
 
     const handleMapBoundsChange = useCallback(() => {
         if (!map) return
@@ -128,6 +155,7 @@ export function useKakaoMapBounds(
     return {
         currentBounds,
         isDirty,
+        isFarFromHome,
         dispatchBoundsUpdate,
         handleMapBoundsChange,
         handleDragEnd,
