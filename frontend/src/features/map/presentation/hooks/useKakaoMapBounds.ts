@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { KakaoMapAdapter, defaultKakaoMapAdapter } from '@/features/map/data/kakaoMapAdapter'
-import { distanceMeters } from '@/features/map/domain/proximityGrouping'
+import { distanceMeters } from '@/features/map/domain/geo'
 import { Coordinates } from '@/features/map/domain/entities'
 
 export interface MapBounds {
