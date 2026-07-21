@@ -37,7 +37,6 @@ export default function MapComponent({
   const [map, setMap] = useState<any>(null)
   const [kakaoLoaded, setKakaoLoaded] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
-  const [lastSetCenter, setLastSetCenter] = useState<{ lat: number, lng: number } | null>(null)
   const { reverseGeocode } = useLocationViewModel()
 
   const {
@@ -87,13 +86,19 @@ export default function MapComponent({
     }
   }, [map, dispatchBoundsUpdate])
 
-  // center prop 변경 시 맵 이동
+  // center prop 변경 시 맵 이동 — "이미 그 위치인지"는 지도의 실제 현재 위치
+  // (adapter.getCenter)와 비교해야 한다. 마지막으로 요청했던 좌표와 비교하면,
+  // 사용자가 드래그로 지도를 옮긴 뒤 같은 좌표로 돌아가려 할 때(예: 내 동네로
+  // 돌아가기) 요청 좌표 자체는 안 바뀌었다는 이유로 panTo를 건너뛰어 버린다.
   useEffect(() => {
     if (!map || !center) return
 
-    if (lastSetCenter &&
-      Math.abs(lastSetCenter.lat - center.lat) < 0.0001 &&
-      Math.abs(lastSetCenter.lng - center.lng) < 0.0001) {
+    const actualCenter = adapter.getCenter(map)
+    const alreadyThere =
+      Math.abs(actualCenter.lat - center.lat) < 0.0001 &&
+      Math.abs(actualCenter.lng - center.lng) < 0.0001
+
+    if (alreadyThere) {
       setTimeout(() => {
         handleMapBoundsChange()
       }, 100)
@@ -101,8 +106,7 @@ export default function MapComponent({
     }
 
     adapter.panTo(map, center.lat, center.lng)
-    setLastSetCenter(center)
-  }, [center, map, handleMapBoundsChange, lastSetCenter, adapter])
+  }, [center, map, handleMapBoundsChange, adapter])
 
   // 지도 클릭 이벤트 (제보 위치 선택용)
   const handleMapClick = async (event: any) => {

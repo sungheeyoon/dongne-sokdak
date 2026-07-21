@@ -38,7 +38,7 @@ describe('MapComponent', () => {
 
   it('renders the map once the injected adapter reports the SDK is ready, without touching window.kakao', async () => {
     process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY = 'test-key'
-    const adapter = { ready: vi.fn().mockResolvedValue(true), panTo: vi.fn() }
+    const adapter = { ready: vi.fn().mockResolvedValue(true), panTo: vi.fn(), getCenter: vi.fn(() => ({ lat: 0, lng: 0 })) }
 
     render(<MapComponent reports={[]} adapter={adapter as any} />)
 
@@ -55,5 +55,32 @@ describe('MapComponent', () => {
     render(<MapComponent reports={[]} adapter={adapter as any} />)
 
     await waitFor(() => expect(screen.getByText('지도 로드 실패')).toBeInTheDocument(), { timeout: 3000 })
+  }, 10000)
+
+  it('re-pans when the requested center matches the last requested one but the user dragged the map away in between (내 동네로 돌아가기)', async () => {
+    process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY = 'test-key'
+    const neighborhood = { lat: 37.5, lng: 127.0 }
+    let actualMapCenter = { ...neighborhood }
+    const adapter = {
+      ready: vi.fn().mockResolvedValue(true),
+      panTo: vi.fn((_map: any, lat: number, lng: number) => { actualMapCenter = { lat, lng } }),
+      getCenter: vi.fn(() => actualMapCenter)
+    }
+
+    const { rerender } = render(<MapComponent reports={[]} center={neighborhood} adapter={adapter as any} />)
+    await waitFor(() => expect(screen.getByTestId('kakao-map')).toBeInTheDocument(), { timeout: 3000 })
+    // 마운트 단계의 center-effect가 최소 한 번 실행될 때까지 기다려 baseline을 확정한다
+    // (getCenter 호출은 effect가 실제로 돌았다는 결정적 신호 — panTo 호출 여부와 무관하게 항상 일어난다).
+    await waitFor(() => expect(adapter.getCenter).toHaveBeenCalled())
+    adapter.panTo.mockClear()
+
+    // 사용자가 지도를 드래그해서 다른 곳으로 이동 — center prop(요청값)은 그대로,
+    // 실제 지도 위치만 바뀐다.
+    actualMapCenter = { lat: 37.6, lng: 127.1 }
+
+    // "내 동네로 돌아가기" 클릭 — 동일한 동네 좌표로 다시 focus (새 객체 참조, 값은 동일)
+    rerender(<MapComponent reports={[]} center={{ ...neighborhood }} adapter={adapter as any} />)
+
+    await waitFor(() => expect(adapter.panTo).toHaveBeenCalledWith(expect.anything(), neighborhood.lat, neighborhood.lng))
   }, 10000)
 })
