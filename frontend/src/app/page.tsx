@@ -17,9 +17,9 @@ import ReportList from '@/features/reports/presentation/components/ReportList'
 import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
 import { useMapControllerViewModel } from '@/features/map/presentation/hooks/useMapControllerViewModel'
 import { useMapFocusViewModel } from '@/features/map/presentation/hooks/useMapFocusViewModel'
+import MapInitializationGate, { MapLoadingFallback } from '@/features/map/presentation/components/MapInitializationGate'
 import UnifiedSearch from '@/components/UnifiedSearch'
 import { MapPin, FileText, X } from 'lucide-react'
-import LoadingSpinner from '@/shared/ui/LoadingSpinner'
 import ErrorDisplay from '@/shared/ui/ErrorDisplay'
 import LocalhostGuide from '@/shared/ui/LocalhostGuide'
 import { UiButton as Button, UiCard as Card } from '@/shared/ui'
@@ -30,11 +30,7 @@ import { toast } from 'react-hot-toast'
 
 const MapComponent = dynamic(() => import('@/features/map/presentation/components/MapComponent'), {
   ssr: false,
-  loading: () => (
-    <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
-      <LoadingSpinner message="지도를 불러오는 중..." />
-    </div>
-  )
+  loading: () => <MapLoadingFallback />
 })
 
 const categories = [
@@ -281,11 +277,7 @@ export default function Home() {
               </div>
             </div>
 
-            {isLoadingProfile ? (
-              <div className="h-[450px] bg-gray-100 rounded-b-lg flex flex-col items-center justify-center">
-                <LoadingSpinner message="내 동네 위치를 확인하는 중..." />
-              </div>
-            ) : (
+            <MapInitializationGate isAuthInitialized={isAuthInitialized} isLoadingProfile={isLoadingProfile}>
               <MapComponent
                 reports={mapReports}
                 height="450px"
@@ -298,7 +290,7 @@ export default function Home() {
                 selectedMarkerId={selectedMapMarkers?.length === 1 ? (selectedMapMarkers[0] as any)?.id : undefined}
                 isBoundsQueryLoading={isMapLoading || isListLoading}
               />
-            )}
+            </MapInitializationGate>
           </Card>
         </div>
 

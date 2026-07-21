@@ -42,39 +42,25 @@ describe('MapComponent', () => {
     delete (window as any).kakao
   })
 
-  it('renders the map once the injected adapter reports the SDK is ready, without touching window.kakao', async () => {
-    process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY = 'test-key'
-    const adapter = { ready: vi.fn().mockResolvedValue(true), panTo: vi.fn(), getCenter: vi.fn(() => ({ lat: 0, lng: 0 })) }
+  it('renders the map immediately — SDK readiness is handled upstream by MapInitializationGate', async () => {
+    const adapter = { ready: vi.fn(), panTo: vi.fn(), getCenter: vi.fn(() => ({ lat: 0, lng: 0 })) }
 
     render(<MapComponent reports={[]} adapter={adapter as any} />)
 
-    expect(screen.getByText(/지도.*로딩 중/)).toBeInTheDocument()
-
-    await waitFor(() => expect(screen.getByTestId('kakao-map')).toBeInTheDocument(), { timeout: 3000 })
-    expect(adapter.ready).toHaveBeenCalled()
-  }, 10000)
-
-  it('shows an error when the injected adapter reports the SDK failed to load', async () => {
-    process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY = 'test-key'
-    const adapter = { ready: vi.fn().mockResolvedValue(false) }
-
-    render(<MapComponent reports={[]} adapter={adapter as any} />)
-
-    await waitFor(() => expect(screen.getByText('지도 로드 실패')).toBeInTheDocument(), { timeout: 3000 })
-  }, 10000)
+    expect(screen.getByTestId('kakao-map')).toBeInTheDocument()
+    expect(adapter.ready).not.toHaveBeenCalled()
+  })
 
   it('re-pans when the requested center matches the last requested one but the user dragged the map away in between (내 동네로 돌아가기)', async () => {
-    process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY = 'test-key'
     const neighborhood = { lat: 37.5, lng: 127.0 }
     let actualMapCenter = { ...neighborhood }
     const adapter = {
-      ready: vi.fn().mockResolvedValue(true),
       panTo: vi.fn((_map: any, lat: number, lng: number) => { actualMapCenter = { lat, lng } }),
       getCenter: vi.fn(() => actualMapCenter)
     }
 
     const { rerender } = render(<MapComponent reports={[]} center={neighborhood} adapter={adapter as any} />)
-    await waitFor(() => expect(screen.getByTestId('kakao-map')).toBeInTheDocument(), { timeout: 3000 })
+    expect(screen.getByTestId('kakao-map')).toBeInTheDocument()
     // 마운트 단계의 center-effect가 최소 한 번 실행될 때까지 기다려 baseline을 확정한다
     // (getCenter 호출은 effect가 실제로 돌았다는 결정적 신호 — panTo 호출 여부와 무관하게 항상 일어난다).
     await waitFor(() => expect(adapter.getCenter).toHaveBeenCalled())
@@ -90,9 +76,8 @@ describe('MapComponent', () => {
     await waitFor(() => expect(adapter.panTo).toHaveBeenCalledWith(expect.anything(), neighborhood.lat, neighborhood.lng))
   }, 10000)
 
-  it('shows the floating "이 지역 재검색" button only when the area is dirty, and commits on click', async () => {
-    process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY = 'test-key'
-    const adapter = { ready: vi.fn().mockResolvedValue(true), panTo: vi.fn(), getCenter: vi.fn(() => ({ lat: 0, lng: 0 })) }
+  it('shows the floating "이 지역 재검색" button only when the area is dirty, and commits on click', () => {
+    const adapter = { panTo: vi.fn(), getCenter: vi.fn(() => ({ lat: 0, lng: 0 })) }
     const dispatchBoundsUpdate = vi.fn()
 
     mockUseKakaoMapBounds.mockReturnValue({
@@ -105,22 +90,19 @@ describe('MapComponent', () => {
     })
 
     render(<MapComponent reports={[]} adapter={adapter as any} />)
-    await waitFor(() => expect(screen.getByTestId('kakao-map')).toBeInTheDocument(), { timeout: 3000 })
 
     const button = screen.getByRole('button', { name: /이 지역 재검색/ })
     expect(button).toBeInTheDocument()
 
     button.click()
     expect(dispatchBoundsUpdate).toHaveBeenCalledWith(true)
-  }, 10000)
+  })
 
-  it('hides the floating re-search button when the area is not dirty', async () => {
-    process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY = 'test-key'
-    const adapter = { ready: vi.fn().mockResolvedValue(true), panTo: vi.fn(), getCenter: vi.fn(() => ({ lat: 0, lng: 0 })) }
+  it('hides the floating re-search button when the area is not dirty', () => {
+    const adapter = { panTo: vi.fn(), getCenter: vi.fn(() => ({ lat: 0, lng: 0 })) }
 
     render(<MapComponent reports={[]} adapter={adapter as any} />)
-    await waitFor(() => expect(screen.getByTestId('kakao-map')).toBeInTheDocument(), { timeout: 3000 })
 
     expect(screen.queryByRole('button', { name: /이 지역 재검색/ })).not.toBeInTheDocument()
-  }, 10000)
+  })
 })

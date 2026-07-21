@@ -45,8 +45,6 @@ export default function MapComponent({
 }: MapComponentProps) {
   const safeCenter = center && center.lat && center.lng ? center : { lat: 37.5665, lng: 126.9780 }
   const [map, setMap] = useState<any>(null)
-  const [kakaoLoaded, setKakaoLoaded] = useState(false)
-  const [mapError, setMapError] = useState<string | null>(null)
   const { reverseGeocode } = useLocationViewModel()
 
   const {
@@ -57,38 +55,6 @@ export default function MapComponent({
     handleDragEnd,
     handleZoomChange
   } = useKakaoMapBounds(map, onBoundsChange, onZoomChange, adapter)
-
-  // 카카오맵 로딩 확인
-  useEffect(() => {
-    let cancelled = false
-
-    const initializeKakaoMap = async () => {
-      const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY
-      if (!apiKey) {
-        setMapError('카카오맵 API 키가 설정되지 않았습니다')
-        return
-      }
-
-      try {
-        const isReady = await adapter.ready()
-        if (cancelled) return
-
-        if (isReady) {
-          setKakaoLoaded(true)
-        } else {
-          setMapError('카카오 SDK 로딩 실패')
-        }
-      } catch (error) {
-        if (!cancelled) setMapError('카카오맵 초기화 오류')
-      }
-    }
-
-    const timer = setTimeout(initializeKakaoMap, 1000)
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-    }
-  }, [adapter])
 
   // 기본 지도 로드가 완료되었을 때 정확히 1회의 Data Fetch를 보장
   useEffect(() => {
@@ -142,34 +108,6 @@ export default function MapComponent({
     if (onMarkerClick) {
       onMarkerClick(report)
     }
-  }
-
-  if (mapError) {
-    return (
-      <div style={{ height }} className="rounded-lg overflow-hidden border-2 border-red-200 flex items-center justify-center bg-red-50">
-        <div className="text-center p-4">
-          <div className="text-red-600 text-3xl mb-3">🗺️</div>
-          <p className="text-red-800 font-medium mb-2">지도 로드 실패</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm font-medium"
-          >
-            페이지 새로고침
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (!kakaoLoaded) {
-    return (
-      <div style={{ height }} className="rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
-          <p className="text-gray-700 text-base font-medium">🗺️ 동네속닥 지도 로딩 중...</p>
-        </div>
-      </div>
-    )
   }
 
   return (

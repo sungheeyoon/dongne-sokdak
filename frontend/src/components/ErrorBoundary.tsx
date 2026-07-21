@@ -2,6 +2,7 @@
 
 import React, { Component, ReactNode } from 'react'
 import { logError } from '@/lib/error/errorUtils'
+import ErrorDisplay from '@/shared/ui/ErrorDisplay'
 
 interface Props {
   children: ReactNode
@@ -42,36 +43,18 @@ class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback
       }
 
-      // 기본 에러 UI
+      // 기본 에러 UI — 앱 전역에서 쓰는 공통 에러 컴포넌트를 그대로 재사용한다.
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 text-center">
-            <div className="text-6xl mb-4">😵</div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              앗! 문제가 발생했습니다
-            </h2>
-            <p className="text-gray-600 mb-6">
-              예상치 못한 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
-            </p>
-            
-            <div className="space-y-3">
-              <button
-                onClick={() => window.location.reload()}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                페이지 새로고침
-              </button>
-              
-              <button
-                onClick={() => this.setState({ hasError: false })}
-                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                다시 시도
-              </button>
-            </div>
+          <div className="max-w-md w-full">
+            <ErrorDisplay
+              error="예상치 못한 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요."
+              title="앗! 문제가 발생했습니다"
+              onRetry={() => this.setState({ hasError: false })}
+            />
 
             {process.env.NODE_ENV === 'development' && this.state.error && (
-              <details className="mt-6 text-left">
+              <details className="mt-4 text-left">
                 <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
                   개발자 정보 (개발 모드에서만 표시)
                 </summary>

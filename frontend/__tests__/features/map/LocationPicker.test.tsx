@@ -28,7 +28,7 @@ describe('LocationPicker', () => {
 
     render(<LocationPicker onLocationSelect={vi.fn()} adapter={adapter as any} />)
 
-    expect(screen.getByText('지도 로딩 중...')).toBeInTheDocument()
+    expect(screen.getByText('지도를 불러오는 중...')).toBeInTheDocument()
 
     await waitFor(() => expect(screen.getByTestId('kakao-map')).toBeInTheDocument(), { timeout: 3000 })
     expect(adapter.ready).toHaveBeenCalled()

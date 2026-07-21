@@ -5,6 +5,7 @@ import { Map, MapMarker } from 'react-kakao-maps-sdk'
 import { MapPin, Navigation } from 'lucide-react'
 import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
 import { KakaoMapAdapter, defaultKakaoMapAdapter } from '@/features/map/data/kakaoMapAdapter'
+import LoadingSpinner from '@/shared/ui/LoadingSpinner'
 
 interface LocationPickerProps {
   onLocationSelect: (location: { lat: number; lng: number; address: string }) => void
@@ -180,10 +181,7 @@ export default function LocationPicker({
     return (
       <div className={`relative ${className}`}>
         <div style={{ height }} className="rounded-lg overflow-hidden border-2 border-gray-200 relative flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-gray-600 text-sm">지도 로딩 중...</p>
-          </div>
+          <LoadingSpinner message="지도를 불러오는 중..." />
         </div>
       </div>
     )

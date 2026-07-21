@@ -1,5 +1,6 @@
 'use client'
 
+import { AlertCircle, AlertTriangle, Lock, ServerCrash, WifiOff } from 'lucide-react'
 import { AppError, formatApiError, logError } from '@/lib/error/errorUtils'
 
 interface ErrorDisplayProps {
@@ -31,24 +32,26 @@ export default function ErrorDisplay({
   const getErrorIcon = (type: AppError['type']) => {
     switch (type) {
       case 'network':
-        return '📡'
+        return WifiOff
       case 'auth':
-        return '🔐'
+        return Lock
       case 'validation':
-        return '⚠️'
+        return AlertTriangle
       case 'server':
-        return '🔧'
+        return ServerCrash
       default:
-        return '❌'
+        return AlertCircle
     }
   }
+
+  const ErrorIcon = getErrorIcon(appError.type)
 
   // 컴팩트 버전
   if (compact) {
     return (
       <div className="flex items-center justify-center p-4 bg-red-50 border border-red-200 rounded-lg">
         <div className="flex items-center space-x-2">
-          <span className="text-red-600">{getErrorIcon(appError.type)}</span>
+          <ErrorIcon className="h-4 w-4 text-red-600" />
           <span className="text-red-800 text-sm font-medium">{appError.message}</span>
           {onRetry && (
             <button
@@ -66,8 +69,8 @@ export default function ErrorDisplay({
   return (
     <div className="flex flex-col items-center justify-center p-8 bg-red-50 border border-red-200 rounded-lg">
       <div className="text-center max-w-md">
-        <div className="text-4xl mb-4">{getErrorIcon(appError.type)}</div>
-        
+        <ErrorIcon className="h-10 w-10 text-red-600 mx-auto mb-4" />
+
         <h3 className="text-lg font-semibold text-red-900 mb-2">
           {title}
         </h3>
