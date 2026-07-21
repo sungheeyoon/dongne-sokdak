@@ -20,6 +20,22 @@ vi.mock('@/components/MemoizedMapMarker', () => ({
   )
 }))
 
+vi.mock('@/features/map/presentation/components/ProximityGroupMarker', () => ({
+  ProximityGroupMarker: ({ count, onClick }: { count: number, onClick: () => void }) => (
+    <div data-testid="proximity-group-marker" data-count={count} onClick={onClick} />
+  )
+}))
+
+vi.mock('@/features/map/presentation/components/ProximityGroupSheet', () => ({
+  ProximityGroupSheet: ({ group, onSelectReport }: { group: { members: { id: string }[] }, onSelectReport: (r: any) => void }) => (
+    <div data-testid="proximity-group-sheet">
+      {group.members.map((m: any) => (
+        <button key={m.id} data-testid={`sheet-item-${m.id}`} onClick={() => onSelectReport(m)} />
+      ))}
+    </div>
+  )
+}))
+
 // map.setLevel/setCenter/panTo가 실제 지도 상태를 바꾸는 것처럼 흉내 내는 stateful adapter.
 // 실제 카카오 SDK처럼 'idle' 리스너를 여러 개 동시에 등록할 수 있게 배열로 관리한다 —
 // 애니메이션을 취소했을 때 오래된 리스너가 살아있어도 문제가 없는지 검증하기 위함.
@@ -27,6 +43,7 @@ function createStatefulAdapter(initialLevel: number, initialCenter = { lat: 0, l
   let level = initialLevel
   let center = initialCenter
   let idleHandlers: Array<() => void> = []
+  let zoomChangedHandlers: Array<() => void> = []
 
   return {
     state: {
@@ -41,12 +58,20 @@ function createStatefulAdapter(initialLevel: number, initialCenter = { lat: 0, l
     setBounds: vi.fn(),
     addListener: vi.fn((_map: any, event: string, handler: () => void) => {
       if (event === 'idle') idleHandlers.push(handler)
+      if (event === 'zoom_changed') zoomChangedHandlers.push(handler)
     }),
     removeListener: vi.fn((_map: any, event: string, handler: () => void) => {
       if (event === 'idle') idleHandlers = idleHandlers.filter(h => h !== handler)
+      if (event === 'zoom_changed') zoomChangedHandlers = zoomChangedHandlers.filter(h => h !== handler)
     }),
     fireIdle: () => {
       const snapshot = [...idleHandlers]
+      snapshot.forEach(h => h())
+    },
+    // 실제 카카오처럼, 레벨을 바꾸고 나서 zoom_changed 구독자에게 알린다.
+    zoomTo: (l: number) => {
+      level = l
+      const snapshot = [...zoomChangedHandlers]
       snapshot.forEach(h => h())
     },
   }
@@ -278,5 +303,180 @@ describe('MapMarkerLayer', () => {
 
     expect(adapter.setLevel).toHaveBeenCalledWith(mockMap, 4, { animate: { duration: 300 } })
     expect(adapter.setLevel).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('MapMarkerLayer — proximity group display tiers (ADR-0008)', () => {
+  const near = (id: string, offsetMeters: number) => ({
+    id,
+    location: { lat: 37.5665 + offsetMeters / 111_000, lng: 126.9780 },
+    category: 'INFRASTRUCTURE'
+  }) as any
+
+  it('renders the native Kakao clusterer at zoom >= 5, ignoring proximity groups', () => {
+    const adapter = createStatefulAdapter(5)
+    const reports = [near('a', 0), near('b', 10)] // 10m apart — would group at a lower zoom
+
+    const { getByTestId, queryByTestId } = render(
+      <MapMarkerLayer
+        map={{}}
+        reports={reports}
+        currentBounds={null}
+        onMarkerClick={vi.fn()}
+        adapter={adapter as any}
+      />
+    )
+
+    expect(getByTestId('clusterer')).toBeInTheDocument()
+    expect(queryByTestId('proximity-group-marker')).not.toBeInTheDocument()
+  })
+
+  it('merges reports within 30m into a single proximity group marker at zoom 3-4', () => {
+    const adapter = createStatefulAdapter(4)
+    const reports = [near('a', 0), near('b', 10), near('c', 1000)] // c is 1km away, stays separate
+
+    const { getByTestId, getAllByTestId } = render(
+      <MapMarkerLayer
+        map={{}}
+        reports={reports}
+        currentBounds={null}
+        onMarkerClick={vi.fn()}
+        adapter={adapter as any}
+      />
+    )
+
+    const groupMarker = getByTestId('proximity-group-marker')
+    expect(groupMarker.getAttribute('data-count')).toBe('2')
+    // c has no neighbor within 30m, so it renders as a plain individual marker.
+    expect(getAllByTestId('marker')).toHaveLength(1)
+  })
+
+  it('ignores proximity groups and renders every report individually below zoom 3', () => {
+    const adapter = createStatefulAdapter(2)
+    const reports = [near('a', 0), near('b', 10)] // 10m apart — would group at zoom 3-4
+
+    const { getAllByTestId, queryByTestId } = render(
+      <MapMarkerLayer
+        map={{}}
+        reports={reports}
+        currentBounds={null}
+        onMarkerClick={vi.fn()}
+        adapter={adapter as any}
+      />
+    )
+
+    expect(queryByTestId('proximity-group-marker')).not.toBeInTheDocument()
+    expect(getAllByTestId('marker')).toHaveLength(2)
+  })
+
+  it('opens the bottom sheet on group click without panning or zooming the map', () => {
+    const adapter = createStatefulAdapter(4)
+    const reports = [near('a', 0), near('b', 10)]
+
+    const { getByTestId } = render(
+      <MapMarkerLayer
+        map={{}}
+        reports={reports}
+        currentBounds={null}
+        onMarkerClick={vi.fn()}
+        adapter={adapter as any}
+      />
+    )
+
+    act(() => {
+      fireEvent.click(getByTestId('proximity-group-marker'))
+    })
+
+    expect(getByTestId('proximity-group-sheet')).toBeInTheDocument()
+    expect(adapter.panTo).not.toHaveBeenCalled()
+    expect(adapter.setLevel).not.toHaveBeenCalled()
+  })
+
+  it('selecting a report from the sheet calls onMarkerClick and closes the sheet', () => {
+    const adapter = createStatefulAdapter(4)
+    const reports = [near('a', 0), near('b', 10)]
+    const onMarkerClick = vi.fn()
+
+    const { getByTestId, queryByTestId } = render(
+      <MapMarkerLayer
+        map={{}}
+        reports={reports}
+        currentBounds={null}
+        onMarkerClick={onMarkerClick}
+        adapter={adapter as any}
+      />
+    )
+
+    act(() => {
+      fireEvent.click(getByTestId('proximity-group-marker'))
+    })
+    act(() => {
+      fireEvent.click(getByTestId('sheet-item-a'))
+    })
+
+    expect(onMarkerClick).toHaveBeenCalledWith(reports[0])
+    expect(queryByTestId('proximity-group-sheet')).not.toBeInTheDocument()
+  })
+
+  it('keeps group membership stable across bounds/pan changes, only culling offscreen groups from rendering', () => {
+    const adapter = createStatefulAdapter(4)
+    const reports = [near('a', 0), near('b', 10)] // 10m apart — one group of 2
+
+    const boundsContainingBoth = { north: 90, south: -90, east: 180, west: -180 }
+    const { getByTestId, rerender, queryByTestId } = render(
+      <MapMarkerLayer
+        map={{}}
+        reports={reports}
+        currentBounds={boundsContainingBoth}
+        onMarkerClick={vi.fn()}
+        adapter={adapter as any}
+      />
+    )
+
+    expect(getByTestId('proximity-group-marker').getAttribute('data-count')).toBe('2')
+
+    // Pan so the bounds now only contain report 'a' — 'b' scrolls out of view.
+    // Group membership must NOT change just because the viewport moved: the group marker
+    // should either still report both members, or (if its center falls outside bounds) be
+    // culled from rendering entirely — but it must never silently shrink to a stale count.
+    const boundsExcludingB = { north: 37.5666, south: 37.5664, east: 126.9781, west: 126.9779 }
+    rerender(
+      <MapMarkerLayer
+        map={{}}
+        reports={reports}
+        currentBounds={boundsExcludingB}
+        onMarkerClick={vi.fn()}
+        adapter={adapter as any}
+      />
+    )
+
+    const marker = queryByTestId('proximity-group-marker')
+    if (marker) {
+      expect(marker.getAttribute('data-count')).toBe('2')
+    }
+  })
+
+  it('switches tiers reactively when the zoom level changes', () => {
+    const adapter = createStatefulAdapter(6) // starts far
+    const reports = [near('a', 0), near('b', 10)]
+
+    const { getByTestId, queryByTestId } = render(
+      <MapMarkerLayer
+        map={{}}
+        reports={reports}
+        currentBounds={null}
+        onMarkerClick={vi.fn()}
+        adapter={adapter as any}
+      />
+    )
+
+    expect(getByTestId('clusterer')).toBeInTheDocument()
+
+    act(() => {
+      adapter.zoomTo(4) // zoom in into the proximity-group tier
+    })
+
+    expect(queryByTestId('clusterer')).not.toBeInTheDocument()
+    expect(getByTestId('proximity-group-marker')).toBeInTheDocument()
   })
 })

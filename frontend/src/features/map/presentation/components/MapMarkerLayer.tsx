@@ -3,6 +3,15 @@ import { MarkerClusterer } from 'react-kakao-maps-sdk'
 import { Report as ReportType } from '@/types'
 import MemoizedMapMarker from '@/components/MemoizedMapMarker'
 import { KakaoMapAdapter, defaultKakaoMapAdapter } from '@/features/map/data/kakaoMapAdapter'
+import { computeProximityGroups, ProximityGroup } from '@/features/map/domain/proximityGrouping'
+import { ProximityGroupMarker } from '@/features/map/presentation/components/ProximityGroupMarker'
+import { ProximityGroupSheet } from '@/features/map/presentation/components/ProximityGroupSheet'
+import {
+  CLUSTER_BADGE_SIZE_PX,
+  CLUSTER_BADGE_COLOR,
+  CLUSTER_BADGE_SHADOW,
+  CLUSTER_BADGE_BORDER,
+} from '@/features/map/presentation/components/clusterBadgeStyle'
 
 // Kakao의 setLevel 애니메이션은 현재 레벨과의 차이가 2 이하일 때만 동작하므로,
 // 그보다 큰 점프는 이 값만큼씩 끊어서 체이닝한다.
@@ -11,18 +20,25 @@ const ANIMATION_STEP_DURATION_MS = 300
 // 이미 그 좌표에 있다고 볼 수 있는 오차 범위 (MapComponent의 alreadyThere 판정과 동일한 기준).
 const SAME_POSITION_EPSILON = 0.0001
 
+// 표시 단계 경계 (ADR-0008): zoom >= NATIVE_CLUSTER_MIN_LEVEL은 카카오 네이티브 클러스터,
+// PROXIMITY_GROUP_MIN_LEVEL <= zoom < NATIVE_CLUSTER_MIN_LEVEL은 근접 그룹 마커,
+// 그 아래는 그룹을 무시하고 개별 마커만 그린다. PROXIMITY_GROUP_MIN_LEVEL은 기존 개별
+// 마커 클릭이 포커스하던 레벨(3)을 그대로 재사용한다.
+const NATIVE_CLUSTER_MIN_LEVEL = 5
+const PROXIMITY_GROUP_MIN_LEVEL = 3
+
 const CLUSTER_CALCULATOR = [10, 30, 50]
 const CLUSTER_STYLES = [
-  { // 10개 미만
-    width: '40px', height: '40px',
-    background: 'rgba(59, 130, 246, 0.8)',
-    borderRadius: '20px',
+  { // 10개 미만 — 근접 그룹 마커(ProximityGroupMarker)와 동일한 배지 값을 공유한다 (ADR-0008).
+    width: `${CLUSTER_BADGE_SIZE_PX}px`, height: `${CLUSTER_BADGE_SIZE_PX}px`,
+    background: CLUSTER_BADGE_COLOR,
+    borderRadius: `${CLUSTER_BADGE_SIZE_PX / 2}px`,
     color: '#fff',
     textAlign: 'center',
     fontWeight: 'bold',
-    lineHeight: '40px',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-    border: '2px solid white'
+    lineHeight: `${CLUSTER_BADGE_SIZE_PX}px`,
+    boxShadow: CLUSTER_BADGE_SHADOW,
+    border: CLUSTER_BADGE_BORDER
   },
   { // 30개 미만
     width: '50px', height: '50px',
@@ -125,6 +141,45 @@ export function MapMarkerLayer({
     )
   }, [currentBounds])
 
+  const visibleReports = useMemo(
+    () => transitionReports.filter(r => isReportInBounds(r.location.lat, r.location.lng)),
+    [transitionReports, isReportInBounds]
+  )
+
+  // 표시 단계 판정을 위한 현재 줌 레벨. map이 아직 없으면 null로 두고 'far' 단계로
+  // 취급한다 (기존 동작과 동일하게 전체를 그린다).
+  const [zoomLevel, setZoomLevel] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!map) return
+
+    setZoomLevel(adapter.getLevel(map))
+
+    const handleZoomChanged = () => setZoomLevel(adapter.getLevel(map))
+    adapter.addListener(map, 'zoom_changed', handleZoomChanged)
+    return () => adapter.removeListener(map, 'zoom_changed', handleZoomChanged)
+  }, [map, adapter])
+
+  const tier: 'far' | 'near' | 'close' = useMemo(() => {
+    if (zoomLevel === null || zoomLevel >= NATIVE_CLUSTER_MIN_LEVEL) return 'far'
+    if (zoomLevel >= PROXIMITY_GROUP_MIN_LEVEL) return 'near'
+    return 'close'
+  }, [zoomLevel])
+
+  // 근접 그룹(ADR-0008)은 reports가 바뀔 때만 재계산한다 — bounds(팬/드래그)로는 재계산
+  // 하지 않는다. visibleReports로 계산하면 뷰포트가 움직일 때마다 그룹 소속 자체가
+  // 흔들리므로(경계 밖으로 나간 멤버가 조용히 그룹에서 빠지는 등), 반드시 bounds 컬링
+  // 이전의 transitionReports를 기준으로 계산한다.
+  const proximityGroups = useMemo(() => computeProximityGroups(transitionReports), [transitionReports])
+
+  // 렌더링 단계에서만 뷰포트 밖 그룹을 걸러낸다 — 그룹 소속은 그대로 두고 화면에 그릴지만 결정.
+  const visibleProximityGroups = useMemo(
+    () => proximityGroups.filter(g => isReportInBounds(g.center.lat, g.center.lng)),
+    [proximityGroups, isReportInBounds]
+  )
+
+  const [openGroup, setOpenGroup] = useState<ProximityGroup<ReportType> | null>(null)
+
   // 이 컴포넌트가 진행 중인 pan+zoom 애니메이션 중 "현재 유효한" 것을 가리키는 토큰.
   // 애니메이션 도중 다른 마커/클러스터를 클릭하면 토큰이 갱신되어, 먼저 걸려 있던
   // idle 리스너가 뒤늦게 발동해도 그 애니메이션은 조용히 멈춘다.
@@ -197,32 +252,66 @@ export function MapMarkerLayer({
     animatedPanAndZoom({ lat: center.getLat(), lng: center.getLng() }, targetLevel)
   }, [map, adapter, animatedPanAndZoom])
 
+  // 근접 그룹(2건 이상)은 줌인해도 갈라지지 않으므로(ADR-0008), 클러스터 클릭과 달리
+  // pan/zoom 없이 바로 바텀시트를 연다.
+  const handleGroupClick = useCallback((group: ProximityGroup<ReportType>) => {
+    setOpenGroup(group)
+  }, [])
+
+  const handleSelectReportFromSheet = useCallback((report: ReportType) => {
+    setOpenGroup(null)
+    onMarkerClick(report)
+  }, [onMarkerClick])
+
+  const renderIndividualMarker = (report: ReportType) => (
+    <MemoizedMapMarker
+      key={report.id}
+      id={report.id}
+      lat={report.location.lat}
+      lng={report.location.lng}
+      category={report.category}
+      isSelected={selectedMarkerId === report.id}
+      onClick={handleMarkerClick}
+    />
+  )
+
   return (
-    <MarkerClusterer
-      averageCenter={true}
-      minLevel={5}
-      calculator={CLUSTER_CALCULATOR}
-      styles={CLUSTER_STYLES}
-      disableClickZoom={true}
-      onClusterclick={handleClusterClick}
-    >
-      {transitionReports.map((report) => {
-        if (!isReportInBounds(report.location.lat, report.location.lng)) return null;
+    <>
+      {tier === 'far' && (
+        <MarkerClusterer
+          averageCenter={true}
+          minLevel={NATIVE_CLUSTER_MIN_LEVEL}
+          calculator={CLUSTER_CALCULATOR}
+          styles={CLUSTER_STYLES}
+          disableClickZoom={true}
+          onClusterclick={handleClusterClick}
+        >
+          {visibleReports.map(renderIndividualMarker)}
+        </MarkerClusterer>
+      )}
 
-        const isSelected = selectedMarkerId === report.id;
-
-        return (
-          <MemoizedMapMarker
-            key={report.id}
-            id={report.id}
-            lat={report.location.lat}
-            lng={report.location.lng}
-            category={report.category}
-            isSelected={isSelected}
-            onClick={handleMarkerClick}
+      {tier === 'near' && visibleProximityGroups.map((group) =>
+        group.members.length >= 2 ? (
+          <ProximityGroupMarker
+            key={group.id}
+            center={group.center}
+            count={group.members.length}
+            onClick={() => handleGroupClick(group)}
           />
-        );
-      })}
-    </MarkerClusterer>
+        ) : (
+          renderIndividualMarker(group.members[0])
+        )
+      )}
+
+      {tier === 'close' && visibleReports.map(renderIndividualMarker)}
+
+      {openGroup && (
+        <ProximityGroupSheet
+          group={openGroup}
+          onClose={() => setOpenGroup(null)}
+          onSelectReport={handleSelectReportFromSheet}
+        />
+      )}
+    </>
   )
 }
