@@ -321,11 +321,9 @@ export default function Home() {
                 </Button>
               </div>
               <div className="p-6">
-                <div className="flex flex-wrap justify-center md:justify-start gap-6 w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {selectedMapMarkers.map((report) => (
-                    <div key={report.id} className="w-full md:w-1/2 lg:w-1/3">
-                      <ReportCard report={report as any} />
-                    </div>
+                    <ReportCard key={report.id} report={report as any} />
                   ))}
                 </div>
               </div>
