@@ -23,6 +23,7 @@ interface MapComponentProps {
   onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void
   onZoomChange?: (zoom: number) => void
   onMarkerClick?: (report: ReportType) => void
+  onGroupClick?: (reports: ReportType[], center: { lat: number; lng: number }) => void
   selectedMarkerId?: string
   adapter?: KakaoMapAdapter
   isBoundsQueryLoading?: boolean
@@ -37,6 +38,7 @@ export default function MapComponent({
   onBoundsChange,
   onZoomChange,
   onMarkerClick,
+  onGroupClick,
   selectedMarkerId,
   adapter = defaultKakaoMapAdapter,
   isBoundsQueryLoading = false
@@ -190,6 +192,7 @@ export default function MapComponent({
               currentBounds={currentBounds}
               selectedMarkerId={selectedMarkerId}
               onMarkerClick={onInternalMarkerClick}
+              onGroupClick={onGroupClick}
               adapter={adapter}
             />
           )}

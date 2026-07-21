@@ -26,16 +26,6 @@ vi.mock('@/features/map/presentation/components/ProximityGroupMarker', () => ({
   )
 }))
 
-vi.mock('@/features/map/presentation/components/ProximityGroupSheet', () => ({
-  ProximityGroupSheet: ({ group, onSelectReport }: { group: { members: { id: string }[] }, onSelectReport: (r: any) => void }) => (
-    <div data-testid="proximity-group-sheet">
-      {group.members.map((m: any) => (
-        <button key={m.id} data-testid={`sheet-item-${m.id}`} onClick={() => onSelectReport(m)} />
-      ))}
-    </div>
-  )
-}))
-
 // map.setLevel/setCenter/panTo가 실제 지도 상태를 바꾸는 것처럼 흉내 내는 stateful adapter.
 // 실제 카카오 SDK처럼 'idle' 리스너를 여러 개 동시에 등록할 수 있게 배열로 관리한다 —
 // 애니메이션을 취소했을 때 오래된 리스너가 살아있어도 문제가 없는지 검증하기 위함.
@@ -369,7 +359,36 @@ describe('MapMarkerLayer — proximity group display tiers (ADR-0008)', () => {
     expect(getAllByTestId('marker')).toHaveLength(2)
   })
 
-  it('opens the bottom sheet on group click without panning or zooming the map', () => {
+  it('calls onGroupClick with every member and the group center on group click, without panning or zooming the map', () => {
+    const adapter = createStatefulAdapter(4)
+    const reports = [near('a', 0), near('b', 10)]
+    const onGroupClick = vi.fn()
+
+    const { getByTestId } = render(
+      <MapMarkerLayer
+        map={{}}
+        reports={reports}
+        currentBounds={null}
+        onMarkerClick={vi.fn()}
+        onGroupClick={onGroupClick}
+        adapter={adapter as any}
+      />
+    )
+
+    act(() => {
+      fireEvent.click(getByTestId('proximity-group-marker'))
+    })
+
+    expect(onGroupClick).toHaveBeenCalledTimes(1)
+    const [members, center] = onGroupClick.mock.calls[0]
+    expect(members.map((m: any) => m.id).sort()).toEqual(['a', 'b'])
+    expect(center.lat).toBeCloseTo((reports[0].location.lat + reports[1].location.lat) / 2, 10)
+    expect(center.lng).toBeCloseTo(reports[0].location.lng, 10)
+    expect(adapter.panTo).not.toHaveBeenCalled()
+    expect(adapter.setLevel).not.toHaveBeenCalled()
+  })
+
+  it('does nothing on group click when onGroupClick is not provided', () => {
     const adapter = createStatefulAdapter(4)
     const reports = [near('a', 0), near('b', 10)]
 
@@ -383,39 +402,14 @@ describe('MapMarkerLayer — proximity group display tiers (ADR-0008)', () => {
       />
     )
 
-    act(() => {
-      fireEvent.click(getByTestId('proximity-group-marker'))
-    })
+    expect(() => {
+      act(() => {
+        fireEvent.click(getByTestId('proximity-group-marker'))
+      })
+    }).not.toThrow()
 
-    expect(getByTestId('proximity-group-sheet')).toBeInTheDocument()
     expect(adapter.panTo).not.toHaveBeenCalled()
     expect(adapter.setLevel).not.toHaveBeenCalled()
-  })
-
-  it('selecting a report from the sheet calls onMarkerClick and closes the sheet', () => {
-    const adapter = createStatefulAdapter(4)
-    const reports = [near('a', 0), near('b', 10)]
-    const onMarkerClick = vi.fn()
-
-    const { getByTestId, queryByTestId } = render(
-      <MapMarkerLayer
-        map={{}}
-        reports={reports}
-        currentBounds={null}
-        onMarkerClick={onMarkerClick}
-        adapter={adapter as any}
-      />
-    )
-
-    act(() => {
-      fireEvent.click(getByTestId('proximity-group-marker'))
-    })
-    act(() => {
-      fireEvent.click(getByTestId('sheet-item-a'))
-    })
-
-    expect(onMarkerClick).toHaveBeenCalledWith(reports[0])
-    expect(queryByTestId('proximity-group-sheet')).not.toBeInTheDocument()
   })
 
   it('keeps group membership stable across bounds/pan changes, only culling offscreen groups from rendering', () => {

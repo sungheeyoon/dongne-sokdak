@@ -59,7 +59,7 @@ export default function Home() {
     userCurrentLocation,
     useMapBoundsFilter, setUseMapBoundsFilter,
     triggerMapSearch, setTriggerMapSearch,
-    selectedMapMarker, setSelectedMapMarker,
+    selectedMapMarkers, setSelectedMapMarkers,
     handleMapBoundsChange,
     resetToMyNeighborhood,
     handleLocationSearch,
@@ -153,24 +153,24 @@ export default function Home() {
     isLoadingProfile,
   })
 
-  // 마커 클릭 핸들러
+  // 마커 클릭 핸들러 — 단일 제보를 "선택된 마커 섹션"에 채운다.
   const handleMarkerClick = async (report: ReportType) => {
-    setSelectedMapMarker(report)
+    setSelectedMapMarkers([report])
     const name = await reverseGeocode({ lat: report.location.lat, lng: report.location.lng })
     setSelectedLocation(name || '선택한 위치')
   }
 
-  // selectedMapMarker 상태 변화 디버깅
+  // 근접 그룹 클릭 핸들러 — 팝업 없이 같은 "선택된 마커 섹션"에 그룹 멤버 전체를 채운다 (ADR-0008).
+  const handleGroupClick = async (reports: ReportType[], center: { lat: number; lng: number }) => {
+    setSelectedMapMarkers(reports)
+    const name = await reverseGeocode(center)
+    setSelectedLocation(name || '선택한 위치')
+  }
+
+  // selectedMapMarkers 상태 변화 디버깅
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') console.log('🔄 Page: selectedMapMarker 상태 변화:', selectedMapMarker)
-    if (selectedMapMarker) {
-      const markerData = selectedMapMarker as any;
-      if (process.env.NODE_ENV === 'development') console.log('📊 Page: selectedMapMarker 상세:', {
-        id: markerData.id,
-        title: markerData.title
-      })
-    }
-  }, [selectedMapMarker])
+    if (process.env.NODE_ENV === 'development') console.log('🔄 Page: selectedMapMarkers 상태 변화:', selectedMapMarkers)
+  }, [selectedMapMarkers])
 
   // 검색어가 비워지면 지도 내 검색(bounds) 모드로 자동 복귀
   useEffect(() => {
@@ -294,15 +294,16 @@ export default function Home() {
                 onBoundsChange={handleMapBoundsChange}
                 onZoomChange={setMapZoom}
                 onMarkerClick={handleMarkerClick as any}
-                selectedMarkerId={(selectedMapMarker as any)?.id}
+                onGroupClick={handleGroupClick as any}
+                selectedMarkerId={selectedMapMarkers?.length === 1 ? (selectedMapMarkers[0] as any)?.id : undefined}
                 isBoundsQueryLoading={isMapLoading || isListLoading}
               />
             )}
           </Card>
         </div>
 
-        {/* 선택된 마커 섹션 */}
-        {selectedMapMarker && (
+        {/* 선택된 마커 섹션 — 개별 마커든 근접 그룹(ADR-0008)이든 이 자리에 그대로 나열한다 */}
+        {selectedMapMarkers && selectedMapMarkers.length > 0 && (
           <div className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-300">
             <Card className="border-primary/20 shadow-lg ring-1 ring-primary/5">
               <div className="p-6 border-b bg-primary/5 flex items-center justify-between">
@@ -312,18 +313,22 @@ export default function Home() {
                     {selectedLocation}
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    이 지점의 단일 제보입니다
+                    {selectedMapMarkers.length === 1
+                      ? '이 지점의 단일 제보입니다'
+                      : `이 지점의 제보 ${selectedMapMarkers.length}건입니다`}
                   </p>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => setSelectedMapMarker(null)}>
+                <Button variant="ghost" size="icon" onClick={() => setSelectedMapMarkers(null)}>
                   <X className="h-5 w-5" />
                 </Button>
               </div>
               <div className="p-6">
-                <div className="flex justify-center md:justify-start w-full">
-                  <div className="w-full md:w-1/2 lg:w-1/3">
-                    <ReportCard report={selectedMapMarker as any} />
-                  </div>
+                <div className="flex flex-wrap justify-center md:justify-start gap-6 w-full">
+                  {selectedMapMarkers.map((report) => (
+                    <div key={report.id} className="w-full md:w-1/2 lg:w-1/3">
+                      <ReportCard report={report as any} />
+                    </div>
+                  ))}
                 </div>
               </div>
             </Card>

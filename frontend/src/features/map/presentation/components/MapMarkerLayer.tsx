@@ -3,9 +3,8 @@ import { MarkerClusterer } from 'react-kakao-maps-sdk'
 import { Report as ReportType } from '@/types'
 import MemoizedMapMarker from '@/components/MemoizedMapMarker'
 import { KakaoMapAdapter, defaultKakaoMapAdapter } from '@/features/map/data/kakaoMapAdapter'
-import { computeProximityGroups, ProximityGroup } from '@/features/map/domain/proximityGrouping'
+import { computeProximityGroups } from '@/features/map/domain/proximityGrouping'
 import { ProximityGroupMarker } from '@/features/map/presentation/components/ProximityGroupMarker'
-import { ProximityGroupSheet } from '@/features/map/presentation/components/ProximityGroupSheet'
 import {
   CLUSTER_BADGE_SIZE_PX,
   CLUSTER_BADGE_COLOR,
@@ -97,6 +96,9 @@ interface MapMarkerLayerProps {
   currentBounds: { north: number; south: number; east: number; west: number } | null
   selectedMarkerId?: string
   onMarkerClick: (report: ReportType) => void
+  // 근접 그룹(2건 이상) 클릭 시 호출된다 — 지도 위에 팝업을 띄우지 않고, 호출부(페이지)가
+  // 기존 "선택된 마커 섹션"과 동일한 자리에 멤버 전체를 나열하도록 위임한다.
+  onGroupClick?: (reports: ReportType[], center: { lat: number; lng: number }) => void
   adapter?: KakaoMapAdapter
 }
 
@@ -106,6 +108,7 @@ export function MapMarkerLayer({
   currentBounds,
   selectedMarkerId,
   onMarkerClick,
+  onGroupClick,
   adapter = defaultKakaoMapAdapter
 }: MapMarkerLayerProps) {
   // 개별 마커를 클러스터링하기 위한 데이터 준비
@@ -177,8 +180,6 @@ export function MapMarkerLayer({
     () => proximityGroups.filter(g => isReportInBounds(g.center.lat, g.center.lng)),
     [proximityGroups, isReportInBounds]
   )
-
-  const [openGroup, setOpenGroup] = useState<ProximityGroup<ReportType> | null>(null)
 
   // 이 컴포넌트가 진행 중인 pan+zoom 애니메이션 중 "현재 유효한" 것을 가리키는 토큰.
   // 애니메이션 도중 다른 마커/클러스터를 클릭하면 토큰이 갱신되어, 먼저 걸려 있던
@@ -252,17 +253,6 @@ export function MapMarkerLayer({
     animatedPanAndZoom({ lat: center.getLat(), lng: center.getLng() }, targetLevel)
   }, [map, adapter, animatedPanAndZoom])
 
-  // 근접 그룹(2건 이상)은 줌인해도 갈라지지 않으므로(ADR-0008), 클러스터 클릭과 달리
-  // pan/zoom 없이 바로 바텀시트를 연다.
-  const handleGroupClick = useCallback((group: ProximityGroup<ReportType>) => {
-    setOpenGroup(group)
-  }, [])
-
-  const handleSelectReportFromSheet = useCallback((report: ReportType) => {
-    setOpenGroup(null)
-    onMarkerClick(report)
-  }, [onMarkerClick])
-
   const renderIndividualMarker = (report: ReportType) => (
     <MemoizedMapMarker
       key={report.id}
@@ -296,7 +286,7 @@ export function MapMarkerLayer({
             key={group.id}
             center={group.center}
             count={group.members.length}
-            onClick={() => handleGroupClick(group)}
+            onClick={() => onGroupClick?.(group.members, group.center)}
           />
         ) : (
           renderIndividualMarker(group.members[0])
@@ -304,14 +294,6 @@ export function MapMarkerLayer({
       )}
 
       {tier === 'close' && visibleReports.map(renderIndividualMarker)}
-
-      {openGroup && (
-        <ProximityGroupSheet
-          group={openGroup}
-          onClose={() => setOpenGroup(null)}
-          onSelectReport={handleSelectReportFromSheet}
-        />
-      )}
     </>
   )
 }

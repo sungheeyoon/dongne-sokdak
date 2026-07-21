@@ -49,7 +49,6 @@ export {
 export { BaseModal } from './UiBaseModal'
 export { Modal } from './UiModal' // 기존 Modal 유지
 export { default as ReportDetailModal } from './ReportDetailModal'
-export { UiBottomSheet } from './UiBottomSheet'
 export { BackendStatusBadge, getHealthCheckUrl } from './BackendStatusBadge'
 
 // 검색 컴포넌트
@@ -66,7 +65,6 @@ export { default as LocalhostGuide } from './LocalhostGuide'
 
 // 타입 정의
 export type { BaseModalProps } from './UiBaseModal'
-export type { UiBottomSheetProps } from './UiBottomSheet'
 export type { InputProps } from './UiInput'
 export type { AlertProps } from './UiAlert'
 export type { BadgeProps } from './UiBadge'

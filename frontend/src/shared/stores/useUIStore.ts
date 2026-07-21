@@ -24,7 +24,7 @@ interface UIState {
   currentMapBounds: { north: number; south: number; east: number; west: number } | null
   triggerMapSearch: number
   useMapBoundsFilter: boolean
-  selectedMapMarker: Report | null
+  selectedMapMarkers: Report[] | null
 
   // 액션들
   openReportModal: () => void
@@ -45,7 +45,7 @@ interface UIState {
   setCurrentMapBounds: (bounds: { north: number; south: number; east: number; west: number } | null | ((prev: any) => any)) => void
   setTriggerMapSearch: (trigger: number | ((prev: number) => number)) => void
   setUseMapBoundsFilter: (use: boolean) => void
-  setSelectedMapMarker: (marker: Report | null) => void
+  setSelectedMapMarkers: (markers: Report[] | null) => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -77,7 +77,7 @@ export const useUIStore = create<UIState>((set) => ({
   currentMapBounds: null,
   triggerMapSearch: 0,
   useMapBoundsFilter: true, // 기본값을 true로 변경하여 처음에 무조건 맵 영역 제보를 가져오도록 함
-  selectedMapMarker: null,
+  selectedMapMarkers: null,
 
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSearchMode: (mode) => set({ searchMode: mode }),
@@ -90,5 +90,5 @@ export const useUIStore = create<UIState>((set) => ({
     triggerMapSearch: typeof trigger === 'function' ? trigger(state.triggerMapSearch) : trigger
   })),
   setUseMapBoundsFilter: (use) => set({ useMapBoundsFilter: use }),
-  setSelectedMapMarker: (marker) => set({ selectedMapMarker: marker })
+  setSelectedMapMarkers: (markers) => set({ selectedMapMarkers: markers })
 }))

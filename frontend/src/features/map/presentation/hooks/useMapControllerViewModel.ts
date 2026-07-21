@@ -10,7 +10,7 @@ export function useMapControllerViewModel() {
         userCurrentLocation, setUserCurrentLocation,
         useMapBoundsFilter, setUseMapBoundsFilter,
         triggerMapSearch, setTriggerMapSearch,
-        selectedMapMarker, setSelectedMapMarker,
+        selectedMapMarkers, setSelectedMapMarkers,
     } = useUIStore()
 
     // 영역 조회 커밋 — MapComponent가 명시적 커밋 시점(최초 로드·지도 초점 이동·"이 지역 재검색"
@@ -29,11 +29,11 @@ export function useMapControllerViewModel() {
         setSearchedLocation(null)
         setUserCurrentLocation(null)
         setCurrentMapBounds(null)
-        setSelectedMapMarker(null)
+        setSelectedMapMarkers(null)
         if (process.env.NODE_ENV === 'development') {
             console.log('🏠 내 동네로 이동')
         }
-    }, [setFocusedLocation, setSearchedLocation, setUserCurrentLocation, setCurrentMapBounds, setSelectedMapMarker])
+    }, [setFocusedLocation, setSearchedLocation, setUserCurrentLocation, setCurrentMapBounds, setSelectedMapMarkers])
 
     // 검색으로 선택된 위치를 지도 초점으로 설정하고, 잠시 후 그 지역 기준으로 재검색한다
     const handleLocationSearch = useCallback((location: { lat: number; lng: number; address: string; placeName: string }) => {
@@ -64,7 +64,7 @@ export function useMapControllerViewModel() {
         userCurrentLocation,
         useMapBoundsFilter, setUseMapBoundsFilter,
         triggerMapSearch, setTriggerMapSearch,
-        selectedMapMarker, setSelectedMapMarker,
+        selectedMapMarkers, setSelectedMapMarkers,
 
         handleMapBoundsChange,
         resetToMyNeighborhood,
