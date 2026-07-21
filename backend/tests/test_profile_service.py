@@ -3,22 +3,25 @@ from fastapi import HTTPException
 from uuid import uuid4
 from datetime import datetime
 from app.services.profile_service import ProfileService
-from app.schemas.profile import ProfileUpdate, NeighborhoodUpdate, NeighborhoodInfo
+from app.schemas.profile import Profile, ProfileUpdate, NeighborhoodUpdate, NeighborhoodInfo
 
 
 @pytest.mark.asyncio
 async def test_get_my_profile_existing(make_service, mocker):
     service, mock_supabase = make_service(ProfileService)
     user_id = str(uuid4())
+    joined_at = datetime.now().isoformat()
     mock_profile_with_stats = {
         "id": user_id,
         "nickname": "tester",
         "avatar_url": "http://example.com/avatar.png",
-        "created_at": datetime.now().isoformat(),
+        "created_at": joined_at,
+        "updated_at": joined_at,
         "stats": {
             "report_count": 5,
             "comment_count": 5,
-            "vote_count": 5
+            "vote_count": 5,
+            "joined_at": joined_at
         }
     }
 
@@ -31,6 +34,9 @@ async def test_get_my_profile_existing(make_service, mocker):
     assert result["nickname"] == "tester"
     assert result["stats"]["report_count"] == 5
     assert result["user_id"] == user_id
+    # RPC 응답이 /profiles/me의 response_model(Profile)을 만족하는지 계약 검증 —
+    # get_profile_with_stats가 stats.joined_at을 빠뜨렸던 회귀(ResponseValidationError)를 막는다.
+    Profile(**result)
 
 
 @pytest.mark.asyncio
@@ -38,12 +44,14 @@ async def test_get_my_profile_new(make_service, mocker):
     service, mock_supabase = make_service(ProfileService)
     user_id = str(uuid4())
 
+    joined_at = datetime.now().isoformat()
     mock_profile_with_stats = {
         "id": user_id,
         "nickname": "tester",
         "avatar_url": None,
-        "created_at": datetime.now().isoformat(),
-        "stats": {"report_count": 0, "comment_count": 0, "vote_count": 0}
+        "created_at": joined_at,
+        "updated_at": joined_at,
+        "stats": {"report_count": 0, "comment_count": 0, "vote_count": 0, "joined_at": joined_at}
     }
 
     mock_rpc = mocker.Mock()
@@ -67,6 +75,7 @@ async def test_get_my_profile_new(make_service, mocker):
     assert result["nickname"] == "tester"
     assert result["user_id"] == user_id
     assert mock_supabase.rpc.call_count == 2
+    Profile(**result)
 
 
 @pytest.mark.asyncio
@@ -110,15 +119,18 @@ async def test_update_profile_success(make_service, mocker):
 async def test_get_user_profile_success(make_service, mocker):
     service, mock_supabase = make_service(ProfileService)
     user_id = str(uuid4())
+    joined_at = datetime.now().isoformat()
     mock_profile_with_stats = {
         "id": user_id,
         "nickname": "public_user",
         "avatar_url": None,
-        "created_at": datetime.now().isoformat(),
+        "created_at": joined_at,
+        "updated_at": joined_at,
         "stats": {
             "report_count": 10,
             "comment_count": 5,
-            "vote_count": 0
+            "vote_count": 0,
+            "joined_at": joined_at
         }
     }
 
@@ -131,6 +143,7 @@ async def test_get_user_profile_success(make_service, mocker):
     assert result["nickname"] == "public_user"
     assert result["stats"]["report_count"] == 10
     assert result["user_id"] == user_id
+    Profile(**result)
 
 
 @pytest.mark.asyncio
