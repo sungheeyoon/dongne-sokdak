@@ -103,29 +103,6 @@ async def get_reports_in_bounds(
         logger.error(f"Error fetching bounds reports: {e}")
         raise HTTPException(status_code=400, detail=f"Error fetching bounds reports: {str(e)}")
 
-@router.get("/my-neighborhood", response_model=PaginatedReportResponse[Report])
-async def get_my_neighborhood_reports(
-    radius_km: float = 3.0,
-    category: Optional[ReportCategory] = None,
-    search: Optional[str] = None,
-    page: int = Query(1, ge=1),
-    limit: int = 50,
-    current_user_id: str = Depends(get_current_active_user)
-) -> Any:
-    """Get reports for the user's registered neighborhood."""
-    try:
-        return await report_service.get_my_neighborhood_reports(
-            radius_km,
-            category.value if category else None,
-            search, page, limit,
-            current_user_id=current_user_id
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching neighborhood reports: {e}")
-        raise HTTPException(status_code=400, detail=f"Error fetching neighborhood: {str(e)}")
-
 @router.get("/{report_id}", response_model=Report)
 async def get_report(
     report_id: UUID,

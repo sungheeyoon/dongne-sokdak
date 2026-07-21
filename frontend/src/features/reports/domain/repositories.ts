@@ -13,7 +13,6 @@ export interface ReportRepository {
         limit?: number
     }): Promise<PaginatedReports>
     getReportById(id: string): Promise<Report | null>
-    getMyNeighborhoodReports(radiusKm?: number, category?: string, page?: number, limit?: number): Promise<PaginatedReports>
     createReport(data: any): Promise<Report>
     updateReport(id: string, data: any): Promise<Report>
     deleteReport(id: string): Promise<void>

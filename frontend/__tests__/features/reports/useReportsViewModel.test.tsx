@@ -15,7 +15,6 @@ vi.mock('@/features/reports/data/apiReportRepository', () => ({
         getReports: vi.fn(),
         getReportsInBounds: vi.fn(),
         getReportById: vi.fn(),
-        getMyNeighborhoodReports: vi.fn(),
     }
 }))
 
@@ -77,18 +76,6 @@ describe('useReportsViewModel', () => {
 
             await waitFor(() => expect(result.current.reports).toHaveLength(1))
             expect(apiReportRepository.getReports).toHaveBeenCalled()
-        })
-
-        it('should fetch list reports in neighborhood', async () => {
-            const mockReports = { items: [{ id: '1' }], totalCount: 1 }
-            vi.mocked(apiReportRepository.getMyNeighborhoodReports).mockResolvedValue(mockReports as any)
-
-            const { result } = renderHook(() => useListReportsViewModel({
-                mode: 'neighborhood', category: 'all', searchQuery: '', page: 1
-            }), { wrapper })
-
-            await waitFor(() => expect(result.current.reports).toHaveLength(1))
-            expect(apiReportRepository.getMyNeighborhoodReports).toHaveBeenCalled()
         })
     })
 

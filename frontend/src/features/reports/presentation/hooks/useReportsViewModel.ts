@@ -84,7 +84,7 @@ export function useMapReportsViewModel({
 }
 
 export interface UseListReportsParams {
-    mode: 'all' | 'bounds' | 'neighborhood'
+    mode: 'all' | 'bounds'
     category: string
     searchQuery: string
     bounds?: { north: number; south: number; east: number; west: number } | null
@@ -127,13 +127,6 @@ export function useListReportsViewModel({
                     page,
                     limit
                 })
-            } else if (mode === 'neighborhood') {
-                return reportUseCases.getMyNeighborhoodReports(
-                    3.0,
-                    parsedCategory as any,
-                    page,
-                    limit
-                )
             }
 
             return reportUseCases.getReports({

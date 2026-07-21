@@ -24,10 +24,6 @@ export class ReportUseCases {
     async getReportById(id: string): Promise<Report | null> {
         return this.repository.getReportById(id)
     }
-
-    async getMyNeighborhoodReports(radiusKm?: number, category?: string, page?: number, limit?: number): Promise<PaginatedReports> {
-        return this.repository.getMyNeighborhoodReports(radiusKm, category, page, limit)
-    }
 }
 
 export class ReportMutateUseCases {

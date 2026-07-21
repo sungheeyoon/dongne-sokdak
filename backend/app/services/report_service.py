@@ -336,28 +336,6 @@ class ReportService:
 
         return self._overlay_user_voted(result, current_user_id)
 
-    async def get_my_neighborhood_reports(
-        self,
-        radius_km: float = 3.0,
-        category: Optional[str] = None,
-        search: Optional[str] = None,
-        page: int = 1,
-        limit: int = 50,
-        *,
-        current_user_id: str
-    ) -> Dict[str, Any]:
-        """Get reports around the user's registered neighborhood."""
-        res = self._supabase.table("profiles").select("neighborhood").eq("id", current_user_id).single().execute()
-        neighborhood = res.data.get("neighborhood") if res.data else None
-
-        if not neighborhood or not isinstance(neighborhood, dict) or "lat" not in neighborhood:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Neighborhood not set.")
-
-        return await self.get_nearby_reports(
-            neighborhood["lat"], neighborhood["lng"], radius_km,
-            category, search, page, limit, current_user_id
-        )
-
     async def get_report_by_id(self, report_id: str, current_user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Get a single report by ID."""
         # Use select with count to get vote/comment counts in one go

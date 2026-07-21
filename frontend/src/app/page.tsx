@@ -146,6 +146,11 @@ export default function Home() {
   // 첫 로드 여부를 추적하여 초기 내 동네 이동을 1회 보장
   const [isInitialLoadDone, setIsInitialLoadDone] = useState(false)
 
+  // 최초 로드가 끝나는 시점의 내 동네 위치를 fallback 후보값으로 1회 고정한다.
+  // 이후 내 동네가 바뀌거나 삭제되어도 이 값은 갱신하지 않는다 — 기본 컨텍스트(내 동네)의 변화 자체가
+  // 지도 초점을 흔드는 트리거가 되어서는 안 되기 때문 (ADR-0003). 명시적 변경/복귀는 resetToMyNeighborhood가 담당한다.
+  const [frozenFallbackCenter, setFrozenFallbackCenter] = useState<{ lat: number; lng: number } | null>(null)
+
   // 현재 사용 중인 위치 (외부 통제: 검색된 위치, 내 동네, 등)
   const mapFocus = useMemo(() => {
     return getActiveLocation({
@@ -153,16 +158,16 @@ export default function Home() {
       isInitialLoadDone,
       myNeighborhoodLocation,
       userCurrentLocation,
-      // fallback을 서울시청 대신 내 동네가 있으면 내 동네로, 없으면 서울시청으로 설정
-      fallbackCenter: myNeighborhoodLocation || { lat: 37.5665, lng: 126.9780 }
+      fallbackCenter: frozenFallbackCenter || { lat: 37.5665, lng: 126.9780 }
     });
-  }, [focusedLocation, isInitialLoadDone, myNeighborhoodLocation, userCurrentLocation])
+  }, [focusedLocation, isInitialLoadDone, myNeighborhoodLocation, userCurrentLocation, frozenFallbackCenter])
 
   useEffect(() => {
-    if (!isInitialLoadDone && myNeighborhoodLocation) {
+    if (!isInitialLoadDone && !isLoadingProfile) {
+      setFrozenFallbackCenter(myNeighborhoodLocation)
       setIsInitialLoadDone(true)
     }
-  }, [myNeighborhoodLocation, isInitialLoadDone])
+  }, [isLoadingProfile, myNeighborhoodLocation, isInitialLoadDone])
 
   // 마커 클릭 핸들러
   const handleMarkerClick = async (report: ReportType) => {
@@ -244,7 +249,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={resetToMyNeighborhood}
+                onClick={() => resetToMyNeighborhood(myNeighborhoodLocation)}
                 className="self-start"
               >
                 {myNeighborhoodLocation ? '내 동네로 돌아가기' : '검색 초기화'}

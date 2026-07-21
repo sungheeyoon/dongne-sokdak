@@ -87,21 +87,6 @@ describe('ApiReportRepository', () => {
         expect(result.items[0].id).toBe('1')
     })
 
-    it('should get nearby reports', async () => {
-        vi.mocked(config.authenticatedRequest).mockResolvedValue({
-            items: [mockReport],
-            totalCount: 1,
-            totalPages: 1,
-            page: 1,
-            limit: 50
-        })
-
-        const result = await apiReportRepository.getMyNeighborhoodReports(5, 'TRAFFIC')
-
-        expect(config.authenticatedRequest).toHaveBeenCalledWith(expect.stringContaining('/reports/my-neighborhood?radius_km=5&category=TRAFFIC'))
-        expect(result.items).toHaveLength(1)
-    })
-
     it('should create a report', async () => {
         vi.mocked(config.authenticatedRequest).mockResolvedValue(mockReport)
 

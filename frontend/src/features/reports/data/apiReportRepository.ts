@@ -93,26 +93,6 @@ export class ApiReportRepository implements ReportRepository {
         }
     }
 
-    async getMyNeighborhoodReports(radiusKm?: number, category?: string, page?: number, limit?: number): Promise<PaginatedReports> {
-        const searchParams = new URLSearchParams()
-
-        if (radiusKm) searchParams.append('radius_km', radiusKm.toString())
-        if (category) searchParams.append('category', category)
-        if (page) searchParams.append('page', page.toString())
-        if (limit) searchParams.append('limit', limit.toString())
-
-        const url = createApiUrl(`/reports/my-neighborhood?${searchParams.toString()}`)
-        const response = await authenticatedRequest(url) as any
-
-        return {
-            items: (response.items || []).map(this.transformReportData).filter(isValidReportCoordinate),
-            totalCount: response.totalCount || 0,
-            totalPages: response.totalPages || 1,
-            page: response.page || 1,
-            limit: response.limit || 50
-        }
-    }
-
     async createReport(data: any): Promise<Report> {
         const requestData = {
             title: data.title,

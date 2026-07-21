@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
+import { useMapControllerViewModel } from '@/features/map/presentation/hooks/useMapControllerViewModel'
 import LocationSearch from '@/components/map/LocationSearch'
 import LocationResultList from '@/components/map/LocationResultList'
 import { PlaceSearchResult } from '@/features/map/domain/entities'
@@ -24,6 +25,7 @@ interface MyNeighborhoodModalProps {
 
 export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodModalProps) {
   const { profile, updateNeighborhood, isUpdatingNeighborhood, deleteNeighborhood, isDeletingNeighborhood } = useProfileViewModel()
+  const { resetToMyNeighborhood } = useMapControllerViewModel()
   const [isSelecting, setIsSelecting] = useState(false)
 
   // Search state
@@ -51,6 +53,8 @@ export default function MyNeighborhoodModal({ isOpen, onClose }: MyNeighborhoodM
 
     try {
       await updateNeighborhood(neighborhood)
+      // 내 동네 변경은 명시적 사용자 의도이므로 지도 초점도 즉시 그 동네로 이동시킨다 (ADR-0003)
+      resetToMyNeighborhood({ lat: neighborhood.lat, lng: neighborhood.lng })
       handleClose()
     } catch (err) {
       console.error(err)

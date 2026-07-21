@@ -401,33 +401,6 @@ async def test_bounds_count_rpc_error_raises():
         await service.get_reports_in_bounds(**BOUNDS)
 
 
-# --- my neighborhood ---
-
-@pytest.mark.asyncio
-async def test_get_my_neighborhood_reports_delegates_to_nearby():
-    service, supabase = make_service()
-    supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
-        "neighborhood": {"lat": 37.5665, "lng": 126.9780}
-    }
-
-    result = await service.get_my_neighborhood_reports(current_user_id="user-123")
-
-    assert len(result["items"]) == 1
-
-
-@pytest.mark.asyncio
-async def test_get_my_neighborhood_reports_raises_when_not_set():
-    service, supabase = make_service()
-    supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
-        "neighborhood": None
-    }
-
-    with pytest.raises(HTTPException) as excinfo:
-        await service.get_my_neighborhood_reports(current_user_id="user-123")
-
-    assert excinfo.value.status_code == 400
-
-
 # --- get_report_by_id ---
 
 @pytest.mark.asyncio

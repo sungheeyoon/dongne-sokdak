@@ -13,7 +13,6 @@ describe('Domain UseCases', () => {
       getReports: vi.fn(),
       getReportsInBounds: vi.fn(),
       getReportById: vi.fn(),
-      getMyNeighborhoodReports: vi.fn(),
       createReport: vi.fn(),
       updateReport: vi.fn(),
       deleteReport: vi.fn()
@@ -45,11 +44,6 @@ describe('Domain UseCases', () => {
       expect(mockRepo.getReportById).toHaveBeenCalledWith('1')
     })
 
-    it('getMyNeighborhoodReports', async () => {
-      mockRepo.getMyNeighborhoodReports.mockResolvedValue('neighborhood')
-      expect(await useCases.getMyNeighborhoodReports(5, 'c', 1, 10)).toBe('neighborhood')
-      expect(mockRepo.getMyNeighborhoodReports).toHaveBeenCalledWith(5, 'c', 1, 10)
-    })
   })
 
   describe('ReportMutateUseCases', () => {
@@ -57,7 +51,6 @@ describe('Domain UseCases', () => {
       getReports: vi.fn(),
       getReportsInBounds: vi.fn(),
       getReportById: vi.fn(),
-      getMyNeighborhoodReports: vi.fn(),
       createReport: vi.fn(),
       updateReport: vi.fn(),
       deleteReport: vi.fn()
