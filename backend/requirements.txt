@@ -15,7 +15,6 @@ ecdsa==0.19.1
 email-validator==2.3.0
 fastapi==0.129.0
 fsspec==2026.2.0
-GeoAlchemy2==0.18.1
 greenlet==3.3.1
 h11==0.16.0
 h2==4.3.0
@@ -54,7 +53,6 @@ rich==14.3.2
 rsa==4.9.1
 sentry-sdk==2.53.0
 six==1.17.0
-SQLAlchemy==2.0.46
 starlette==0.52.1
 storage3==2.28.0
 StrEnum==0.4.15

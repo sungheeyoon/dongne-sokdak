@@ -1,6 +1,5 @@
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 import os
 import logging
@@ -26,7 +25,6 @@ def init_sentry():
         environment=environment,
         integrations=[
             FastApiIntegration(),
-            SqlalchemyIntegration(),
             LoggingIntegration(
                 level=None,  # 모든 로그 레벨 캡처
                 event_level=None  # 에러 이벤트로 전송하지 않음
