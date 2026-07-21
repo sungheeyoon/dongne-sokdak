@@ -1,5 +1,7 @@
 # PLAN — Backend Refactoring & Performance
 
+> **Snapshot** — historical record of Phase 1·2 work as of 2026-05-08. Some described behavior has since changed (see §8.3 note below and ADR-0001/0002/0004). Do not treat as current-state fact — check `CONTEXT.md`, `docs/adr/`, or the code first.
+
 - **Created**: 2026-05-06
 - **Last Updated**: 2026-05-06 (§8 review)
 - **Owner**: sungheeyoon
@@ -141,7 +143,7 @@ wc -l app/api/v1/reports.py  # 목표: <250줄
 
 - **§8.1 N+1/정확도**: `get_reports_within_radius` / `get_reports_in_bounds` / 단건 조회에 `vote_count`/`comment_count` 추가 → `/reports/nearby`·`/bounds`·`/my-neighborhood`의 카운트 0 회귀 해결. 마이그레이션 `20260508_update_spatial_rpcs_with_counts.sql`.
 - **§8.2 Admin 풀스캔 제거**: `get_admin_dashboard_stats` RPC(`20260508_get_admin_dashboard_stats.sql`), `get_users`는 DB-level 필터+`range`, `bulk_*_action`은 IN 쿼리 batching.
-- **§8.3 캐시 무효화**: `create/update/delete_report` 끝에 `nearby_cache.clear()`/`bounds_cache.clear()` 호출 (`report_service.py:198-199`).
+- **§8.3 캐시 무효화**: `create/update/delete_report` 끝에 `nearby_cache.clear()`/`bounds_cache.clear()` 호출 (`report_service.py:198-199`). _[2026-07 변경됨 — 이 시점엔 `update`/`delete`가 실제로는 clear를 호출하지 않는 비대칭 버그가 있었다. Candidate 1(ADR-0001)에서 `SpatialReportCache` 주입형 adapter로 교체되며 수정됐다. 현재 동작은 ADR-0001 참조.]_
 - **§8.4 Admin location 파싱**: `routes_reports.py`에서 `parse_location()` 재사용.
 - **§8.5 Router exception 통일**: 모든 핸들러 `except HTTPException: raise; except Exception` 패턴.
 - **§8.6–§8.8**: 이모지 0건, bare `except:` 0건, naive `datetime.now().isoformat` 0건, `datetime.utcnow()` 0건.

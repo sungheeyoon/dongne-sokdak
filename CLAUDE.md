@@ -87,8 +87,8 @@ uvicorn app.main:app --reload
 
 ## Reference docs
 - `docs/FRONTEND_CLEAN_ARCHITECTURE.md` — full layer rules and feature mapping
-- `docs/plans/archive/PLAN_frontend_refactor_perf.md` — completed Clean Arch migration + MapComponent split + test infra (2026-05)
-- `docs/plans/PLAN_backend_refactor_perf.md` — completed services layer split + N+1 fixes + Pydantic v2 (2026-05)
+- `docs/plans/archive/PLAN_frontend_refactor_perf.md` — completed Clean Arch migration + MapComponent split + test infra (2026-05, historical snapshot — see below)
+- `docs/plans/archive/PLAN_backend_refactor_perf.md` — completed services layer split + N+1 fixes + Pydantic v2 (2026-05, historical snapshot — see below)
 - `README_SECURITY.md` — RBAC / RLS / JWT setup
 
 ## Agent skills
@@ -104,3 +104,10 @@ Default vocabulary — `needs-triage`, `needs-info`, `ready-for-agent`, `ready-f
 ### Domain docs
 
 Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Documentation freshness
+
+`docs/*.md` and `docs/plans/*.md` describe a state of the code at some point in time and go stale — do not treat their prose as current fact without checking:
+- Anything under `docs/plans/archive/`, or carrying a `> **Snapshot**` banner, is a **historical record**. It documents what was true when written, not what's true now. Never cite it as evidence of current behavior — prefer `CONTEXT.md`, `docs/adr/`, or the code itself, and if it conflicts with an archived doc, the archived doc is wrong, not the code.
+- Non-archived docs carry a `_Last verified: <date>_` line near the top. If that date predates recent related commits (`git log -- <path>`), treat specific claims as unverified and check them against the code before relying on them.
+- When a plan's work is done, move it into `docs/plans/archive/` and add the snapshot banner — don't leave completed plans in `docs/plans/` where they read as current.
