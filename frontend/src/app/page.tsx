@@ -22,7 +22,6 @@ import { MapPin, FileText, X } from 'lucide-react'
 import LoadingSpinner from '@/shared/ui/LoadingSpinner'
 import ErrorDisplay from '@/shared/ui/ErrorDisplay'
 import LocalhostGuide from '@/shared/ui/LocalhostGuide'
-import { RefreshSearchButton } from '@/shared/ui'
 import { UiButton as Button, UiCard as Card } from '@/shared/ui'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 import { cn } from '@/lib/utils'
@@ -278,11 +277,6 @@ export default function Home() {
                     isSearching={isSearching}
                     className="flex-1"
                   />
-                  <RefreshSearchButton
-                    onClick={() => setTriggerMapSearch((prev: number) => prev + 1)}
-                    loading={isMapLoading || isListLoading}
-                    className="md:w-auto h-[42px]"
-                  />
                 </div>
               </div>
             </div>
@@ -301,6 +295,7 @@ export default function Home() {
                 onZoomChange={setMapZoom}
                 onMarkerClick={handleMarkerClick as any}
                 selectedMarkerId={(selectedMapMarker as any)?.id}
+                isBoundsQueryLoading={isMapLoading || isListLoading}
               />
             )}
           </Card>

@@ -7,6 +7,12 @@ import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocat
 import { useKakaoMapBounds } from '@/features/map/presentation/hooks/useKakaoMapBounds'
 import { MapMarkerLayer } from '@/features/map/presentation/components/MapMarkerLayer'
 import { KakaoMapAdapter, defaultKakaoMapAdapter } from '@/features/map/data/kakaoMapAdapter'
+import { RefreshSearchButton } from '@/shared/ui/RegionSearchButton'
+
+// panTo 애니메이션이 끝날 때까지 기다린 뒤 커밋한다 — Kakao SDK 이벤트만으로는
+// "프로그래매틱 이동"과 "사용자 드래그"를 구분할 수 없어 이벤트에 의존하지 않는다 (ADR-0007).
+const PAN_SETTLE_DELAY_MS = 500
+const ALREADY_THERE_COMMIT_DELAY_MS = 100
 
 interface MapComponentProps {
   reports: ReportType[]
@@ -19,6 +25,7 @@ interface MapComponentProps {
   onMarkerClick?: (report: ReportType) => void
   selectedMarkerId?: string
   adapter?: KakaoMapAdapter
+  isBoundsQueryLoading?: boolean
 }
 
 export default function MapComponent({
@@ -31,7 +38,8 @@ export default function MapComponent({
   onZoomChange,
   onMarkerClick,
   selectedMarkerId,
-  adapter = defaultKakaoMapAdapter
+  adapter = defaultKakaoMapAdapter,
+  isBoundsQueryLoading = false
 }: MapComponentProps) {
   const safeCenter = center && center.lat && center.lng ? center : { lat: 37.5665, lng: 126.9780 }
   const [map, setMap] = useState<any>(null)
@@ -41,6 +49,7 @@ export default function MapComponent({
 
   const {
     currentBounds,
+    isDirty,
     dispatchBoundsUpdate,
     handleMapBoundsChange,
     handleDragEnd,
@@ -100,13 +109,17 @@ export default function MapComponent({
 
     if (alreadyThere) {
       setTimeout(() => {
-        handleMapBoundsChange()
-      }, 100)
+        dispatchBoundsUpdate(true)
+      }, ALREADY_THERE_COMMIT_DELAY_MS)
       return
     }
 
     adapter.panTo(map, center.lat, center.lng)
-  }, [center, map, handleMapBoundsChange, adapter])
+    // 지도 초점 이동은 명시적 사용자 의도이므로, 애니메이션이 끝난 뒤 바로 커밋한다 (ADR-0007).
+    setTimeout(() => {
+      dispatchBoundsUpdate(true)
+    }, PAN_SETTLE_DELAY_MS)
+  }, [center, map, dispatchBoundsUpdate, adapter])
 
   // 지도 클릭 이벤트 (제보 위치 선택용)
   const handleMapClick = async (event: any) => {
@@ -182,6 +195,16 @@ export default function MapComponent({
           )}
         </Map>
       </div>
+      {isDirty && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+          <RefreshSearchButton
+            onClick={() => dispatchBoundsUpdate(true)}
+            loading={isBoundsQueryLoading}
+            size="sm"
+            className="shadow-lg"
+          />
+        </div>
+      )}
     </div>
   )
 }

@@ -21,7 +21,7 @@ describe('useKakaoMapBounds', () => {
         vi.useRealTimers()
     })
 
-    it('should dispatch bounds update correctly', () => {
+    it('should commit bounds via dispatchBoundsUpdate', () => {
         const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
 
         act(() => {
@@ -36,22 +36,7 @@ describe('useKakaoMapBounds', () => {
                 east: 127.1
             })
         )
-    })
-
-    it('should debounce non-immediate updates', () => {
-        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
-
-        act(() => {
-            result.current.handleMapBoundsChange()
-        })
-
-        expect(onBoundsChange).not.toHaveBeenCalled()
-
-        act(() => {
-            vi.advanceTimersByTime(200)
-        })
-
-        expect(onBoundsChange).toHaveBeenCalled()
+        expect(result.current.isDirty).toBe(false)
     })
 
     it('should normalize coordinates based on zoom level', () => {
@@ -90,9 +75,88 @@ describe('useKakaoMapBounds', () => {
         expect(result.current.precisionByZoom(5)).toBe(5)
     })
 
-    it('should call onZoomChange and dispatch update on handleZoomChange', () => {
+    it('handleDragEnd only marks the area dirty — it must not commit or refetch', () => {
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
+
+        // 최초 커밋(예: map-ready)이 있었다고 가정
+        act(() => {
+            result.current.dispatchBoundsUpdate(true)
+        })
+        onBoundsChange.mockClear()
+
+        // 사용자가 드래그해서 다른 영역으로 이동
+        adapter.getBounds.mockReturnValue({ south: 38.4, west: 127.9, north: 38.6, east: 128.1 })
+
+        act(() => {
+            result.current.handleDragEnd()
+        })
+
+        expect(onBoundsChange).not.toHaveBeenCalled()
+        expect(result.current.isDirty).toBe(true)
+        // currentBounds(뷰포트 컬링 기준)도 커밋 전까지는 그대로 얼어 있어야 한다
+        expect(result.current.currentBounds).toEqual(
+            expect.objectContaining({ south: 37.4, west: 126.9, north: 37.6, east: 127.1 })
+        )
+    })
+
+    it('dragging back to the last committed area clears the dirty flag without a fetch', () => {
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
+
+        act(() => {
+            result.current.dispatchBoundsUpdate(true)
+        })
+        onBoundsChange.mockClear()
+
+        adapter.getBounds.mockReturnValue({ south: 38.4, west: 127.9, north: 38.6, east: 128.1 })
+        act(() => {
+            result.current.handleDragEnd()
+        })
+        expect(result.current.isDirty).toBe(true)
+
+        // 다시 원래 영역으로 드래그해 돌아옴
+        adapter.getBounds.mockReturnValue({ south: 37.4, west: 126.9, north: 37.6, east: 127.1 })
+        act(() => {
+            result.current.handleDragEnd()
+        })
+
+        expect(result.current.isDirty).toBe(false)
+        expect(onBoundsChange).not.toHaveBeenCalled()
+    })
+
+    it('should debounce handleMapBoundsChange (generic bounds_changed) and only mark dirty, never commit', () => {
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
+
+        act(() => {
+            result.current.dispatchBoundsUpdate(true)
+        })
+        onBoundsChange.mockClear()
+
+        adapter.getBounds.mockReturnValue({ south: 38.4, west: 127.9, north: 38.6, east: 128.1 })
+
+        act(() => {
+            result.current.handleMapBoundsChange()
+        })
+
+        expect(result.current.isDirty).toBe(false)
+
+        act(() => {
+            vi.advanceTimersByTime(200)
+        })
+
+        expect(result.current.isDirty).toBe(true)
+        expect(onBoundsChange).not.toHaveBeenCalled()
+    })
+
+    it('should call onZoomChange and mark dirty on handleZoomChange without committing', () => {
         const onZoomChange = vi.fn()
         const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, onZoomChange, adapter))
+
+        act(() => {
+            result.current.dispatchBoundsUpdate(true)
+        })
+        onBoundsChange.mockClear()
+
+        adapter.getBounds.mockReturnValue({ south: 38.4, west: 127.9, north: 38.6, east: 128.1 })
 
         act(() => {
             result.current.handleZoomChange()
@@ -106,17 +170,8 @@ describe('useKakaoMapBounds', () => {
         })
 
         expect(onZoomChange).toHaveBeenCalledWith(3)
-        expect(onBoundsChange).toHaveBeenCalled()
-    })
-
-    it('should handle drag end', () => {
-        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
-
-        act(() => {
-            result.current.handleDragEnd()
-        })
-
-        expect(onBoundsChange).toHaveBeenCalled()
+        expect(result.current.isDirty).toBe(true)
+        expect(onBoundsChange).not.toHaveBeenCalled()
     })
 
     it('should handle errors in dispatchBoundsUpdate without crashing', () => {
@@ -128,6 +183,22 @@ describe('useKakaoMapBounds', () => {
         expect(() => {
             act(() => {
                 result.current.dispatchBoundsUpdate(true)
+            })
+        }).not.toThrow()
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith('Map bounds calculation error:', expect.any(Error))
+        consoleErrorSpy.mockRestore()
+    })
+
+    it('should handle errors in handleDragEnd without crashing', () => {
+        adapter.getBounds.mockImplementation(() => { throw new Error('Bounds error') })
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        const { result } = renderHook(() => useKakaoMapBounds(mockMap, onBoundsChange, undefined, adapter))
+
+        expect(() => {
+            act(() => {
+                result.current.handleDragEnd()
             })
         }).not.toThrow()
 
@@ -159,6 +230,7 @@ describe('useKakaoMapBounds', () => {
         act(() => {
             result.current.dispatchBoundsUpdate(true)
             result.current.handleMapBoundsChange()
+            result.current.handleDragEnd()
             result.current.handleZoomChange()
         })
 
@@ -167,5 +239,6 @@ describe('useKakaoMapBounds', () => {
         })
 
         expect(onBoundsChange).not.toHaveBeenCalled()
+        expect(result.current.isDirty).toBe(false)
     })
 })

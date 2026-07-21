@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { useEffect, useRef } from 'react'
 import MapComponent from '@/features/map/presentation/components/MapComponent'
@@ -17,14 +17,9 @@ vi.mock('@/features/map/presentation/hooks/useLocationViewModel', () => ({
   useLocationViewModel: () => ({ reverseGeocode: vi.fn() })
 }))
 
+const mockUseKakaoMapBounds = vi.fn()
 vi.mock('@/features/map/presentation/hooks/useKakaoMapBounds', () => ({
-  useKakaoMapBounds: () => ({
-    currentBounds: null,
-    dispatchBoundsUpdate: vi.fn(),
-    handleMapBoundsChange: vi.fn(),
-    handleDragEnd: vi.fn(),
-    handleZoomChange: vi.fn()
-  })
+  useKakaoMapBounds: (...args: any[]) => mockUseKakaoMapBounds(...args)
 }))
 
 vi.mock('@/features/map/presentation/components/MapMarkerLayer', () => ({
@@ -32,6 +27,17 @@ vi.mock('@/features/map/presentation/components/MapMarkerLayer', () => ({
 }))
 
 describe('MapComponent', () => {
+  beforeEach(() => {
+    mockUseKakaoMapBounds.mockReturnValue({
+      currentBounds: null,
+      isDirty: false,
+      dispatchBoundsUpdate: vi.fn(),
+      handleMapBoundsChange: vi.fn(),
+      handleDragEnd: vi.fn(),
+      handleZoomChange: vi.fn()
+    })
+  })
+
   afterEach(() => {
     delete (window as any).kakao
   })
@@ -82,5 +88,39 @@ describe('MapComponent', () => {
     rerender(<MapComponent reports={[]} center={{ ...neighborhood }} adapter={adapter as any} />)
 
     await waitFor(() => expect(adapter.panTo).toHaveBeenCalledWith(expect.anything(), neighborhood.lat, neighborhood.lng))
+  }, 10000)
+
+  it('shows the floating "이 지역 재검색" button only when the area is dirty, and commits on click', async () => {
+    process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY = 'test-key'
+    const adapter = { ready: vi.fn().mockResolvedValue(true), panTo: vi.fn(), getCenter: vi.fn(() => ({ lat: 0, lng: 0 })) }
+    const dispatchBoundsUpdate = vi.fn()
+
+    mockUseKakaoMapBounds.mockReturnValue({
+      currentBounds: null,
+      isDirty: true,
+      dispatchBoundsUpdate,
+      handleMapBoundsChange: vi.fn(),
+      handleDragEnd: vi.fn(),
+      handleZoomChange: vi.fn()
+    })
+
+    render(<MapComponent reports={[]} adapter={adapter as any} />)
+    await waitFor(() => expect(screen.getByTestId('kakao-map')).toBeInTheDocument(), { timeout: 3000 })
+
+    const button = screen.getByRole('button', { name: /이 지역 재검색/ })
+    expect(button).toBeInTheDocument()
+
+    button.click()
+    expect(dispatchBoundsUpdate).toHaveBeenCalledWith(true)
+  }, 10000)
+
+  it('hides the floating re-search button when the area is not dirty', async () => {
+    process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY = 'test-key'
+    const adapter = { ready: vi.fn().mockResolvedValue(true), panTo: vi.fn(), getCenter: vi.fn(() => ({ lat: 0, lng: 0 })) }
+
+    render(<MapComponent reports={[]} adapter={adapter as any} />)
+    await waitFor(() => expect(screen.getByTestId('kakao-map')).toBeInTheDocument(), { timeout: 3000 })
+
+    expect(screen.queryByRole('button', { name: /이 지역 재검색/ })).not.toBeInTheDocument()
   }, 10000)
 })

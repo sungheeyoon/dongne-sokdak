@@ -13,7 +13,8 @@ export function useMapControllerViewModel() {
         selectedMapMarker, setSelectedMapMarker,
     } = useUIStore()
 
-    // 지도 영역(bounds)이 바뀌면 해당 영역 기준으로 제보를 다시 검색한다
+    // 영역 조회 커밋 — MapComponent가 명시적 커밋 시점(최초 로드·지도 초점 이동·"이 지역 재검색"
+    // 버튼 클릭)에만 호출한다. 드래그·확대/축소만으로는 호출되지 않는다 (ADR-0007).
     const handleMapBoundsChange = useCallback((bounds: { north: number; south: number; east: number; west: number }) => {
         setCurrentMapBounds(bounds)
         setUseMapBoundsFilter(true)
