@@ -26,6 +26,7 @@ import {
   UiDialogFooter as DialogFooter,
   UiDialogDescription as DialogDescription
 } from "@/shared/ui"
+import { SkeletonLoader } from '@/shared/ui/LoadingSpinner'
 
 const MapComponent = dynamic(() => import('@/features/map/presentation/components/MapComponent'), {
   ssr: false,
@@ -79,14 +80,55 @@ export default function ReportDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50/50">
+      <div className="min-h-screen bg-gray-50/50 pb-20">
         <Header />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-64 bg-gray-200 rounded-xl"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-          </div>
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+          <Card className="overflow-hidden shadow-sm border-0 ring-1 ring-black/5">
+            {/* 헤더 섹션 */}
+            <div className="p-6 md:p-8 border-b border-gray-100">
+              <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
+                <div className="flex-1 space-y-3 w-full">
+                  <div className="flex items-center gap-2">
+                    <SkeletonLoader className="h-5 w-16 rounded-full" />
+                    <SkeletonLoader className="h-5 w-16 rounded-full" />
+                  </div>
+                  <SkeletonLoader className="h-8 w-3/4" />
+                  <SkeletonLoader className="h-4 w-40" />
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-xl overflow-hidden">
+                <SkeletonLoader className="w-full h-64 rounded-xl" />
+              </div>
+            </div>
+
+            {/* 상세 내용 섹션 */}
+            <div className="p-6 md:p-8 border-b border-gray-100 bg-white space-y-2">
+              <SkeletonLoader className="h-6 w-28 mb-4" />
+              <SkeletonLoader className="h-4 w-full" />
+              <SkeletonLoader className="h-4 w-full" />
+              <SkeletonLoader className="h-4 w-2/3" />
+            </div>
+
+            {/* 위치 섹션 */}
+            <div className="p-6 md:p-8 bg-gray-50/50">
+              <SkeletonLoader className="h-6 w-28 mb-4" />
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="md:col-span-1 bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-fit space-y-2">
+                  <SkeletonLoader className="h-4 w-16" />
+                  <SkeletonLoader className="h-4 w-full" />
+                </div>
+                <div className="md:col-span-2 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                  <SkeletonLoader className="w-full h-[300px] rounded-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* 액션 섹션 */}
+            <div className="p-6 md:p-8 bg-white border-t border-gray-100">
+              <SkeletonLoader className="h-9 w-24 rounded-md" />
+            </div>
+          </Card>
         </main>
       </div>
     )

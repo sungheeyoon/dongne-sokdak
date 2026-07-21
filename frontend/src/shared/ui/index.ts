@@ -56,7 +56,7 @@ export { UnifiedSearch } from './UnifiedSearch'
 export { RegionSearchButton, CurrentRegionButton, RefreshSearchButton, MapBoundsSearchButton } from './RegionSearchButton'
 
 // 기타 UI 컴포넌트
-export { default as LoadingSpinner, CardSkeleton } from './LoadingSpinner'
+export { default as LoadingSpinner } from './LoadingSpinner'
 export { default as ErrorDisplay } from './ErrorDisplay'
 export { default as MarkerIcon } from './MarkerIcon'
 export { SearchButton } from './SearchButton'

@@ -53,26 +53,3 @@ export function SkeletonLoader({ className = '' }: { className?: string }) {
     <div className={`animate-pulse bg-gray-200 rounded ${className}`}></div>
   )
 }
-
-// 카드 형태 골격 로딩
-export function CardSkeleton() {
-  return (
-    <div className="bg-white rounded-xl shadow-sm border-2 border-gray-100 p-4 md:p-6">
-      <div className="flex justify-between items-start mb-3 md:mb-4">
-        <SkeletonLoader className="h-5 w-3/4" />
-        <SkeletonLoader className="h-5 w-16" />
-      </div>
-      <SkeletonLoader className="h-4 w-full mb-2" />
-      <SkeletonLoader className="h-4 w-2/3 mb-3 md:mb-4" />
-      <SkeletonLoader className="h-32 w-full mb-3 md:mb-4" />
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <SkeletonLoader className="h-6 w-16" />
-          <SkeletonLoader className="h-4 w-12" />
-          <SkeletonLoader className="h-4 w-12" />
-        </div>
-        <SkeletonLoader className="h-4 w-20" />
-      </div>
-    </div>
-  )
-}

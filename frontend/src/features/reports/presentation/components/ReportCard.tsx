@@ -3,7 +3,6 @@
 import { Report } from '../../domain/entities'
 import { useRouter } from 'next/navigation'
 import { ReportCard as UIReportCard } from '@/shared/ui/ReportCard'
-import { useBreakpoint } from '@/hooks/useBreakpoint'
 
 interface ReportCardProps {
     report: Report
@@ -11,7 +10,6 @@ interface ReportCardProps {
 
 export default function ReportCard({ report }: ReportCardProps) {
     const router = useRouter()
-    const breakpoint = useBreakpoint()
 
     const handleClick = () => {
         router.push(`/reports/${report.id}`)
@@ -33,7 +31,6 @@ export default function ReportCard({ report }: ReportCardProps) {
         voteCount: report.voteCount || 0,
         commentCount: report.commentCount || 0,
         createdAt: report.createdAt,
-        size: breakpoint as 'compact' | 'medium',
         onClick: handleClick
     }
 

@@ -5,6 +5,7 @@ import { MapPin, ThumbsUp, MessageCircle, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils';
 import { UiCard as Card, UiCardContent as CardContent, UiCardFooter as CardFooter, UiCardHeader as CardHeader } from '@/shared/ui';
+import { SkeletonLoader } from '@/shared/ui/LoadingSpinner';
 import { cn } from '@/lib/utils';
 
 export interface ReportCardProps {
@@ -19,7 +20,6 @@ export interface ReportCardProps {
   voteCount?: number;
   commentCount?: number;
   createdAt: string;
-  size?: 'compact' | 'medium';
   onClick?: () => void;
   className?: string;
 }
@@ -122,3 +122,38 @@ export const ReportCard = React.forwardRef<HTMLDivElement, ReportCardProps>(
 );
 
 ReportCard.displayName = 'ReportCard';
+
+export function ReportCardSkeleton() {
+  return (
+    <Card className="overflow-hidden border-muted/60">
+      <CardHeader className="p-4 pb-2 space-y-0">
+        <div className="flex justify-between items-start gap-2">
+          <SkeletonLoader className="h-5 w-3/4" />
+          <SkeletonLoader className="h-5 w-14 rounded" />
+        </div>
+      </CardHeader>
+
+      <CardContent className="p-4 pt-0">
+        <SkeletonLoader className="h-4 w-full mb-2" />
+        <SkeletonLoader className="h-4 w-2/3 mb-3" />
+
+        <div className="relative aspect-video w-full overflow-hidden rounded-lg mb-3">
+          <SkeletonLoader className="h-full w-full rounded-lg" />
+        </div>
+
+        <div className="flex items-center gap-3 mt-2">
+          <SkeletonLoader className="h-3.5 w-8" />
+          <SkeletonLoader className="h-3.5 w-8" />
+          <SkeletonLoader className="h-3.5 w-16 ml-auto" />
+        </div>
+      </CardContent>
+
+      <CardFooter className="p-4 pt-0 border-t bg-muted/20 mt-2">
+        <div className="flex items-center justify-between w-full pt-3">
+          <SkeletonLoader className="h-3.5 w-24" />
+          <SkeletonLoader className="h-3.5 w-12" />
+        </div>
+      </CardFooter>
+    </Card>
+  );
+}

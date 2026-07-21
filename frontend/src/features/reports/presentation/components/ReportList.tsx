@@ -1,7 +1,7 @@
 import React from 'react'
 import { Report } from '../../domain/entities'
 import ReportCard from './ReportCard'
-import { CardSkeleton } from '@/shared/ui/LoadingSpinner'
+import { ReportCardSkeleton } from '@/shared/ui/ReportCard'
 
 interface ReportListProps {
     reports: Report[]
@@ -24,7 +24,7 @@ export default function ReportList({
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[...Array(9)].map((_, i) => (
-                    <CardSkeleton key={i} />
+                    <ReportCardSkeleton key={i} />
                 ))}
             </div>
         )

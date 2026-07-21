@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import { useCommentsViewModel } from '../hooks/useCommentsViewModel'
+import { SkeletonLoader } from '@/shared/ui/LoadingSpinner'
 import { Comment } from '@/types'
 
 interface CommentsProps {
@@ -15,6 +16,52 @@ interface CommentItemProps {
     reportId: string
     reportAuthorId: string
     isReply?: boolean
+}
+
+function CommentAvatar({ label, className = 'w-8 h-8' }: { label: string; className?: string }) {
+    return (
+        <div className={`${className} bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0`}>
+            <span className="text-sm font-semibold text-gray-600">{label}</span>
+        </div>
+    )
+}
+
+function CommentRow({ avatar, isReply = false, children }: { avatar: React.ReactNode; isReply?: boolean; children: React.ReactNode }) {
+    return (
+        <div className={`${isReply ? 'ml-12 border-l-2 border-gray-100 pl-4' : ''}`}>
+            <div className="flex space-x-3">
+                {avatar}
+                <div className="flex-1 min-w-0">
+                    {children}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function CommentMetaRow({ children }: { children: React.ReactNode }) {
+    return <div className="flex items-center space-x-2 mb-1">{children}</div>
+}
+
+function CommentActionsRow({ children }: { children: React.ReactNode }) {
+    return <div className="flex items-center space-x-4 text-xs text-gray-600">{children}</div>
+}
+
+function CommentSkeleton() {
+    return (
+        <CommentRow avatar={<SkeletonLoader className="h-8 w-8 rounded-full flex-shrink-0" />}>
+            <CommentMetaRow>
+                <SkeletonLoader className="h-4 w-24" />
+                <SkeletonLoader className="h-3 w-16" />
+            </CommentMetaRow>
+            <SkeletonLoader className="h-3.5 w-full mb-1" />
+            <SkeletonLoader className="h-3.5 w-3/4 mb-2" />
+            <CommentActionsRow>
+                <SkeletonLoader className="h-3 w-8" />
+                <SkeletonLoader className="h-3 w-8" />
+            </CommentActionsRow>
+        </CommentRow>
+    )
 }
 
 function CommentItem({ comment, reportId, reportAuthorId, isReply = false }: CommentItemProps) {
@@ -90,122 +137,111 @@ function CommentItem({ comment, reportId, reportAuthorId, isReply = false }: Com
     }
 
     return (
-        <div className={`${isReply ? 'ml-12 border-l-2 border-gray-100 pl-4' : ''}`}>
-            <div className="flex space-x-3">
-                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-semibold text-gray-600">
-                        {comment.userNickname?.[0]?.toUpperCase() || 'U'}
-                    </span>
-                </div>
+        <CommentRow
+            isReply={isReply}
+            avatar={<CommentAvatar label={comment.userNickname?.[0]?.toUpperCase() || 'U'} />}
+        >
+            <CommentMetaRow>
+                <span className="font-semibold text-gray-900 text-sm">
+                    {getUserDisplayName()}
+                </span>
+                <span className="text-xs text-gray-500">
+                    {formatDate(comment.createdAt)}
+                    {isEdited() && <span className="ml-1">(수정됨)</span>}
+                </span>
+            </CommentMetaRow>
 
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                        <span className="font-semibold text-gray-900 text-sm">
-                            {getUserDisplayName()}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                            {formatDate(comment.createdAt)}
-                            {isEdited() && <span className="ml-1">(수정됨)</span>}
-                        </span>
+            {isEditing ? (
+                <div className="space-y-2">
+                    <textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="w-full px-3 py-2 border-2 border-gray-200 focus:border-blue-500 focus:outline-none resize-none text-gray-900 rounded-lg"
+                        rows={3}
+                        placeholder="댓글 수정..."
+                    />
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={handleEditSubmit}
+                            disabled={isUpdating || !editContent.trim()}
+                            className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50 transition-colors"
+                        >
+                            {isUpdating ? '수정 중...' : '저장'}
+                        </button>
+                        <button
+                            onClick={handleEditCancel}
+                            className="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md border border-gray-300 transition-colors"
+                        >
+                            취소
+                        </button>
                     </div>
+                </div>
+            ) : (
+                <>
+                    <p className="text-gray-800 text-sm whitespace-pre-wrap mb-2">
+                        {comment.content}
+                    </p>
 
-                    {isEditing ? (
-                        <div className="space-y-2">
-                            <textarea
-                                value={editContent}
-                                onChange={(e) => setEditContent(e.target.value)}
-                                className="w-full px-3 py-2 border-2 border-gray-200 focus:border-blue-500 focus:outline-none resize-none text-gray-900 rounded-lg"
-                                rows={3}
-                                placeholder="댓글 수정..."
-                            />
-                            <div className="flex space-x-2">
-                                <button
-                                    onClick={handleEditSubmit}
-                                    disabled={isUpdating || !editContent.trim()}
-                                    className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50 transition-colors"
-                                >
-                                    {isUpdating ? '수정 중...' : '저장'}
+                    <CommentActionsRow>
+                        {!isReply && user && (
+                            <button onClick={() => setIsReplying(!isReplying)} className="hover:text-gray-800 font-medium">
+                                답글
+                            </button>
+                        )}
+
+                        {user && user.id === comment.userId && (
+                            <>
+                                <button onClick={handleEdit} className="hover:text-gray-800 font-medium">
+                                    수정
                                 </button>
-                                <button
-                                    onClick={handleEditCancel}
-                                    className="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md border border-gray-300 transition-colors"
-                                >
+                                <button onClick={handleDelete} disabled={isDeleting} className="hover:text-red-600 font-medium disabled:opacity-50">
+                                    삭제
+                                </button>
+                            </>
+                        )}
+                    </CommentActionsRow>
+
+                    {isReplying && user && (
+                        <div className="mt-3 space-y-2">
+                            <div className="flex space-x-3">
+                                <CommentAvatar label={user.email?.[0]?.toUpperCase() || 'U'} className="w-6 h-6" />
+                                <div className="flex-1">
+                                    <textarea
+                                        value={replyContent}
+                                        onChange={(e) => setReplyContent(e.target.value)}
+                                        className="w-full px-3 py-2 border-2 border-gray-200 focus:border-blue-500 focus:outline-none resize-none text-gray-900 rounded-lg"
+                                        rows={2}
+                                        placeholder={`@${comment.userNickname || '사용자'}님에게 답글...`}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-end space-x-2 ml-9">
+                                <button onClick={() => { setIsReplying(false); setReplyContent(''); }} className="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md border border-gray-300 transition-colors">
                                     취소
                                 </button>
+                                <button onClick={handleReplySubmit} disabled={isCreating || !replyContent.trim()} className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50 transition-colors">
+                                    {isCreating ? '답글 작성 중...' : '답글'}
+                                </button>
                             </div>
                         </div>
-                    ) : (
-                        <>
-                            <p className="text-gray-800 text-sm whitespace-pre-wrap mb-2">
-                                {comment.content}
-                            </p>
-
-                            <div className="flex items-center space-x-4 text-xs text-gray-600">
-                                {!isReply && user && (
-                                    <button onClick={() => setIsReplying(!isReplying)} className="hover:text-gray-800 font-medium">
-                                        답글
-                                    </button>
-                                )}
-
-                                {user && user.id === comment.userId && (
-                                    <>
-                                        <button onClick={handleEdit} className="hover:text-gray-800 font-medium">
-                                            수정
-                                        </button>
-                                        <button onClick={handleDelete} disabled={isDeleting} className="hover:text-red-600 font-medium disabled:opacity-50">
-                                            삭제
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-
-                            {isReplying && user && (
-                                <div className="mt-3 space-y-2">
-                                    <div className="flex space-x-3">
-                                        <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
-                                            <span className="text-xs font-semibold text-gray-600">
-                                                {user.email?.[0]?.toUpperCase() || 'U'}
-                                            </span>
-                                        </div>
-                                        <div className="flex-1">
-                                            <textarea
-                                                value={replyContent}
-                                                onChange={(e) => setReplyContent(e.target.value)}
-                                                className="w-full px-3 py-2 border-2 border-gray-200 focus:border-blue-500 focus:outline-none resize-none text-gray-900 rounded-lg"
-                                                rows={2}
-                                                placeholder={`@${comment.userNickname || '사용자'}님에게 답글...`}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-end space-x-2 ml-9">
-                                        <button onClick={() => { setIsReplying(false); setReplyContent(''); }} className="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md border border-gray-300 transition-colors">
-                                            취소
-                                        </button>
-                                        <button onClick={handleReplySubmit} disabled={isCreating || !replyContent.trim()} className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50 transition-colors">
-                                            {isCreating ? '답글 작성 중...' : '답글'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
                     )}
+                </>
+            )}
 
-                    {comment.replies && comment.replies.length > 0 && (
-                        <div className="mt-4 space-y-4">
-                            {comment.replies.map((reply) => (
-                                <CommentItem
-                                    key={reply.id}
-                                    comment={reply}
-                                    reportId={reportId}
-                                    reportAuthorId={reportAuthorId}
-                                    isReply={true}
-                                />
-                            ))}
-                        </div>
-                    )}
+            {comment.replies && comment.replies.length > 0 && (
+                <div className="mt-4 space-y-4">
+                    {comment.replies.map((reply) => (
+                        <CommentItem
+                            key={reply.id}
+                            comment={reply}
+                            reportId={reportId}
+                            reportAuthorId={reportAuthorId}
+                            isReply={true}
+                        />
+                    ))}
                 </div>
-            </div>
-        </div>
+            )}
+        </CommentRow>
     )
 }
 
@@ -236,11 +272,7 @@ export default function Comments({ reportId, reportAuthorId }: CommentsProps) {
             {user ? (
                 <form onSubmit={handleSubmit} className="mb-6">
                     <div className="flex space-x-3">
-                        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-semibold text-gray-600">
-                                {user.email?.[0]?.toUpperCase() || 'U'}
-                            </span>
-                        </div>
+                        <CommentAvatar label={user.email?.[0]?.toUpperCase() || 'U'} />
                         <div className="flex-1">
                             <div className="relative">
                                 <textarea
@@ -283,14 +315,7 @@ export default function Comments({ reportId, reportAuthorId }: CommentsProps) {
                 {isLoading ? (
                     <div className="space-y-4">
                         {[...Array(3)].map((_, i) => (
-                            <div key={i} className="animate-pulse flex space-x-3">
-                                <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                                <div className="flex-1">
-                                    <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-                                    <div className="h-3 bg-gray-200 rounded w-full mb-1"></div>
-                                    <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                                </div>
-                            </div>
+                            <CommentSkeleton key={i} />
                         ))}
                     </div>
                 ) : comments.length > 0 ? (
