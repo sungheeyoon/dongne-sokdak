@@ -307,18 +307,14 @@ class ReportService:
             search_query=search,
         )
 
-        # 1. Count Total
-        count_res = self._supabase.rpc("count_reports_in_bounds", query_params.for_count()).execute()
-        total_count = count_res.data if count_res.data is not None else 0
-
-        # 2. Fetch Page
         offset = (page - 1) * limit
         response = self._supabase.rpc(
-            "get_reports_in_bounds", query_params.for_get(offset, limit)
+            "get_reports_in_bounds_page", query_params.for_get(offset, limit)
         ).execute()
-        bounded_reports = response.data or []
+        payload = response.data or {}
+        bounded_reports = payload.get("items") or []
+        total_count = payload.get("total_count") or 0
 
-        # 3. Enrich and Merge
         items = []
         for r in bounded_reports:
             items.append(enrich_report_data(r))

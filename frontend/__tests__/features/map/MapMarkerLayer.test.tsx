@@ -72,25 +72,34 @@ describe('MapMarkerLayer', () => {
     clustererProps.current = {}
   })
 
-  const generateReports = (count: number, bounds: { north: number, south: number, east: number, west: number }) => {
-    const reports = []
-    for (let i = 0; i < count; i++) {
-      reports.push({
-        id: `r-${i}`,
+  const generateReports = (
+    count: number,
+    bounds: { north: number, south: number, east: number, west: number },
+    idPrefix: string
+  ) => {
+    const columns = Math.ceil(Math.sqrt(count))
+    return Array.from({ length: count }, (_, index) => {
+      const row = Math.floor(index / columns)
+      const column = index % columns
+      return {
+        id: `${idPrefix}-${index}`,
         location: {
-          lat: bounds.south + (bounds.north - bounds.south) * Math.random(),
-          lng: bounds.west + (bounds.east - bounds.west) * Math.random()
+          lat: bounds.south + (bounds.north - bounds.south) * ((row + 1) / (columns + 1)),
+          lng: bounds.west + (bounds.east - bounds.west) * ((column + 1) / (columns + 1))
         }
-      })
-    }
-    return reports as any[]
+      }
+    }) as any[]
   }
 
-  it('should cull markers outside of bounds', () => {
+  it('renders only 80 in-viewport markers from a deterministic 500-report input', () => {
     const bounds = { north: 37.6, south: 37.4, east: 127.1, west: 126.9 }
 
-    const insideReports = generateReports(50, bounds)
-    const outsideReports = generateReports(50, { north: 38.6, south: 38.4, east: 128.1, west: 127.9 })
+    const insideReports = generateReports(80, bounds, 'inside')
+    const outsideReports = generateReports(
+      420,
+      { north: 38.6, south: 38.4, east: 128.1, west: 127.9 },
+      'outside'
+    )
 
     const allReports = [...insideReports, ...outsideReports]
 
@@ -104,7 +113,8 @@ describe('MapMarkerLayer', () => {
     )
 
     const markers = getAllByTestId('marker')
-    expect(markers.length).toBe(50)
+    expect(allReports).toHaveLength(500)
+    expect(markers).toHaveLength(80)
   })
 
   it('should pan to the clicked marker, then only start the zoom animation once the pan actually settles (idle), never on a guessed timer', () => {

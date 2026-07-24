@@ -76,7 +76,9 @@ def test_get_nearby_reports_smoke(mock_supabase):
 def test_get_bounds_reports_smoke(mock_supabase):
     report_data = create_mock_report()
     mock_rpc_call = MagicMock()
-    mock_rpc_call.execute.side_effect = [MagicMock(data=1), MagicMock(data=[report_data])]
+    mock_rpc_call.execute.return_value = MagicMock(
+        data={"items": [report_data], "total_count": 1}
+    )
     mock_supabase.rpc.return_value = mock_rpc_call
 
     response = client.get("/api/v1/reports/bounds?north=37.6&south=37.5&east=127.0&west=126.9")
@@ -85,3 +87,4 @@ def test_get_bounds_reports_smoke(mock_supabase):
     body = response.json()
     assert body["items"][0]["id"] == report_data["id"]
     assert body["totalCount"] == 1
+    assert mock_supabase.rpc.call_count == 1

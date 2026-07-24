@@ -174,6 +174,43 @@ describe('useKakaoMapBounds', () => {
         expect(onBoundsChange).not.toHaveBeenCalled()
     })
 
+    it('keeps 20 drag and zoom events local, then commits the latest bounds exactly once', () => {
+        const onZoomChange = vi.fn()
+        const { result } = renderHook(() => useKakaoMapBounds(
+            mockMap,
+            onBoundsChange,
+            onZoomChange,
+            adapter
+        ))
+
+        act(() => {
+            result.current.dispatchBoundsUpdate(true)
+        })
+        onBoundsChange.mockClear()
+
+        const latestBounds = { south: 37.51, west: 126.91, north: 37.71, east: 127.11 }
+        adapter.getBounds.mockReturnValue(latestBounds)
+
+        act(() => {
+            for (let index = 0; index < 10; index += 1) {
+                result.current.handleDragEnd()
+                result.current.handleZoomChange()
+            }
+            vi.advanceTimersByTime(200)
+        })
+
+        expect(result.current.isDirty).toBe(true)
+        expect(onBoundsChange).not.toHaveBeenCalled()
+
+        act(() => {
+            result.current.dispatchBoundsUpdate(true)
+        })
+
+        expect(onBoundsChange).toHaveBeenCalledTimes(1)
+        expect(onBoundsChange).toHaveBeenCalledWith(latestBounds)
+        expect(result.current.isDirty).toBe(false)
+    })
+
     it('should handle errors in dispatchBoundsUpdate without crashing', () => {
         adapter.getBounds.mockImplementation(() => { throw new Error('Bounds error') })
         const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})

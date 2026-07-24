@@ -36,7 +36,11 @@ def make_spatial_supabase(report=None, total=1):
 
     def rpc(name, params):
         call = MagicMock()
-        if name.startswith("count_"):
+        if name == "get_reports_in_bounds_page":
+            call.execute.return_value = MagicMock(
+                data={"items": [dict(report)], "total_count": total}
+            )
+        elif name.startswith("count_"):
             call.execute.return_value = MagicMock(data=total)
         else:
             call.execute.return_value = MagicMock(data=[dict(report)])
@@ -248,11 +252,40 @@ async def test_bounds_same_params_is_cache_hit():
     service, supabase = make_service()
 
     first = await service.get_reports_in_bounds(**BOUNDS)
-    assert supabase.rpc.call_count == 2
+    assert supabase.rpc.call_count == 1
 
     second = await service.get_reports_in_bounds(**BOUNDS)
-    assert supabase.rpc.call_count == 2
+    assert supabase.rpc.call_count == 1
     assert second == first
+
+
+@pytest.mark.asyncio
+async def test_bounds_fetches_page_and_total_count_in_one_rpc():
+    supabase = MagicMock()
+    supabase.rpc.return_value.execute.return_value = MagicMock(
+        data={
+            "items": [make_report(vote_count=5, comment_count=2)],
+            "total_count": 7,
+        }
+    )
+    service = ReportService(supabase, FakeSpatialReportCache())
+
+    result = await service.get_reports_in_bounds(**BOUNDS, page=2, limit=3)
+
+    assert result["totalCount"] == 7
+    assert result["totalPages"] == 3
+    assert result["page"] == 2
+    assert result["items"][0]["vote_count"] == 5
+    supabase.rpc.assert_called_once_with(
+        "get_reports_in_bounds_page",
+        {
+            **BOUNDS,
+            "category_filter": None,
+            "search_query": None,
+            "result_offset": 3,
+            "result_limit": 3,
+        },
+    )
 
 
 @pytest.mark.asyncio
@@ -263,7 +296,7 @@ async def test_create_report_invalidates_map_caches():
     ]
     await service.get_nearby_reports(**NEARBY)
     await service.get_reports_in_bounds(**BOUNDS)
-    assert supabase.rpc.call_count == 4
+    assert supabase.rpc.call_count == 3
 
     report_in = ReportCreate(
         title="New",
@@ -277,7 +310,7 @@ async def test_create_report_invalidates_map_caches():
 
     await service.get_nearby_reports(**NEARBY)
     await service.get_reports_in_bounds(**BOUNDS)
-    assert supabase.rpc.call_count == 8  # both queries missed the cache
+    assert supabase.rpc.call_count == 6  # both queries missed the cache
 
 
 @pytest.mark.asyncio
@@ -291,13 +324,13 @@ async def test_update_report_invalidates_map_caches():
     ]
     await service.get_nearby_reports(**NEARBY)
     await service.get_reports_in_bounds(**BOUNDS)
-    assert supabase.rpc.call_count == 4
+    assert supabase.rpc.call_count == 3
 
     await service.update_report("r1", {"title": "Updated"}, "user-123")
 
     await service.get_nearby_reports(**NEARBY)
     await service.get_reports_in_bounds(**BOUNDS)
-    assert supabase.rpc.call_count == 8
+    assert supabase.rpc.call_count == 6
 
 
 @pytest.mark.asyncio
@@ -308,13 +341,13 @@ async def test_delete_report_invalidates_map_caches():
     }
     await service.get_nearby_reports(**NEARBY)
     await service.get_reports_in_bounds(**BOUNDS)
-    assert supabase.rpc.call_count == 4
+    assert supabase.rpc.call_count == 3
 
     await service.delete_report("r1", "user-123")
 
     await service.get_nearby_reports(**NEARBY)
     await service.get_reports_in_bounds(**BOUNDS)
-    assert supabase.rpc.call_count == 8
+    assert supabase.rpc.call_count == 6
 
 
 @pytest.mark.asyncio
@@ -350,15 +383,15 @@ async def test_bounds_cache_hit_applies_user_voted_overlay():
 
     anonymous = await service.get_reports_in_bounds(**BOUNDS)
     assert anonymous["items"][0]["user_voted"] is False
-    assert supabase.rpc.call_count == 2
+    assert supabase.rpc.call_count == 1
 
     voted = await service.get_reports_in_bounds(**BOUNDS, current_user_id="user-123")
     assert voted["items"][0]["user_voted"] is True
-    assert supabase.rpc.call_count == 2
+    assert supabase.rpc.call_count == 1
 
     anonymous_again = await service.get_reports_in_bounds(**BOUNDS)
     assert anonymous_again["items"][0]["user_voted"] is False
-    assert supabase.rpc.call_count == 2
+    assert supabase.rpc.call_count == 1
 
 
 # --- map query count RPC failures raise, same as get RPC failures (ADR-0004) ---
@@ -383,12 +416,12 @@ async def test_nearby_count_rpc_error_raises():
 
 
 @pytest.mark.asyncio
-async def test_bounds_count_rpc_error_raises():
+async def test_bounds_page_rpc_error_raises():
     supabase = MagicMock()
 
     def rpc(name, params):
         call = MagicMock()
-        if name.startswith("count_"):
+        if name == "get_reports_in_bounds_page":
             call.execute.side_effect = Exception("boom")
         else:
             call.execute.return_value = MagicMock(data=[make_report()])
