@@ -1,9 +1,13 @@
 # 환경별 설정 파일 관리
 
+_Last verified: 2026-07-24_
+
+이 디렉터리의 파일은 로컬 설정 예시입니다. 애플리케이션 런타임은 `backend/.env`와 프로세스 환경 변수를 읽습니다.
+
 ## 설정 파일 설명
 
 - `development.env`: 개발 환경 설정
-- `staging.env`: 스테이징 환경 설정  
+- `staging.env`: 스테이징 환경 설정
 - `production.env`: 운영 환경 설정
 
 ## 사용 방법
@@ -36,7 +40,7 @@ cp config/production.env .env
 ### 스테이징/운영 환경 설정 시 반드시 변경해야 할 항목:
 
 1. `DATABASE_URL` - 각 환경별 데이터베이스 URL
-2. `SUPABASE_URL` - 각 환경별 Supabase 프로젝트 URL  
+2. `SUPABASE_URL` - 각 환경별 Supabase 프로젝트 URL
 3. `SUPABASE_KEY` - 각 환경별 Supabase 서비스 키
 4. `JWT_SECRET` - 환경별 고유한 강력한 시크릿
 5. `CORS_ORIGINS` - 각 환경별 허용 도메인

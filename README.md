@@ -1,113 +1,126 @@
 # 동네속닥 (Dongne Sokdak)
 
-> 우리 동네의 불편사항을 지도 위에 제보하고 함께 공감·해결하는 지역 커뮤니티 서비스 — 무거운 공식 민원 채널 대신 가볍고 직관적인 제보 경험을 목표로 합니다.
+_Last verified: 2026-07-24_
 
-- 🔗 **Live**: https://dongne-sokdak.vercel.app
-  > 포트폴리오 데모입니다. 백엔드가 Render 무료 플랜으로 동작해 첫 요청 시 콜드 스타트(30초~1분)가 발생할 수 있고, 표시되는 제보·댓글은 모두 더미 데이터입니다.
+사용자가 현재 보고 있는 지도 영역의 생활 정보를 확인하고 제보·투표·댓글로 공유하는 위치 기반 커뮤니티 서비스입니다.
 
-**Stack**: Next.js 16 (App Router) · TypeScript · FastAPI · Supabase (PostgreSQL + PostGIS / Auth / Storage) · Kakao Maps · Vercel + Render
+- [서비스 데모](https://dongne-sokdak.vercel.app)
+- 1인 개발 · Next.js 16 · TypeScript · FastAPI · Supabase(PostgreSQL/PostGIS) · Kakao Maps
+- 포트폴리오 데모의 데이터는 합성 데이터이며, Render 무료 플랜의 콜드 스타트가 발생할 수 있습니다.
 
----
+## 현재 제품 흐름
 
-## Architecture
-
-프론트엔드와 백엔드 모두 레이어드 아키텍처를 따르며 **의존성은 안쪽으로만 흐릅니다.** 페이지는 ViewModel 훅만 호출하고, 성능이 중요한 경로는 Python이 아니라 PostgreSQL RPC에서 끝냅니다.
+지도 화면은 반경 2km/3km 조회가 아니라 **현재 화면의 사각 영역(bounds)** 을 조회합니다.
 
 ```mermaid
-flowchart LR
-    Page[App Router Page] --> VM[ViewModel Hook]
-    VM --> Repo[Repository]
-    Repo -->|HTTP| Route[FastAPI Route]
-    Route --> Svc[Service]
-    Svc --> RPC[(PostGIS RPC)]
-    RPC --> DB[(Supabase / PostgreSQL)]
+sequenceDiagram
+    participant U as 사용자
+    participant F as Next.js
+    participant A as FastAPI
+    participant D as PostgreSQL/PostGIS
+
+    U->>F: 최초 진입 또는 명시적 위치 이동
+    F->>A: GET /api/v1/reports/bounds
+    A->>D: get_reports_in_bounds_page RPC 1회
+    D-->>A: items + total_count
+    A-->>F: 지도 마커와 목록
+    U->>F: 지도 드래그·확대/축소
+    F->>F: dirty 상태만 변경
+    U->>F: "이 지역 재검색" 클릭
+    F->>A: 변경된 bounds 조회
 ```
 
-- **프론트엔드 — feature 슬라이스별 Clean Architecture**: `domain`(순수 use case) → `data`(repository) → `presentation`(ViewModel 훅 + UI). 페이지는 repository·Supabase를 직접 import하지 않고, Kakao Maps SDK는 데이터 레이어에만 둡니다.
-- **백엔드 — service 레이어**: 라우트는 얇게 유지하고 비즈니스 로직은 service가 소유합니다. 무거운 조회는 `supabase/migrations/`의 SQL RPC로 위임합니다.
+백엔드에는 이전 반경 조회와 비교 벤치마크 경로가 남아 있지만, 현재 프론트엔드 제품 흐름에서는 사용하지 않습니다.
 
-상세 규칙은 [docs/FRONTEND_CLEAN_ARCHITECTURE.md](docs/FRONTEND_CLEAN_ARCHITECTURE.md) · [CLAUDE.md](CLAUDE.md).
+## 주요 엔지니어링
 
-## Performance engineering
+### 1. 실행계획으로 찾은 bounds 쿼리 병목
 
-이 프로젝트의 핵심은 기능 개수가 아니라 **"지도를 움직일 때마다 발생하는 쿼리·렌더링 병목을 어떻게 측정하고 걷어냈는가"** 입니다.
+페이지와 전체 개수를 각각 조회하던 두 RPC를 하나로 합쳤지만, 20명 동시 부하에서는 p50과 처리량이 개선되지 않았습니다. 네트워크 왕복 횟수만 보고 성능 개선으로 결론 내리지 않고 `EXPLAIN (ANALYZE, BUFFERS)`로 DB 내부를 다시 측정했습니다.
 
-### 1. 거리 기반 공간 쿼리 최적화 (PostGIS)
+대표 강남 bounds의 공간 후보 8,039건마다 선택 필터 함수가 호출되는 것이 병목이었습니다. 활성 RPC에 category/search 술어를 인라인해 PostgreSQL이 `NULL` 필터를 제거하고 선택도에 맞는 실행계획을 세우도록 바꿨습니다.
 
-데이터가 늘면서 지도 영역 이동 시 응답이 지연됐습니다. 거리 계산을 애플리케이션(Python Haversine 루프)에서 **DB의 GiST 공간 인덱스**로 옮겨, `get_reports_within_radius`를 `&&` 바운딩 박스 1차 필터 → `ST_DWithin` 2차 정밀 필터로 재작성했습니다.
+| 측정 | 변경 전 | 변경 후 | 결과 |
+| --- | ---: | ---: | ---: |
+| count SQL | 55.8ms | 6.6ms | 88.2% 감소 |
+| 전체 SQL 3회 중앙값 | 125.8ms | 16.0ms | 87.3% 감소 |
+| API p50 3회 중앙값 | 8.8초 | 7.6초 | 13.6% 감소 |
+| API p99 3회 중앙값 | 21초 | 16초 | 23.8% 감소 |
+| 처리량 | 2.09 RPS | 2.40 RPS | 15.0% 증가 |
+| 실패율 | 0% | 0% | 동일 |
 
-**측정 방법** — Locust로 REST+Python(V1) vs RPC+PostGIS(V3)를 1:1로 비교했습니다. 강남 고밀집 시드 1만 건, Supabase 클라우드, `uvicorn --workers 4`, 각 3분. 동시성을 달리해 두 구간에서 측정했습니다.
+API 측정은 Locust 2.32.10, 4 workers, 동시 사용자 20명, 90초, 강남 80%/서울 20%의 결정적 bounds 1,000개와 합성 데이터 10,006건으로 전후 각 3회 수행했습니다. 이는 통제된 테스트 환경의 수치이며 운영 트래픽 SLA가 아닙니다.
 
-**① 동시 20명 — 워커 ≥ 동시성, DB 성능이 드러나는 구간**
+- [상세 측정 보고서](backend/results/locust/BOUNDS_RPC_BENCHMARK_20260724.md)
+- [ADR-0010: 활성 bounds 필터 인라인](docs/adr/0010-inline-active-bounds-filters.md)
 
-| 지표 | V1 (REST+Python) | V3 (RPC+PostGIS) | 개선 |
-|---|---|---|---|
-| p50 | 1,500 ms | 1,100 ms | **27% ↓** |
-| p99 | 4,300 ms | 3,900 ms | 9% ↓ |
-| 처리량 | 2.62 RPS | 3.02 RPS | **15% ↑** |
-| 실패율 | 0% | 0% | — |
+### 2. 목록 N+1 제거
 
-**② 동시 100명 — 포화 구간**
+게시글마다 투표·댓글 수를 반복 조회하던 `1 + 2N` 구조를 RPC 내부 집계로 바꿨습니다. 목록 조회는 전체 개수 1회, 페이지 1회, 로그인 사용자의 투표 여부 batch 조회 0~1회로 **2~3회**에 끝납니다.
 
-| 지표 | V1 | V3 |
-|---|---|---|
-| p50 | 13,000 ms | 13,000 ms |
-| 최소 응답 | 2,003 ms | **1,172 ms** |
-| 처리량 | 3.25 RPS | 3.46 RPS |
-| 실패율 | 0% | 0% |
+### 3. 지도 요청과 렌더링 비용 제어
 
-100명 구간에서는 **p50이 동률(13초)로 수렴**합니다. 동시 요청이 워커 풀을 넘어서면 응답 시간의 대부분이 큐 대기가 되어, ms 단위의 DB 쿼리 차이가 초 단위 큐잉에 묻히기 때문입니다. V3의 실제 우위는 **큐에 밀리지 않은 최소 응답(1,172 ms vs 2,003 ms, 41% 빠름)**과 처리량에서만 드러납니다. 즉 이 환경의 병목은 DB가 아니라 **백엔드 동시성**이며, 유효한 쿼리 성능 비교는 20명 구간입니다.
+- 드래그·확대/축소는 조회 영역을 즉시 커밋하지 않고 dirty 상태만 갱신합니다.
+- 테스트에서 지도 조작 20회 동안 bounds 커밋 0회, “이 지역 재검색” 후 1회를 검증합니다.
+- 500개 결정적 입력 중 화면 안 80개만 렌더링하는 viewport culling을 테스트합니다.
+- 줌 단계에 따라 Kakao 클러스터, 30m 근접 그룹, 개별 마커를 구분합니다.
 
-> 위 수치는 모두 `backend/results/locust/`의 Locust CSV 원본에 근거합니다. 초기 단일 워커 측정에서는 큐잉이 전 구간을 평준화시켜 V1/V3 차이가 드러나지 않았고, 워커를 4개로 늘려 셋업을 교정한 뒤 재측정해 위 결과를 얻었습니다.
+## 구조
 
-### 2. RPC 기반 N+1 제거
+```text
+frontend/src/
+├── app/                       # 화면 조합
+├── features/<slice>/
+│   ├── domain/                # 엔티티·포트·유스케이스
+│   ├── data/                  # API/Supabase/Kakao 어댑터
+│   └── presentation/          # ViewModel 훅·UI
+└── shared/                    # 공통 UI와 상태
 
-목록·대시보드 조회가 행마다 추가 쿼리를 날리는 N+1 구조였습니다. 집계를 DB 한 번의 호출로 묶었습니다.
+backend/app/
+├── api/                       # 얇은 FastAPI 라우트
+├── services/                  # 애플리케이션 로직
+├── schemas/                   # Pydantic v2
+└── db/                        # Supabase 클라이언트
+```
 
-- `get_reports_within_radius` / `get_reports_in_bounds` — 제보 + `vote_count` + `comment_count`를 한 RPC에서 집계 반환 ([20260508_update_spatial_rpcs_with_counts.sql](backend/supabase/migrations/20260508_update_spatial_rpcs_with_counts.sql)).
-- `get_admin_dashboard_stats` — 12종 통계(유저/제보/댓글/투표/관리자 활동)를 **단일 호출**의 `json_build_object`로 반환.
-- `get_reports_paginated`, `get_profile_with_stats` — 페이지네이션·프로필 통계도 RPC로 일원화.
+성능이 중요한 지도 조회는 `FastAPI → ReportService → PostgreSQL RPC` 경계로 끝냅니다. DB 접근은 Supabase client로 통일되어 있으며 SQLAlchemy ORM은 사용하지 않습니다.
 
-### 3. 지도 렌더링 구조 최적화
-
-마커 100~500개를 드래그할 때 React 재조정으로 인한 프레임 드랍을 제거했습니다.
-
-- **Strict memoization** — `position={{lat,lng}}` 같은 객체 리터럴/인라인 함수를 primitive prop(`lat=`, `lng=`) + `useCallback`으로 평탄화해 `React.memo` 격리를 복원.
-- **Viewport culling** — 화면 밖 마커를 렌더 배열에서 아예 제거(500 → ~80 노드).
-- **Concurrent rendering** — 무거운 오버레이 재조정을 `useTransition`으로 저우선 스케줄링해 Kakao 맵 패닝 애니메이션을 막지 않도록.
-- **API 스팸 차단** — `center_changed`(프레임마다 발동) 리스너를 제거하고 `dragend`/`zoom_changed`로만 fetch, 이전 좌표와 0.002도(~200m) 미만 이동은 drop해 무한 리페치 루프 차단.
-
-→ [docs/plans/PLAN_marker_rendering_optimization.md](docs/plans/PLAN_marker_rendering_optimization.md)
-
-## Beyond performance
-
-- **인증/보안** — Supabase Auth + 카카오·구글 OAuth2 Code Exchange, JWT, RBAC + RLS, 관리자 활동 로깅. 상세는 [README_SECURITY.md](README_SECURITY.md).
-- **관리자 시스템** — 실시간 대시보드, 제보 상태/담당자 관리, 역할 기반 사용자 관리, 활동 로그 CSV 내보내기.
-- **테스트** — 프론트 Vitest + RTL(ViewModel·Repository ≥80% Lines), 백엔드 pytest(서비스 단위 + 통합).
-
-## Quick start
+## 실행과 검증
 
 ```bash
 # Frontend
 cd frontend
-cp .env.example .env.local        # Supabase / Kakao / API URL 채우기
-npm install && npm run dev        # http://localhost:3000
+npm ci
+npm run dev
 
 # Backend
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload     # http://localhost:8000 (docs: /docs)
+python -m venv .venv
+pip install -r requirements-dev.txt
+uvicorn app.main:app --reload
 ```
-
-**필수 환경 변수** — 프론트: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_KAKAO_MAP_API_KEY`, `NEXT_PUBLIC_KAKAO_REST_API_KEY` / 백엔드: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_KEY`, `JWT_SECRET`, `CORS_ORIGINS`, 카카오·구글 OAuth 자격 증명.
 
 ```bash
-# 품질 게이트
-cd frontend && npm run lint && npm run tsc:check && npm test -- --run
-cd backend  && python -m pytest -q
+# Frontend quality gate
+cd frontend
+npm run lint
+npm run tsc:check
+npm test -- --run
+
+# Backend quality gate
+cd backend
+python -m pytest -q
 ```
 
----
+백엔드는 `backend/.env.example`을 기준으로 설정합니다. 프론트엔드는 `frontend/.env.local`에 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_KAKAO_MAP_API_KEY`를 설정합니다.
 
-> 본 저장소는 **포트폴리오 공개용**이며 별도 라이선스를 부여하지 않습니다 (All Rights Reserved). 코드 열람은 자유로우나 복제·재배포·상업적 사용은 금지합니다.
+## 문서
+
+- [문서 인덱스](docs/README.md)
+- [도메인 용어](CONTEXT.md)
+- [프론트엔드 아키텍처](docs/FRONTEND_CLEAN_ARCHITECTURE.md)
+- [설계 결정 기록](docs/adr/)
+- [포트폴리오 요약](docs/portfolio/PORTFOLIO.md)
+- [상세 엔지니어링 노트](docs/portfolio/ENGINEERING_NOTES.md)
+
+본 저장소는 포트폴리오 공개용이며 별도 라이선스를 부여하지 않습니다.

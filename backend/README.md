@@ -1,84 +1,77 @@
-# 🏘️ 동네속닥 백엔드 (FastAPI)
+# 동네속닥 백엔드
 
-동네속닥의 비즈니스 로직과 데이터 처리를 담당하는 FastAPI 기반 백엔드 서버입니다.
+_Last verified: 2026-07-24_
 
-## 🚀 주요 기능
+FastAPI와 Supabase client를 사용해 제보·댓글·투표·프로필·관리자 기능을 제공합니다. DB는 PostgreSQL/PostGIS이며, 성능이 중요한 읽기는 `supabase/migrations/`의 SQL RPC로 처리합니다. SQLAlchemy ORM은 사용하지 않습니다.
 
-- **RESTful API**: FastAPI를 사용한 고성능 비동기 API
-- **인증 및 보안**:
-  - Supabase Auth 연동
-  - 소셜 로그인 (카카오, 구글) 지원 (Backend-Centric Flow)
-  - RBAC (역할 기반 접근 제어)
-- **위치 기반 서비스**:
-  - PostGIS를 이용한 지리 정보 처리
-  - 행정동 기반 제보 관리
-- **관리자 시스템**: 제보 상태 관리 및 활동 로그 기록
+## 현재 지도 조회
 
-## 🛠️ 기술 스택
+| 경로 | 상태 | DB 경계 |
+| --- | --- | --- |
+| `GET /api/v1/reports/bounds` | 프론트엔드 활성 경로 | `get_reports_in_bounds_page` 1회 |
+| `GET /api/v1/reports/nearby` | 백엔드 호환용, 프론트 미사용 | 반경 get/count RPC |
+| `GET /api/v1/reports/benchmark/nearby-rest` | 과거 방식 비교용 | REST + Python Haversine |
 
-- **Framework**: FastAPI
-- **Database**: PostgreSQL + PostGIS
-- **ORM**: SQLAlchemy 2.0
-- **Validation**: Pydantic v2
-- **Auth**: Supabase Auth + JWT
-- **Language**: Python 3.12+
+활성 bounds RPC는 공간 인덱스 후보 검색과 페이지·전체 개수 반환을 한 호출에 처리합니다. category/search 술어는 실행계획 검증 결과에 따라 RPC 안에 인라인되어 있습니다.
 
-## ⚙️ 시작하기
+- [ADR-0010](../docs/adr/0010-inline-active-bounds-filters.md)
+- [bounds 부하 테스트 보고서](results/locust/BOUNDS_RPC_BENCHMARK_20260724.md)
 
-### 1. 가상환경 설정
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-```
+## 구조
 
-### 2. 의존성 설치
-```bash
-pip install -r requirements.txt
-```
-
-### 3. 환경 변수 설정
-`.env.example` 파일을 복사하여 `.env` 파일을 생성하고 필요한 값을 입력합니다.
-
-```bash
-cp .env.example .env
-```
-
-### 4. 서버 실행
-```bash
-uvicorn app.main:app --reload
-```
-서버가 실행되면 `http://localhost:8000/docs`에서 API 문서를 확인할 수 있습니다.
-
-## 🔑 소셜 로그인 설정 (중요)
-
-본 프로젝트는 보안 강화를 위해 **백엔드 중심의 소셜 로그인 흐름**을 사용합니다.
-
-1. 프론트엔드에서 인가 코드(Authorization Code)를 획득합니다.
-2. 백엔드의 `/api/v1/auth/social/[provider]` 엔드포인트로 코드를 전송합니다.
-3. 백엔드에서 코드를 토큰으로 교환하고 Supabase에 세션을 생성하여 반환합니다.
-
-### Redirect URI 설정
-- **Kakao**: `http://localhost:3000/auth/callback/kakao`
-- **Google**: `http://localhost:3000/auth/callback/google`
-
-## 📁 프로젝트 구조
-
-```
+```text
 backend/
 ├── app/
-│   ├── api/            # 라우터 엔드포인트
-│   ├── core/           # 설정 및 보안 (JWT, Config)
-│   ├── db/             # 데이터베이스 연결 및 Supabase 클라이언트
-│   ├── middleware/     # 인증 및 로깅 미들웨어
-│   ├── schemas/        # Pydantic 모델
-│   ├── services/       # 비즈니스 로직 (소셜 인증 등)
-│   └── main.py         # 애플리케이션 진입점
-├── config/             # 환경별 설정 파일
-├── supabase/           # 마이그레이션 SQL
-└── .env.example        # 환경 변수 템플릿
+│   ├── api/             # FastAPI 라우트
+│   ├── services/        # 애플리케이션 로직
+│   ├── schemas/         # Pydantic v2
+│   ├── db/              # Supabase client
+│   ├── core/            # 설정·로깅·보안
+│   └── middleware/
+├── scripts/             # 시드·부하 테스트·결과 요약
+├── supabase/migrations/ # PostgreSQL/PostGIS RPC와 정책
+├── tests/               # pytest
+└── requirements-dev.txt
 ```
 
-## 📜 API 문서
+라우트는 서비스 기본 인스턴스에 위임합니다. 서비스는 Supabase client와 캐시를 생성자로 주입받으며, 테스트는 fake client/cache로 외부 경계를 격리합니다.
 
-- **Swagger UI**: `/docs`
-- **ReDoc**: `/redoc`
+## 실행
+
+```bash
+python -m venv .venv
+pip install -r requirements-dev.txt
+uvicorn app.main:app --reload
+```
+
+Windows PowerShell에서는 가상환경 Python을 직접 실행할 수 있습니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+API 문서는 서버 실행 후 `/docs`와 `/redoc`에서 확인합니다.
+
+## 환경 변수
+
+`backend/.env.example`을 기준으로 `.env`를 구성합니다. 주요 항목은 다음과 같습니다.
+
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
+- `JWT_SECRET`
+- `CORS_ORIGINS`
+- OAuth 제공자 자격 증명
+- `DATABASE_URL` — 직접 PostgreSQL 연결이 필요한 유지보수 스크립트에서 사용
+
+환경별 예시는 [`config/README.md`](config/README.md)를 참고하되 실제 시크릿은 커밋하지 않습니다.
+
+## 검증
+
+```bash
+python -m pytest -q
+python -m locust -f scripts/locustfile_bounds.py --list
+python scripts/summarize_bounds_benchmark.py --help
+```
+
+GitHub Actions도 Python 3.12에서 `requirements-dev.txt`를 설치하고 전체 pytest를 실행합니다.

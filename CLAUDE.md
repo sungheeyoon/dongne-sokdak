@@ -3,7 +3,7 @@
 ## Stack
 - **Frontend**: Next.js 16 (App Router) + TypeScript, TailwindCSS, Zustand + TanStack Query, Vitest + RTL
 - **Backend**: FastAPI + Pydantic v2, Supabase (PostgreSQL + PostGIS + Storage + Auth), pytest
-- **Maps**: Kakao Maps (data layer only — see `docs/FRONTEND_CLEAN_ARCHITECTURE.md`)
+- **Maps**: Kakao Maps (명령형 SDK 접근은 data adapter로 제한 — ADR-0003)
 
 ## Architecture
 
@@ -29,7 +29,7 @@ frontend/src/
 - Pages call **ViewModel hooks only** — no direct repository or Supabase imports.
 - Repositories live under `features/<slice>/data/` and convert snake_case → camelCase at the entry point.
 - Use cases (`features/<slice>/domain/usecases.ts`) hold pure business logic. No `router.push`, no `toast`.
-- Kakao Maps SDK is **data layer**. Presentation must not call `window.kakao` directly.
+- Imperative Kakao Maps SDK access belongs in the **data adapter**. Presentation may use declarative `react-kakao-maps-sdk` components but must not call `window.kakao` directly (ADR-0003).
 
 ### Backend — services layer
 ```
@@ -37,7 +37,7 @@ backend/app/
 ├── api/v1/                       # thin route handlers (delegate to services)
 ├── api/admin/                    # split: routes_dashboard / users / reports / settings
 ├── services/                     # business logic
-│   ├── report_service.py         # ReportService(supabase, cache) — uses spatial_report_cache (ADR-0001/0002)
+│   ├── report_service.py         # ReportService(supabase, cache, bounds_rpc_name=...) (ADR-0001/0002)
 │   ├── comment_service.py
 │   ├── vote_service.py
 │   ├── profile_service.py        # uses get_profile_with_stats RPC
@@ -49,7 +49,8 @@ backend/app/
 **Rules**
 - Routes are thin — delegate to services. Services raise `HTTPException` directly for domain/permission/validation errors. Exception: single-item lookups return `None` on not-found, and some thin write paths return `None`/`bool` on failure — the route maps these to 404/400 (e.g. `get_report_by_id`, `get_user_profile`, `create_report`, `delete_neighborhood`).
 - DB access goes through Supabase client. Performance-critical paths use SQL RPCs in `supabase/migrations/`.
-- Key RPCs: `get_reports_paginated`, `get_admin_dashboard_stats`, `get_profile_with_stats`, `get_reports_within_radius`, `get_reports_in_bounds`.
+- The active product map path is `/reports/bounds` → `get_reports_in_bounds_page`. `/reports/nearby` and `/reports/benchmark/nearby-rest` are legacy/benchmark backend paths and are not called by the frontend.
+- Key RPCs: `get_reports_in_bounds_page`, `get_reports_paginated`, `get_admin_dashboard_stats`, `get_profile_with_stats`.
 - No `print()` — use `logger`. No `datetime.utcnow()` — use timezone-aware `datetime.now(UTC)`.
 
 ## Commands
@@ -76,7 +77,7 @@ uvicorn app.main:app --reload
 
 - **Frontend**: tests live in `frontend/__tests__/` mirroring `src/`. Vitest + RTL + jsdom. Repositories mock `fetch`; ViewModels mock the repository interface with `vi.fn()`.
 - **Backend**: tests live in `backend/tests/` named `test_<module>.py`. pytest + pytest-mock; admin services have dedicated split test files.
-- **Coverage policy**: ViewModels and Repositories ≥80% **Lines** (branch coverage is a follow-up track, not a quality gate).
+- **Coverage**: `npm run test:coverage -- --run` is available for inspection. CI currently gates lint, typecheck, and tests; it does not enforce a numeric coverage threshold.
 
 ## Conventions
 
@@ -86,10 +87,10 @@ uvicorn app.main:app --reload
 - `pid.txt`, `dev.log`, `tsconfig.tsbuildinfo`, `coverage.txt` are gitignored — never commit.
 
 ## Reference docs
+- `docs/README.md` — current-document index and freshness rules
 - `docs/FRONTEND_CLEAN_ARCHITECTURE.md` — full layer rules and feature mapping
-- `docs/plans/archive/PLAN_frontend_refactor_perf.md` — completed Clean Arch migration + MapComponent split + test infra (2026-05, historical snapshot — see below)
-- `docs/plans/archive/PLAN_backend_refactor_perf.md` — completed services layer split + N+1 fixes + Pydantic v2 (2026-05, historical snapshot — see below)
-- `README_SECURITY.md` — RBAC / RLS / JWT setup
+- `backend/results/locust/BOUNDS_RPC_BENCHMARK_20260724.md` — active bounds benchmark evidence
+- `docs/plans/archive/` — completed plans; historical only
 
 ## Agent skills
 
@@ -107,7 +108,7 @@ Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agent
 
 ### Documentation freshness
 
-`docs/*.md` and `docs/plans/*.md` describe a state of the code at some point in time and go stale — do not treat their prose as current fact without checking:
-- Anything under `docs/plans/archive/`, or carrying a `> **Snapshot**` banner, is a **historical record**. It documents what was true when written, not what's true now. Never cite it as evidence of current behavior — prefer `CONTEXT.md`, `docs/adr/`, or the code itself, and if it conflicts with an archived doc, the archived doc is wrong, not the code.
-- Non-archived docs carry a `_Last verified: <date>_` line near the top. If that date predates recent related commits (`git log -- <path>`), treat specific claims as unverified and check them against the code before relying on them.
-- When a plan's work is done, move it into `docs/plans/archive/` and add the snapshot banner — don't leave completed plans in `docs/plans/` where they read as current.
+Use `docs/README.md` to distinguish current documents from historical material:
+- Anything under `docs/plans/archive/`, or carrying a `> **Snapshot**` banner, is a historical record. Never cite it as evidence of current behavior.
+- Prefer the code, `CONTEXT.md`, current ADRs, and the latest benchmark report when sources conflict.
+- When a plan's work is done, move it into `docs/plans/archive/` and add the snapshot banner.

@@ -4,7 +4,7 @@
 
 드래그·확대/축소는 화면상 위치만 추적(dirty 여부)할 뿐 아무것도 커밋하지 않는다 — `useKakaoMapBounds`의 `currentBounds`(뷰포트 컬링 기준)와 store의 `currentMapBounds`(조회 기준)는 마지막으로 커밋된 영역에 그대로 얼어 있고, 화면이 그 영역과 달라지면 `isDirty`만 true가 된다. `isDirty`가 true인 동안 지도 위에 재검색 버튼이 뜨고, 클릭하는 순간 그 시점의 실제 지도 bounds를 커밋해 마커·리스트를 함께 갱신한다.
 
-다음은 여전히 영역 조회를 자동 실행하는 명시적 사용자 의도로 남는다 — [[map-focus-vs-picked-point-kakao-adapter|ADR-0003]]의 "지도 초점을 바꾸는 명시적 트리거" 목록과 같은 기준이다:
+다음은 여전히 영역 조회를 자동 실행하는 명시적 사용자 의도로 남는다 — [ADR-0003](./0003-map-focus-vs-picked-point-kakao-adapter.md)의 "지도 초점을 바꾸는 명시적 트리거" 목록과 같은 기준이다:
 - 최초 지도 로드
 - "내 동네로 돌아가기" / 검색 초기화
 - 검색 결과(장소) 선택

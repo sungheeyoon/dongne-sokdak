@@ -1,65 +1,65 @@
-# 동네속닥 — 우리 동네 제보 커뮤니티
+# 동네속닥
 
-[Vercel 배포](https://dongne-sokdak.vercel.app/) · [GitHub](https://github.com/sungheeyoon/dongne-sokdak) · [Engineering Notes →](./ENGINEERING_NOTES.md)
+### Location-based Community Service
 
-`Next.js 16` `FastAPI` `Supabase (PostgreSQL + PostGIS + RLS)` `Kakao Maps`
+`Next.js 16` `TypeScript` `FastAPI` `PostgreSQL` `PostGIS`
 
-**개인 프로젝트 · 개발 2025.06–07 · 운영/리팩토링 2026.02–05**
+개발 2025.06–07 · 2026 리팩토링/성능 개선 · 1인 개발
 
----
+[서비스](https://dongne-sokdak.vercel.app) · [GitHub](https://github.com/sungheeyoon/dongne-sokdak) · [Engineering Notes](./ENGINEERING_NOTES.md)
 
-## 왜 만들었나
+사용자가 현재 보고 선택한 지도 영역의 생활 정보를 확인하고 제보·투표·댓글로 공유하는 커뮤니티 서비스입니다. 현재 제품 화면은 반경 2km/3km 검색이 아니라 **지도 bounds 조회**를 사용합니다.
 
-당근·맘카페에 흩어진 동네 이슈를 한 지도에서 보고 싶었다. 행정구 단위가 아니라 **반경 1~2km, "우리 골목" 단위**의 좁은 로컬 서비스라는 가설이 출발점이다.
+## Spatial Query Optimization
 
----
+**Problem**
 
-## 핵심 문제 3개와 판단
+페이지와 전체 개수를 각각 조회하던 두 RPC를 하나로 합쳤지만 동시 부하 성능은 개선되지 않았습니다. 대표 강남 bounds의 공간 후보 8,039건마다 category/search 필터 함수가 호출되는 것이 실제 병목이었습니다.
 
-**1. 거리 기반 조회 — 어디서 필터링할 것인가**
-처음엔 데이터를 다 받아서 애플리케이션에서 거리를 계산했다. 데이터가 늘수록 네트워크 + CPU가 같이 늘어나는 구조였다.
-Geohash 버킷팅·클라이언트 필터링·PostGIS 중 **PostGIS**를 택한 이유는 *정확도와 정렬 확장성*(거리순, 가중치 기반 정렬을 나중에 붙일 수 있어야 함). 학습·마이그레이션 비용은 trade-off로 안고 갔다.
+**Solution**
 
-**2. 리스트 N+1 — 카드마다 카운트 쿼리**
-페이지 한 번에 1+2N 쿼리. Materialized View(write 잦은 데이터에 갱신 비용 큼), nested select(RLS와 디버깅 복잡), RPC 내부 집계 중 **RPC**를 골랐다. 비즈니스 로직이 DB로 일부 새는 trade-off 대신 응답 시간을 우선시.
+`EXPLAIN (ANALYZE, BUFFERS)`로 공간 인덱스 검색과 필터 비용을 분리했습니다. 활성 RPC에는 선택 필터를 인라인해 PostgreSQL이 `NULL` 필터를 제거하도록 하고, 페이지와 전체 개수는 한 RPC에서 반환하도록 유지했습니다.
 
-**3. 대량 마커 렌더링 — 직접 그릴 것인가**
-Canvas로 직접 그리면 가장 빠르지만 클러스터·툴팁·줌 UX를 다 새로 만들어야 했다. **SDK 클러스터러 + 뷰포트 밖 마커는 렌더 자체를 안 하기 + 큰 업데이트를 deferred 렌더링**으로 푸는 쪽을 골랐다. 직접 만들지 않은 만큼 버그 표면적이 줄었다.
+**Result**
 
----
+- count SQL: `55.8ms → 6.6ms` — **88.2% 감소**
+- 전체 SQL 3회 중앙값: `125.8ms → 16.0ms` — **87.3% 감소**
+- API 3회 중앙값: **p50 13.6% 감소 · p99 23.8% 감소 · RPS 15.0% 증가**
+- 실패율: 전후 모두 `0%`
 
-## 운영하면서 배운 것
+## Query Optimization
 
-MVP 배포 후 8개월 굴리면서 **누락 위험·기술 부채·구조 변경 비용**을 실제로 만났다.
+**Problem**
 
-- **권한 정책을 코드에서 RLS로 이전**: 같은 정책이 라우터·서비스·스키마에 흩어져 있었다. RLS로 옮기고 나서 Supabase Advisor가 "row마다 재평가됨" 경고를 줘 정책 전체를 한 번 더 다듬었다. 권한은 로직이 아니라 **데이터에 붙은 정책**으로 다뤄야 변경에 강하다.
-- **마이그레이션 전략 재정비**: DB 함수의 반환 타입을 바꿀 때 기존 시그니처와 충돌하는 문제를 겪고, 마이그레이션마다 **기존 함수 명시적 제거 → 재생성** 패턴을 표준화했다.
-- **점진적 리팩토링**: Phase 0.5 → 7로 쪼개서 매 단계 빌드·테스트 그린 상태로 머지. **큰 PR 1개보다 작고 검증된 PR 7개가 운영 중 리팩토링에 더 안전했다.**
+목록 조회에서 제보마다 투표·댓글 수를 반복 조회해 `1 + 2N` 쿼리가 발생했습니다.
 
----
+**Solution**
 
-## AI 협업 철학
+투표·댓글 집계를 페이지 RPC 내부로 옮기고, 로그인 사용자의 투표 여부만 한 번의 batch 조회로 합성했습니다.
 
-AI를 잘 쓰는 게 아니라, **AI 제안을 거부할 줄 아는 것**이 차별점이라고 생각한다.
+**Result**
 
-- 클린 아키텍처 이관 때 AI가 제안한 **generic Repository 추상화를 거부**했다. 도메인별로 핵심 동작이 너무 달랐다 (vote의 toggle/ownership ≠ report의 spatial 쿼리). 추상화의 우아함보다 SRP를 우선.
-- 어드민 기능을 한 파일에 몰아 만든 초기 AI 코드를 **도메인 책임별로 분해**(dashboard / user / report / log). 분해 후엔 PR 하나가 한 가지 책임만 건드리게 됐다.
+`1 + 2N Query → 2~3 Query`
 
-→ AI 시대에 인간이 더 잘해야 하는 건 **생성이 아니라 판단** — 받아들일지 거부할지.
+## Map Interaction & Rendering
 
----
+- 드래그·확대/축소는 즉시 재조회하지 않고 “이 지역 재검색” 전까지 dirty 상태만 유지
+- 회귀 테스트: 지도 조작 20회 동안 bounds 커밋 0회, 재검색 후 1회
+- 결정적 500개 입력에서 화면 안 80개만 렌더링하는 viewport culling 검증
+- 줌 단계에 따라 Kakao 클러스터·30m 근접 그룹·개별 마커를 분리
 
-## 결과
+## Load Testing
 
-- **공간 쿼리 성능 (Locust 부하 테스트, 강남 가중치 3배 skewness)**: 1차 측정에서 단일 워커 큐잉이 응답 시간을 평준화 → *진짜 병목은 DB가 아니라 백엔드 동시성*으로 진단. 셋업 교정 후 2차 측정(워커 4 / 20 users)에서 **V3 (PostGIS RPC)가 V1 (REST + Haversine) 대비 p50 −27%, p99 −9%, RPS +15%**. 양쪽 모두 실패율 0%. ([측정·진단·재측정 과정](./LOAD_TEST_RESULTS.md))
-- **리스트 응답**: 페이지당 쿼리 횟수 1+2N → 2~3회
-- **테스트 인프라**: ViewModel/Repository 라인 커버리지 80%+, 단계별 PR 머지 패턴 정착
+Locust 2.32.10으로 변경 전·후를 각각 3회 측정했습니다.
 
-## 다음 작업
+`4 workers · 동시 사용자 20명 · 90초 · 강남 80%/서울 20% bounds 1,000개 · 합성 데이터 10,006건`
 
-- DB 호출 구간 분리 계측 (현재 p50 ≈ 1s 중 클라우드 RTT 비중 분리)
-- 실사용자 트래픽 패턴 측정 (배포 후)
-- Branch coverage 도입
-- Realtime 적용 검토 (RLS·캐시 무효화 동작 복잡도 평가 필요)
+| 지표 | 변경 전 중앙값 | 변경 후 중앙값 | 변화 |
+| --- | ---: | ---: | ---: |
+| p50 | 8.8초 | 7.6초 | 13.6% 감소 |
+| p99 | 21초 | 16초 | 23.8% 감소 |
+| 평균 | 8.835초 | 7.614초 | 13.8% 감소 |
+| RPS | 2.09 | 2.40 | 15.0% 증가 |
+| 실패율 | 0% | 0% | 동일 |
 
-→ [Engineering Notes에서 더 깊은 의사결정 기록 보기](./ENGINEERING_NOTES.md)
+이 수치는 통제된 로컬 API·공유 Supabase 테스트 환경의 결과이며 운영 트래픽 SLA로 해석하지 않습니다. 원본 조건과 CSV는 [bounds benchmark report](../../backend/results/locust/BOUNDS_RPC_BENCHMARK_20260724.md)에 보존했습니다.

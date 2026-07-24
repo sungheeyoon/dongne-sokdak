@@ -1,5 +1,8 @@
 # Bounds Query Reinforcement Plan
 
+> **Snapshot** — 2026-07-24에 완료된 bounds 성능 보강 작업의 기록입니다.
+> 현재 동작은 `README.md`, `CONTEXT.md`, `docs/adr/`와 코드를 우선합니다.
+
 > **CRITICAL INSTRUCTIONS**: After completing each phase:
 > 1. ✅ Check off completed task checkboxes
 > 2. 🧪 Run all quality gate validation commands
