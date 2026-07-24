@@ -109,35 +109,49 @@ or description predicate.
 
 ### Concurrent API Result
 
-The optimized RPC was measured three times with the same workload shape:
-4 workers, 20 users, spawn rate 4/s, 90 seconds, and worker-partitioned
-deterministic bounds. Every run had a 0% failure rate.
+Both variants were measured three times with Locust 2.32.10 under the same
+workload: 4 workers, 20 users, spawn rate 4/s, 90 seconds, and
+worker-partitioned deterministic bounds.
 
-| Metric | Pre-inline baseline | Run 1 | Run 2 | Run 3 | Post-inline median | Change |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| p50 | 8,600 ms | 7,700 ms | 7,300 ms | 7,600 ms | 7,600 ms | -11.6% |
-| p99 | 21,000 ms | 19,000 ms | 16,000 ms | 16,000 ms | 16,000 ms | -23.8% |
-| Average | 8,813 ms | 7,995 ms | 7,339 ms | 7,614 ms | 7,614 ms | -13.6% |
-| RPS | 2.09 | 2.31 | 2.52 | 2.40 | 2.40 | +14.7% |
-| Failure rate | 0% | 0% | 0% | 0% | 0% | 0%p |
+The pre-inline variant ran through a temporary benchmark RPC with the old
+`report_matches_filters` calls. A local FastAPI entrypoint injected only the
+benchmark RPC name, so the active live RPC did not need to be reverted. Before
+measurement, the benchmark and active functions returned the same total
+(8,039), page size (100), and first item for the representative viewport. The
+temporary RPC was removed after all runs and its absence was verified.
+
+| Variant | Run | Requests | p50 | p99 | Average | RPS | Failures |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Pre-inline helper | 1 | 186 | 8,900 ms | 21,000 ms | 8,835 ms | 2.09 | 0 |
+| Pre-inline helper | 2 | 177 | 8,800 ms | 23,000 ms | 9,142 ms | 1.99 | 0 |
+| Pre-inline helper | 3 | 191 | 8,700 ms | 17,000 ms | 8,503 ms | 2.14 | 0 |
+| Post-inline | 1 | 206 | 7,700 ms | 19,000 ms | 7,995 ms | 2.31 | 0 |
+| Post-inline | 2 | 226 | 7,300 ms | 16,000 ms | 7,339 ms | 2.52 | 0 |
+| Post-inline | 3 | 214 | 7,600 ms | 16,000 ms | 7,614 ms | 2.40 | 0 |
+
+| Metric | Pre-inline 3-run median | Post-inline 3-run median | Change |
+| --- | ---: | ---: | ---: |
+| p50 | 8,800 ms | 7,600 ms | -13.6% |
+| p99 | 21,000 ms | 16,000 ms | -23.8% |
+| Average | 8,835 ms | 7,614 ms | -13.8% |
+| RPS | 2.09 | 2.40 | +15.0% |
+| Failure rate | 0% | 0% | 0%p |
 
 Raw follow-up data:
 
+- `bounds_filter_helper_run1_*`
+- `bounds_filter_helper_run2_*`
+- `bounds_filter_helper_run3_*`
 - `bounds_filter_inline_run1_*`
 - `bounds_filter_inline_run2_*`
 - `bounds_filter_inline_run3_*`
 
-The pre-inline column reuses the single `bounds_after_1rpc` run. The three
-post-inline runs used Locust 2.32.10, now pinned in `requirements-dev.txt`,
-while the earlier run did not record its Locust version. The SQL execution-plan
-comparison is controlled and repeatable, but the HTTP percentages should remain
-an engineering result rather than a portfolio claim until the pre-inline
-variant is also repeated three times with the same Locust version.
+This controlled local-API/shared-Supabase benchmark supports reporting the
+three-run median changes above. It used deterministic synthetic data and is not
+evidence of production traffic latency or an SLA.
 
 ## Remaining Investigation
 
-1. Repeat the pre-inline variant three times in an isolated benchmark
-   environment without switching the live RPC.
-2. Keep the pinned load-generator version in future benchmark metadata.
-3. Investigate the remaining 7-8 second saturation latency separately from the
+1. Keep the pinned load-generator version in future benchmark metadata.
+2. Investigate the remaining 7-8 second saturation latency separately from the
    now-fixed optional-filter function cost.

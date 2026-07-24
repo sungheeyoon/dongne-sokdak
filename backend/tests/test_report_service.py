@@ -289,6 +289,32 @@ async def test_bounds_fetches_page_and_total_count_in_one_rpc():
 
 
 @pytest.mark.asyncio
+async def test_bounds_uses_injected_rpc_name():
+    supabase = MagicMock()
+    supabase.rpc.return_value.execute.return_value = MagicMock(
+        data={"items": [], "total_count": 0}
+    )
+    service = ReportService(
+        supabase,
+        FakeSpatialReportCache(),
+        bounds_rpc_name="benchmark_get_reports_in_bounds_page_pre_inline",
+    )
+
+    await service.get_reports_in_bounds(**BOUNDS)
+
+    supabase.rpc.assert_called_once_with(
+        "benchmark_get_reports_in_bounds_page_pre_inline",
+        {
+            **BOUNDS,
+            "category_filter": None,
+            "search_query": None,
+            "result_offset": 0,
+            "result_limit": 100,
+        },
+    )
+
+
+@pytest.mark.asyncio
 async def test_create_report_invalidates_map_caches():
     service, supabase = make_service()
     supabase.table.return_value.insert.return_value.execute.return_value.data = [

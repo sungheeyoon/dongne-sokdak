@@ -90,9 +90,16 @@ def enrich_report_data(report: Dict[str, Any]) -> Dict[str, Any]:
 class ReportService:
     """제보 CRUD + 지도 조회(Map Query). 캐시 무효화 정책은 ADR-0001, 주입 관용구는 ADR-0002."""
 
-    def __init__(self, supabase: Client, cache: SpatialReportCache) -> None:
+    def __init__(
+        self,
+        supabase: Client,
+        cache: SpatialReportCache,
+        *,
+        bounds_rpc_name: str = "get_reports_in_bounds_page",
+    ) -> None:
         self._supabase = supabase
         self._cache = cache
+        self._bounds_rpc_name = bounds_rpc_name
 
     @property
     def cache(self) -> SpatialReportCache:
@@ -309,7 +316,7 @@ class ReportService:
 
         offset = (page - 1) * limit
         response = self._supabase.rpc(
-            "get_reports_in_bounds_page", query_params.for_get(offset, limit)
+            self._bounds_rpc_name, query_params.for_get(offset, limit)
         ).execute()
         payload = response.data or {}
         bounded_reports = payload.get("items") or []
