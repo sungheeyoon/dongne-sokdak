@@ -10,7 +10,7 @@
 >
 > ⛔ DO NOT skip quality gates or proceed with failing checks
 
-- Status: Measured — concurrent performance acceptance not met
+- Status: Optimized and measured — repeated baseline still required for portfolio claim
 - Created: 2026-07-24
 - Last Updated: 2026-07-24
 - Scope: 현재 프론트엔드가 사용하는 `bounds` 조회 경로의 테스트·측정·작은 성능 개선
@@ -193,6 +193,8 @@ npx.cmd tsc --noEmit
 - [x] Live PostGIS migration applied
 - [x] Live RPC and deployed API smoke tests complete
 - [x] 4-worker bounds benchmark complete
+- [x] Live execution plan captured and optional-filter bottleneck identified
+- [x] Inline-filter migration applied and three post-change runs completed
 - [ ] All quality gates complete
 
 ## Notes & Learnings
@@ -205,4 +207,9 @@ npx.cmd tsc --noEmit
 - 실측 시점 전체 reports는 10,006건이었다.
 - 4 workers / 20 users / 90초 / 고유 bounds 조건에서 2 RPC 대비 1 RPC 결과는 p50 -1.1%, p99 +10.5%, RPS -1.9%, 실패율 0%였다.
 - 저부하 직접 RPC 15회 교차 측정에서는 p50 -44.1%, p90 -18.9%였지만 사용자 API 부하 성능 수치로 사용하지 않는다.
-- 동시 부하 개선을 입증하지 못했으므로 마지막 성능 품질 게이트는 보류한다. 상세 근거는 `backend/results/locust/BOUNDS_RPC_BENCHMARK_20260724.md`에 기록했다.
+- 최초 `2 RPC → 1 RPC` 비교만으로는 동시 부하 개선을 입증하지 못해 성능 품질 게이트를 보류했고, 이후 실행계획 기반 필터 인라인 후속 측정을 진행했다.
+- 실행계획에서 `report_matches_filters`가 공간 후보 8,039건마다 호출되어 count 55.8ms를 사용했고, 동등한 인라인 술어는 6.6ms였다.
+- 전체 SQL 3회 중앙값은 125.8ms에서 16.0ms로 87.3% 감소했다.
+- 필터 인라인 적용 후 3회 Locust 중앙값은 p50 7.6초, p99 16초, RPS 2.40, 실패율 0%였다. 단일 pre-inline 기준선 대비 각각 -11.6%, -23.8%, +14.7%다.
+- 운영 RPC의 category/search smoke 검증에서 반환된 모든 항목이 요청 필터를 충족했다.
+- 이전 기준선은 1회이며 Locust 버전을 기록하지 않았으므로 HTTP 변화율은 아직 포트폴리오 수치로 확정하지 않는다. 동일 버전 pre-inline 3회 반복이 남았다.

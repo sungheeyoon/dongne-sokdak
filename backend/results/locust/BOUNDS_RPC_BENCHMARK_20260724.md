@@ -7,7 +7,8 @@ sequential database RPCs (`count` + `page`) to one combined RPC
 (`items` + `total_count`).
 
 This benchmark does **not** compare Python distance calculation with PostGIS.
-It only evaluates the later `2 RPC → 1 RPC` change.
+It starts with the later `2 RPC → 1 RPC` change and then records the execution
+plan investigation and optional-filter inlining follow-up.
 
 ## Environment
 
@@ -78,9 +79,65 @@ presented as the concurrent-load improvement.
   a production performance percentage until the SQL execution plan and
   aggregation cost are optimized and remeasured.
 
-## Next Investigation
+## Follow-up: Optional Filter Inlining
 
-1. Capture `EXPLAIN (ANALYZE, BUFFERS)` for the count, page, and combined query.
-2. Check whether vote/comment correlated aggregates dominate page execution.
-3. Test a pre-aggregated join or maintained counter strategy.
-4. Repeat at least three runs per variant and report median-of-runs.
+The first benchmark showed that removing one network round trip was not enough
+under concurrent load. A live `EXPLAIN (ANALYZE, BUFFERS)` then isolated the
+database work using a representative Gangnam viewport containing 8,039 of
+10,006 reports.
+
+Votes and comments were ruled out as the current bottleneck: the live dataset
+contained only 2 votes and 0 comments, and both `report_id` indexes existed.
+The GiST index found the 8,039 spatial candidates in about 1 ms. Most of the
+count time was spent invoking the shared optional-filter function once per
+candidate, even when category and search were both `NULL`.
+
+| Database measurement | Shared helper | Inline predicates | Change |
+| --- | ---: | ---: | ---: |
+| Count query | 55.8 ms | 6.6 ms | -88.2% |
+| Combined SQL, 3-run median | 125.8 ms | 16.0 ms | -87.3% |
+
+Migration `20260724_optimize_bounds_filter_inlining.sql` keeps the spatial
+predicate unchanged and inlines the category/search predicates inside the
+active `get_reports_in_bounds_page` RPC. This lets PostgreSQL remove inactive
+filters and choose a plan based on the actual bounds selectivity.
+
+Post-migration smoke checks also exercised both optional filters against live
+data. The category response returned 100/100 `NOISE` items, and the generated
+search term returned 137 matches with every returned item satisfying the title
+or description predicate.
+
+### Concurrent API Result
+
+The optimized RPC was measured three times with the same workload shape:
+4 workers, 20 users, spawn rate 4/s, 90 seconds, and worker-partitioned
+deterministic bounds. Every run had a 0% failure rate.
+
+| Metric | Pre-inline baseline | Run 1 | Run 2 | Run 3 | Post-inline median | Change |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| p50 | 8,600 ms | 7,700 ms | 7,300 ms | 7,600 ms | 7,600 ms | -11.6% |
+| p99 | 21,000 ms | 19,000 ms | 16,000 ms | 16,000 ms | 16,000 ms | -23.8% |
+| Average | 8,813 ms | 7,995 ms | 7,339 ms | 7,614 ms | 7,614 ms | -13.6% |
+| RPS | 2.09 | 2.31 | 2.52 | 2.40 | 2.40 | +14.7% |
+| Failure rate | 0% | 0% | 0% | 0% | 0% | 0%p |
+
+Raw follow-up data:
+
+- `bounds_filter_inline_run1_*`
+- `bounds_filter_inline_run2_*`
+- `bounds_filter_inline_run3_*`
+
+The pre-inline column reuses the single `bounds_after_1rpc` run. The three
+post-inline runs used Locust 2.32.10, now pinned in `requirements-dev.txt`,
+while the earlier run did not record its Locust version. The SQL execution-plan
+comparison is controlled and repeatable, but the HTTP percentages should remain
+an engineering result rather than a portfolio claim until the pre-inline
+variant is also repeated three times with the same Locust version.
+
+## Remaining Investigation
+
+1. Repeat the pre-inline variant three times in an isolated benchmark
+   environment without switching the live RPC.
+2. Keep the pinned load-generator version in future benchmark metadata.
+3. Investigate the remaining 7-8 second saturation latency separately from the
+   now-fixed optional-filter function cost.
