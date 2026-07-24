@@ -10,7 +10,7 @@
 >
 > ⛔ DO NOT skip quality gates or proceed with failing checks
 
-- Status: Implemented — live PostGIS migration/benchmark pending
+- Status: Measured — concurrent performance acceptance not met
 - Created: 2026-07-24
 - Last Updated: 2026-07-24
 - Scope: 현재 프론트엔드가 사용하는 `bounds` 조회 경로의 테스트·측정·작은 성능 개선
@@ -190,6 +190,9 @@ npx.cmd tsc --noEmit
 - [x] Phase 1 complete
 - [x] Phase 2 complete
 - [x] Phase 3 complete
+- [x] Live PostGIS migration applied
+- [x] Live RPC and deployed API smoke tests complete
+- [x] 4-worker bounds benchmark complete
 - [ ] All quality gates complete
 
 ## Notes & Learnings
@@ -198,5 +201,8 @@ npx.cmd tsc --noEmit
 - 이번 작업의 기준 경로는 프론트엔드가 현재 사용하는 `bounds`이며 `nearby`는 후속 정리 대상으로 남긴다.
 - RED 확인: 신규 단일 RPC 테스트만 실패하고 기존 서비스 테스트 31개는 통과했다.
 - GREEN 확인: 백엔드 146개, 프론트엔드 165개 테스트와 lint, typecheck, production build가 통과했다.
-- 기존 2회 RPC를 1회로 줄인 사실은 테스트로 검증했지만, 신규 migration을 운영 DB에 적용하지 않았으므로 새 p50/p99/RPS 수치는 아직 주장하지 않는다.
-- 운영 DB migration 적용, 동일 시드 데이터 부하 테스트, SQL 실행 계획 확인 후 마지막 품질 게이트를 완료한다.
+- 2026-07-24 migration 적용 완료. 신규 RPC와 배포 API 모두 `total_count=9,298`로 응답했다.
+- 실측 시점 전체 reports는 10,006건이었다.
+- 4 workers / 20 users / 90초 / 고유 bounds 조건에서 2 RPC 대비 1 RPC 결과는 p50 -1.1%, p99 +10.5%, RPS -1.9%, 실패율 0%였다.
+- 저부하 직접 RPC 15회 교차 측정에서는 p50 -44.1%, p90 -18.9%였지만 사용자 API 부하 성능 수치로 사용하지 않는다.
+- 동시 부하 개선을 입증하지 못했으므로 마지막 성능 품질 게이트는 보류한다. 상세 근거는 `backend/results/locust/BOUNDS_RPC_BENCHMARK_20260724.md`에 기록했다.
