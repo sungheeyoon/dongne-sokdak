@@ -105,5 +105,5 @@ Store structure is critical. DO NOT mix domain data globally.
 
 - Tests live at `frontend/__tests__/` mirroring the `src/` tree (e.g. `__tests__/features/admin/useAdminViewModel.test.tsx`).
 - Stack: **Vitest + @testing-library/react + jsdom**. ViewModels mock the repository interface with `vi.fn()`; repositories mock `fetch`.
-- `npm run test:coverage -- --run` produces a coverage report for inspection. CI currently gates lint, typecheck, and the full test suite; it does not enforce a numeric coverage threshold.
-- Bundle size is tracked via `@next/bundle-analyzer`: `ANALYZE=true npm run build -- --webpack` produces `.next/analyze/*.html`.
+- `pnpm test:coverage -- --run` produces a coverage report for inspection. CI currently gates lint, typecheck, and the full test suite; it does not enforce a numeric coverage threshold.
+- Bundle size is tracked via `@next/bundle-analyzer`: `ANALYZE=true pnpm build -- --webpack` produces `.next/analyze/*.html`.
