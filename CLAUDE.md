@@ -56,15 +56,35 @@ backend/app/
 ## Commands
 
 ### Frontend (`cd frontend`)
+
+Package manager is **pnpm** — the version is pinned by the `packageManager` field in
+`frontend/package.json` and CI reads that same field. Do not use `npm`/`yarn` here:
+they ignore `pnpm-lock.yaml`, so lockfile drift would go undetected locally and fail
+CI's `pnpm install --frozen-lockfile`.
+
 ```bash
-npm run dev                       # next dev
-npm run build                     # next build
-npm run lint                      # eslint . (flat config)
-npm run tsc:check                 # tsc --noEmit
-npm test -- --run                 # vitest one-shot
-npm run test:coverage -- --run    # vitest with v8 coverage
-ANALYZE=true npm run build -- --webpack   # bundle analyzer → .next/analyze/*.html
+pnpm install                      # honours pnpm-lock.yaml
+pnpm dev                          # next dev
+pnpm build                        # next build
+pnpm lint                         # eslint . (flat config)
+pnpm tsc:check                    # tsc --noEmit
+pnpm test -- --run                # vitest one-shot
+pnpm test:coverage -- --run       # vitest with v8 coverage
+ANALYZE=true pnpm build -- --webpack   # bundle analyzer → .next/analyze/*.html
 ```
+
+After changing dependencies in `package.json`, regenerate the lockfile in the same
+commit (`pnpm install`, or `pnpm install --lockfile-only`) — CI fails otherwise.
+
+Dependencies allowed to run install scripts are listed under `allowBuilds` in
+`frontend/pnpm-workspace.yaml` (currently `sharp`, `unrs-resolver`). pnpm blocks build
+scripts by default and **exits non-zero** when any are unapproved, so a new dependency
+with a postinstall step must be added there — run `pnpm approve-builds`, which writes
+this file. Note pnpm 11 does *not* read `pnpm.onlyBuiltDependencies` from
+`package.json`; only `pnpm-workspace.yaml` takes effect.
+
+`tsc:check` includes `.next/types/**` — a stale `.next/` from a deleted route can fail
+it locally while CI (which has no `.next/`) passes. `rm -rf .next` if that happens.
 
 ### Backend (`cd backend`)
 ```bash
@@ -77,7 +97,7 @@ uvicorn app.main:app --reload
 
 - **Frontend**: tests live in `frontend/__tests__/` mirroring `src/`. Vitest + RTL + jsdom. Repositories mock `fetch`; ViewModels mock the repository interface with `vi.fn()`.
 - **Backend**: tests live in `backend/tests/` named `test_<module>.py`. pytest + pytest-mock; admin services have dedicated split test files.
-- **Coverage**: `npm run test:coverage -- --run` is available for inspection. CI currently gates lint, typecheck, and tests; it does not enforce a numeric coverage threshold.
+- **Coverage**: `pnpm test:coverage -- --run` is available for inspection. CI currently gates lint, typecheck, and tests; it does not enforce a numeric coverage threshold.
 
 ## Conventions
 

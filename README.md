@@ -88,10 +88,10 @@ backend/app/
 ## 실행과 검증
 
 ```bash
-# Frontend
+# Frontend (pnpm — 버전은 package.json의 packageManager 필드로 고정)
 cd frontend
-npm ci
-npm run dev
+pnpm install --frozen-lockfile
+pnpm dev
 
 # Backend
 cd backend
@@ -103,9 +103,9 @@ uvicorn app.main:app --reload
 ```bash
 # Frontend quality gate
 cd frontend
-npm run lint
-npm run tsc:check
-npm test -- --run
+pnpm lint
+pnpm tsc:check
+pnpm test -- --run
 
 # Backend quality gate
 cd backend
