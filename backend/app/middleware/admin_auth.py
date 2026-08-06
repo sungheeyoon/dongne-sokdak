@@ -3,6 +3,7 @@ from app.core.security import get_current_user
 from app.db.supabase_client import supabase
 from typing import Optional, Dict, Any
 import uuid
+from app.utils.blocking_db import execute
 
 
 async def get_admin_user(
@@ -22,7 +23,7 @@ async def get_admin_user(
     
     try:
         # Supabase로 사용자 프로필 조회
-        response = supabase.table("profiles").select("*").eq("id", current_user_id).single().execute()
+        response = await execute(supabase.table("profiles").select("*").eq("id", current_user_id).single())
         
         if not response.data:
             # Profile not found
@@ -73,7 +74,7 @@ async def get_super_admin_user(
     
     try:
         # Supabase로 사용자 프로필 조회
-        response = supabase.table("profiles").select("*").eq("id", current_user_id).single().execute()
+        response = await execute(supabase.table("profiles").select("*").eq("id", current_user_id).single())
         
         if not response.data:
             raise HTTPException(
@@ -136,7 +137,7 @@ async def log_admin_activity(
             "user_agent": user_agent
         }
         
-        supabase.table("admin_activity_logs").insert(log_data).execute()
+        await execute(supabase.table("admin_activity_logs").insert(log_data))
         # Admin activity logged
         
     except Exception as e:

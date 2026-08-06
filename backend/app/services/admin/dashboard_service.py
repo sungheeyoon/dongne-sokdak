@@ -3,6 +3,7 @@ from supabase import Client
 from fastapi import HTTPException, status
 from app.core.logging import get_logger
 from app.db.supabase_client import supabase as default_supabase
+from app.utils.blocking_db import execute
 
 logger = get_logger(__name__)
 
@@ -16,7 +17,7 @@ class AdminDashboardService:
     async def get_dashboard_stats(self) -> Dict[str, Any]:
         """관리자 대시보드 통계 정보 조회 (RPC 최적화)"""
         try:
-            response = self._supabase.rpc("get_admin_dashboard_stats").execute()
+            response = await execute(self._supabase.rpc("get_admin_dashboard_stats"))
             if not response.data:
                 return {}
 

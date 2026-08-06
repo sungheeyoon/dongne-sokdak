@@ -109,7 +109,8 @@ uvicorn app.main:app --reload
 ## Reference docs
 - `docs/README.md` — current-document index and freshness rules
 - `docs/FRONTEND_CLEAN_ARCHITECTURE.md` — full layer rules and feature mapping
-- `backend/results/locust/BOUNDS_RPC_BENCHMARK_20260724.md` — active bounds benchmark evidence
+- `backend/results/locust/BOUNDS_EVENT_LOOP_BENCHMARK_20260804.md` — active API-level bounds benchmark evidence
+- `backend/results/locust/BOUNDS_RPC_BENCHMARK_20260724.md` — bounds SQL optimisation evidence; its API-level numbers are superseded by the above
 - `docs/plans/archive/` — completed plans; historical only
 
 ## Agent skills

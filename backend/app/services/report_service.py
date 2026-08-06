@@ -8,6 +8,7 @@ from app.utils.wkb_parser import convert_wkb_to_location
 from app.core.logging import get_logger
 from app.db.supabase_client import supabase as default_supabase
 import math
+from app.utils.blocking_db import execute
 
 logger = get_logger(__name__)
 
@@ -106,17 +107,16 @@ class ReportService:
         """지도 조회 캐시. admin 기본 인스턴스가 무효화 경로를 공유하기 위한 composition seam."""
         return self._cache
 
-    def _apply_user_voted(self, items: List[Dict[str, Any]], current_user_id: str) -> List[Dict[str, Any]]:
+    async def _apply_user_voted(self, items: List[Dict[str, Any]], current_user_id: str) -> List[Dict[str, Any]]:
         """Helper to batch-apply user_voted status to a list of reports."""
         if not items:
             return items
 
         report_ids = [r["id"] for r in items]
-        votes_res = self._supabase.table("votes") \
+        votes_res = await execute(self._supabase.table("votes") \
             .select("report_id") \
             .eq("user_id", current_user_id) \
-            .in_("report_id", report_ids) \
-            .execute()
+            .in_("report_id", report_ids))
 
         voted_ids = {v["report_id"] for v in votes_res.data}
 
@@ -125,14 +125,14 @@ class ReportService:
 
         return items
 
-    def _overlay_user_voted(self, result: Dict[str, Any], current_user_id: Optional[str]) -> Dict[str, Any]:
+    async def _overlay_user_voted(self, result: Dict[str, Any], current_user_id: Optional[str]) -> Dict[str, Any]:
         """Return a copy of a cached anonymous result with user_voted applied on top."""
         if not (current_user_id and result["items"]):
             return result
 
         overlaid = result.copy()
         overlaid["items"] = [r.copy() for r in result["items"]]
-        self._apply_user_voted(overlaid["items"], current_user_id)
+        await self._apply_user_voted(overlaid["items"], current_user_id)
         return overlaid
 
     async def list_reports(
@@ -153,7 +153,7 @@ class ReportService:
             "user_id_filter": user_id,
             "search_query": search
         }
-        count_res = self._supabase.rpc("count_reports_paginated", count_params).execute()
+        count_res = await execute(self._supabase.rpc("count_reports_paginated", count_params))
         total_count = count_res.data or 0
 
         # 2. Fetch Page
@@ -165,18 +165,17 @@ class ReportService:
             "result_page": page,
             "result_limit": limit
         }
-        response = self._supabase.rpc("get_reports_paginated", rpc_params).execute()
+        response = await execute(self._supabase.rpc("get_reports_paginated", rpc_params))
         reports = response.data or []
 
         # 3. Batch lookup user_voted if authenticated
         user_voted_ids = set()
         if current_user_id and reports:
             report_ids = [r["id"] for r in reports]
-            votes_res = self._supabase.table("votes") \
+            votes_res = await execute(self._supabase.table("votes") \
                 .select("report_id") \
                 .eq("user_id", current_user_id) \
-                .in_("report_id", report_ids) \
-                .execute()
+                .in_("report_id", report_ids))
             user_voted_ids = {v["report_id"] for v in votes_res.data}
 
         # 4. Enrich and Merge
@@ -214,7 +213,7 @@ class ReportService:
             "status": ReportStatus.OPEN.value
         }
 
-        response = self._supabase.table("reports").insert(report_data).execute()
+        response = await execute(self._supabase.table("reports").insert(report_data))
 
         if not response.data:
             return None
@@ -247,7 +246,7 @@ class ReportService:
 
         cached = self._cache.get_nearby(**cache_params)
         if cached is not None:
-            return self._overlay_user_voted(cached, current_user_id)
+            return await self._overlay_user_voted(cached, current_user_id)
 
         radius_meters = radius_km * 1000
         query_params = RadiusQueryParams(
@@ -259,14 +258,14 @@ class ReportService:
         )
 
         # 1. Count Total
-        count_res = self._supabase.rpc("count_reports_within_radius", query_params.for_count()).execute()
+        count_res = await execute(self._supabase.rpc("count_reports_within_radius", query_params.for_count()))
         total_count = count_res.data if count_res.data is not None else 0
 
         # 2. Fetch Page
         offset = (page - 1) * limit
-        response = self._supabase.rpc(
+        response = await execute(self._supabase.rpc(
             "get_reports_within_radius", query_params.for_get(offset, limit)
-        ).execute()
+        ))
         nearby_reports = response.data or []
 
         # 3. Enrich and Merge
@@ -286,7 +285,7 @@ class ReportService:
 
         self._cache.put_nearby(**cache_params, value=result)
 
-        return self._overlay_user_voted(result, current_user_id)
+        return await self._overlay_user_voted(result, current_user_id)
 
     async def get_reports_in_bounds(
         self,
@@ -306,7 +305,7 @@ class ReportService:
 
         cached = self._cache.get_bounds(**cache_params)
         if cached is not None:
-            return self._overlay_user_voted(cached, current_user_id)
+            return await self._overlay_user_voted(cached, current_user_id)
 
         query_params = BoundsQueryParams(
             north=north, south=south, east=east, west=west,
@@ -315,9 +314,9 @@ class ReportService:
         )
 
         offset = (page - 1) * limit
-        response = self._supabase.rpc(
+        response = await execute(self._supabase.rpc(
             self._bounds_rpc_name, query_params.for_get(offset, limit)
-        ).execute()
+        ))
         payload = response.data or {}
         bounded_reports = payload.get("items") or []
         total_count = payload.get("total_count") or 0
@@ -337,12 +336,12 @@ class ReportService:
 
         self._cache.put_bounds(**cache_params, value=result)
 
-        return self._overlay_user_voted(result, current_user_id)
+        return await self._overlay_user_voted(result, current_user_id)
 
     async def get_report_by_id(self, report_id: str, current_user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Get a single report by ID."""
         # Use select with count to get vote/comment counts in one go
-        res = self._supabase.table("reports").select("*, votes(count), comments(count)").eq("id", report_id).execute()
+        res = await execute(self._supabase.table("reports").select("*, votes(count), comments(count)").eq("id", report_id))
         if not res.data:
             return None
 
@@ -362,7 +361,7 @@ class ReportService:
         report = enrich_report_data(report)
 
         if current_user_id:
-            votes_res = self._supabase.table("votes").select("id").eq("report_id", report_id).eq("user_id", current_user_id).execute()
+            votes_res = await execute(self._supabase.table("votes").select("id").eq("report_id", report_id).eq("user_id", current_user_id))
             report["user_voted"] = len(votes_res.data) > 0
 
         return report
@@ -375,14 +374,14 @@ class ReportService:
     ) -> Optional[Dict[str, Any]]:
         """Update a report's data."""
         # Ownership check
-        existing = self._supabase.table("reports").select("user_id").eq("id", report_id).single().execute()
+        existing = await execute(self._supabase.table("reports").select("user_id").eq("id", report_id).single())
         if not existing.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
 
         if existing.data["user_id"] != current_user_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this report")
 
-        res = self._supabase.table("reports").update(update_data).eq("id", report_id).execute()
+        res = await execute(self._supabase.table("reports").update(update_data).eq("id", report_id))
         if not res.data:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Update failed")
 
@@ -396,14 +395,14 @@ class ReportService:
         current_user_id: str
     ) -> None:
         """Delete a report."""
-        existing = self._supabase.table("reports").select("user_id").eq("id", report_id).single().execute()
+        existing = await execute(self._supabase.table("reports").select("user_id").eq("id", report_id).single())
         if not existing.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
 
         if existing.data["user_id"] != current_user_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this report")
 
-        self._supabase.table("reports").delete().eq("id", report_id).execute()
+        await execute(self._supabase.table("reports").delete().eq("id", report_id))
 
         self._cache.invalidate_all()
 
@@ -420,7 +419,7 @@ class ReportService:
         if category:
             query = query.eq("category", category)
 
-        res = query.limit(2000).execute()
+        res = await execute(query.limit(2000))
         all_reports = res.data
 
         radius_meters = radius_km * 1000

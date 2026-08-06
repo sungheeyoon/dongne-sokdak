@@ -2,6 +2,7 @@ from typing import List, Optional, Dict, Any
 from supabase import Client
 from app.core.logging import get_logger
 from app.db.supabase_client import supabase as default_supabase
+from app.utils.blocking_db import execute
 
 logger = get_logger(__name__)
 
@@ -24,7 +25,7 @@ class AdminLogService:
             query = self._supabase.table("admin_activity_logs").select("*, admin:admin_id(nickname)")
             if action: query = query.eq("action", action)
             if admin_id: query = query.eq("admin_id", admin_id)
-            response = query.order("created_at", desc=True).range(skip, skip + limit - 1).execute()
+            response = await execute(query.order("created_at", desc=True).range(skip, skip + limit - 1))
             return response.data or []
         except Exception as e:
             logger.error(f"Error fetching admin activity logs: {e}")

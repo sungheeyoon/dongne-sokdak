@@ -34,24 +34,30 @@ sequenceDiagram
 
 ## 주요 엔지니어링
 
-### 1. 실행계획으로 찾은 bounds 쿼리 병목
+### 1. 측정층을 구분해 찾은 bounds 조회 병목
 
-페이지와 전체 개수를 각각 조회하던 두 RPC를 하나로 합쳤지만, 20명 동시 부하에서는 p50과 처리량이 개선되지 않았습니다. 네트워크 왕복 횟수만 보고 성능 개선으로 결론 내리지 않고 `EXPLAIN (ANALYZE, BUFFERS)`로 DB 내부를 다시 측정했습니다.
+`EXPLAIN (ANALYZE, BUFFERS)`로 DB 내부를 측정해, 대표 강남 bounds의 공간 후보마다 선택 필터 함수가 호출되는 비용을 찾았습니다. 활성 RPC에 category/search 술어를 인라인해 PostgreSQL이 `NULL` 필터를 제거하고 선택도에 맞는 실행계획을 세우도록 바꿨습니다.
 
-대표 강남 bounds의 공간 후보 8,039건마다 선택 필터 함수가 호출되는 것이 병목이었습니다. 활성 RPC에 category/search 술어를 인라인해 PostgreSQL이 `NULL` 필터를 제거하고 선택도에 맞는 실행계획을 세우도록 바꿨습니다.
-
-| 측정 | 변경 전 | 변경 후 | 결과 |
+| DB 측정 (2026-07-24) | 변경 전 | 변경 후 | 결과 |
 | --- | ---: | ---: | ---: |
 | count SQL | 55.8ms | 6.6ms | 88.2% 감소 |
 | 전체 SQL 3회 중앙값 | 125.8ms | 16.0ms | 87.3% 감소 |
-| API p50 3회 중앙값 | 8.8초 | 7.6초 | 13.6% 감소 |
-| API p99 3회 중앙값 | 21초 | 16초 | 23.8% 감소 |
-| 처리량 | 2.09 RPS | 2.40 RPS | 15.0% 증가 |
+
+그런데 대표 SQL이 16ms인데도 20명 동시 부하의 API p50은 7.6초였습니다. 서로 다른 측정층이라 직접 비교할 수는 없지만, DB 밖을 다시 조사할 근거는 됐습니다. 폐쇄형 부하에 Little's Law를 적용해 대기열 가설을 세우고, 소스 점검·최소 재현·helper 전후 A/B로 원인을 확인했습니다. 비동기 서비스 안에서 동기 Supabase 호출이 이벤트 루프를 점유해, 한 프로세스의 동시 요청이 직렬화되고 있었습니다.
+
+DB 호출을 스레드 풀로 분리한 뒤 같은 조건으로 재측정했습니다.
+
+| API 측정 (2026-08-04) | 변경 전 | 변경 후 | 결과 |
+| --- | ---: | ---: | ---: |
+| p50 3회 중앙값 | 8.7초 | 0.43초 | 95.1% 감소 |
+| p99 3회 중앙값 | 13초 | 1.2초 | 90.8% 감소 |
+| 처리량 | 2.27 RPS | 28.70 RPS | 12.6배 |
 | 실패율 | 0% | 0% | 동일 |
 
-API 측정은 Locust 2.32.10, 4 workers, 동시 사용자 20명, 90초, 강남 80%/서울 20%의 결정적 bounds 1,000개와 합성 데이터 10,006건으로 전후 각 3회 수행했습니다. 이는 통제된 테스트 환경의 수치이며 운영 트래픽 SLA가 아닙니다.
+API 측정은 Locust 2.32.10, 4 workers, 동시 사용자 20명, 90초, 결정적 bounds 1,000개로 전후 각 3회 수행했습니다. 로컬 단일 프로세스와 공유 Supabase, 합성 데이터를 사용한 통제 실험이며 운영 트래픽 SLA가 아닙니다.
 
-- [상세 측정 보고서](backend/results/locust/BOUNDS_RPC_BENCHMARK_20260724.md)
+- [API 동시 부하 측정 보고서](backend/results/locust/BOUNDS_EVENT_LOOP_BENCHMARK_20260804.md)
+- [SQL 최적화 측정 보고서](backend/results/locust/BOUNDS_RPC_BENCHMARK_20260724.md)
 - [ADR-0010: 활성 bounds 필터 인라인](docs/adr/0010-inline-active-bounds-filters.md)
 
 ### 2. 목록 N+1 제거
@@ -120,7 +126,7 @@ python -m pytest -q
 - [도메인 용어](CONTEXT.md)
 - [프론트엔드 아키텍처](docs/FRONTEND_CLEAN_ARCHITECTURE.md)
 - [설계 결정 기록](docs/adr/)
-- [포트폴리오 요약](docs/portfolio/PORTFOLIO.md)
-- [상세 엔지니어링 노트](docs/portfolio/ENGINEERING_NOTES.md)
+- [bounds API 동시 부하 측정](backend/results/locust/BOUNDS_EVENT_LOOP_BENCHMARK_20260804.md)
+- [bounds SQL 최적화 측정](backend/results/locust/BOUNDS_RPC_BENCHMARK_20260724.md)
 
 본 저장소는 포트폴리오 공개용이며 별도 라이선스를 부여하지 않습니다.

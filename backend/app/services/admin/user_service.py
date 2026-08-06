@@ -6,6 +6,7 @@ from app.middleware.admin_auth import log_admin_activity as default_log_admin_ac
 from app.core.logging import get_logger
 from app.db.supabase_client import supabase as default_supabase
 from app.services.admin.bulk_utils import record_bulk_success, AdminActionContext
+from app.utils.blocking_db import execute
 
 logger = get_logger(__name__)
 
@@ -23,7 +24,7 @@ class AdminUserService:
 
     async def get_my_info(self, user_id: str) -> Optional[Dict[str, Any]]:
         """현재 사용자 정보 조회 (관리자 여부 확인용)"""
-        response = self._supabase.table("profiles").select("*").eq("id", user_id).single().execute()
+        response = await execute(self._supabase.table("profiles").select("*").eq("id", user_id).single())
         if not response.data:
             return None
 
@@ -59,7 +60,7 @@ class AdminUserService:
                 # PostgreSQL ILIKE for search
                 query = query.or_(f"nickname.ilike.%{search}%,email.ilike.%{search}%")
 
-            response = query.order("created_at", desc=True).range(skip, skip + limit - 1).execute()
+            response = await execute(query.order("created_at", desc=True).range(skip, skip + limit - 1))
             return response.data or []
         except Exception as e:
             logger.error(f"Error fetching users: {e}")
@@ -76,7 +77,7 @@ class AdminUserService:
     ) -> Dict[str, Any]:
         """사용자 역할 변경"""
         try:
-            target_response = self._supabase.table("profiles").select("*").eq("id", user_id).single().execute()
+            target_response = await execute(self._supabase.table("profiles").select("*").eq("id", user_id).single())
             if not target_response.data:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="사용자를 찾을 수 없습니다")
 
@@ -86,10 +87,10 @@ class AdminUserService:
             if user_id == admin_id:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="자신의 역할은 변경할 수 없습니다")
 
-            update_response = self._supabase.table("profiles").update({
+            update_response = await execute(self._supabase.table("profiles").update({
                 "role": role,
                 "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", user_id).execute()
+            }).eq("id", user_id))
 
             if not update_response.data:
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="역할 변경에 실패했습니다")
@@ -130,7 +131,7 @@ class AdminUserService:
     ) -> Dict[str, Any]:
         """사용자 계정 활성화/비활성화"""
         try:
-            target_response = self._supabase.table("profiles").select("*").eq("id", user_id).single().execute()
+            target_response = await execute(self._supabase.table("profiles").select("*").eq("id", user_id).single())
             if not target_response.data:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="사용자를 찾을 수 없습니다")
 
@@ -146,10 +147,10 @@ class AdminUserService:
                 if target_role in ["admin", "moderator"] and admin_role != "admin":
                     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="관리자 계정은 최고관리자만 비활성화할 수 있습니다")
 
-            update_response = self._supabase.table("profiles").update({
+            update_response = await execute(self._supabase.table("profiles").update({
                 "is_active": is_active,
                 "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", user_id).execute()
+            }).eq("id", user_id))
 
             if not update_response.data:
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="계정 상태 변경에 실패했습니다")
@@ -204,7 +205,7 @@ class AdminUserService:
             if not valid_user_ids:
                 return {"success_count": 0, "error_count": 0, "results": results}
 
-            targets_res = self._supabase.table("profiles").select("*").in_("id", valid_user_ids).execute()
+            targets_res = await execute(self._supabase.table("profiles").select("*").in_("id", valid_user_ids))
             targets = {t["id"]: t for t in targets_res.data}
 
             ids_to_update = []
@@ -237,7 +238,7 @@ class AdminUserService:
                 return {"success_count": 0, "error_count": len(user_ids), "results": [{"user_id": uid, "status": "error", "message": f"지원하지 않는 액션입니다: {action}"} for uid in user_ids]}
 
             if ids_to_update:
-                self._supabase.table("profiles").update(update_payload).in_("id", ids_to_update).execute()
+                await execute(self._supabase.table("profiles").update(update_payload).in_("id", ids_to_update))
 
                 new_value = update_payload.get("is_active") or update_payload.get("role")
                 update_count, update_results = await record_bulk_success(
