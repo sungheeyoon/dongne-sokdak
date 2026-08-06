@@ -1,5 +1,14 @@
 # Bounds RPC Benchmark — 2026-07-24
 
+> **The API-level results in this report are superseded.** The `p50 / p99 / RPS`
+> comparisons below were measured against a server that serialised every request
+> on the event loop, so they record queueing rather than latency. See
+> [`BOUNDS_EVENT_LOOP_BENCHMARK_20260804.md`](./BOUNDS_EVENT_LOOP_BENCHMARK_20260804.md).
+>
+> The **database** measurements here — count `55.8 ms → 6.6 ms`, combined SQL
+> `125.8 ms → 16.0 ms` — were taken with `EXPLAIN (ANALYZE, BUFFERS)` and remain
+> valid.
+
 ## Purpose
 
 Measure the effect of changing the active `/api/v1/reports/bounds` path from two
