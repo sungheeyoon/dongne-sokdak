@@ -198,6 +198,36 @@ with the source inspection and minimal reproduction, the large reduction in
 concurrent latency supports the conclusion that most of the former 7–13 second
 response time was event-loop queueing.
 
+### Where the `12.6×` comes from
+
+The throughput ratio is not a free parameter. In a closed workload
+`X = N / (R + Z)`, so with `N` fixed at 20 the ratio between the two variants is
+fixed by their response times:
+
+```text
+                     X (RPS)   R (avg)   X × (R + Z)
+blocking                2.27    8.344 s        19.42
+threadpool             28.70    0.477 s        19.42
+
+measured ratio           28.70 / 2.27          = 12.63
+predicted (Rb+Z)/(Rt+Z)  8.544 / 0.677         = 12.63
+```
+
+Both variants recover `X × (R + Z) ≈ 19.4` against 20 configured users, so the
+two runs are internally consistent with the same closed loop.
+
+The useful bound is the ceiling. A fully serialized server processes one request
+at a time, so lifting that limit with 20 users can multiply throughput by at most
+**20×**. The measured `12.6×` sits below that ceiling, which is what remaining
+per-request and upstream cost would predict; a value above `20×` would have
+indicated a measurement error rather than a better result.
+
+This also fixes the correct reading of the number. Blocking service time
+`1 / X = 440 ms` is close to the 503 ms sequential diagnostic, and the threadpool
+average is 477 ms — individual requests did not get meaningfully faster. The
+`12.6×` is a queueing result: 20 users stopped waiting in line. It should not be
+described as the code becoming 12.6 times faster.
+
 Raw data:
 
 - Blocking: [`run1`](./bounds_blocking_run1_stats.csv),
