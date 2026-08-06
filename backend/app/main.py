@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.core.logging import setup_logging, log_api_request, log_api_response, get_logger
 from app.core.sentry import init_sentry
 from postgrest.types import CountMethod
+from app.utils.blocking_db import execute
 import time
 import uuid
 
@@ -91,11 +92,10 @@ async def health_check():
         from app.db.supabase_client import supabase
 
         try:
-            response = (
+            response = await execute(
                 supabase.table("profiles")
                 .select("*", count=CountMethod.exact)
                 .limit(1)
-                .execute()
             )
             db_status = "connected"
             db_count = response.count

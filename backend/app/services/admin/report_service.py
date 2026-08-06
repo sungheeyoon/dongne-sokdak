@@ -8,6 +8,7 @@ from app.db.supabase_client import supabase as default_supabase
 from app.services.report_service import report_service
 from app.services.spatial_report_cache import SpatialReportCache
 from app.services.admin.bulk_utils import record_bulk_success, AdminActionContext
+from app.utils.blocking_db import execute
 
 logger = get_logger(__name__)
 
@@ -45,7 +46,7 @@ class AdminReportService:
             if status_filter: query = query.eq("status", status_filter)
             if category: query = query.eq("category", category)
             if assigned_admin_id: query = query.eq("assigned_admin_id", assigned_admin_id)
-            response = query.order("created_at", desc=True).range(skip, skip + limit - 1).execute()
+            response = await execute(query.order("created_at", desc=True).range(skip, skip + limit - 1))
             return response.data or []
         except Exception as e:
             logger.error(f"Error fetching reports: {e}")
@@ -54,13 +55,13 @@ class AdminReportService:
     async def get_report_detail(self, report_id: str) -> Dict[str, Any]:
         """제보 상세 조회"""
         try:
-            response = self._supabase.table("reports").select("""
+            response = await execute(self._supabase.table("reports").select("""
                 *,
                 user:user_id(id, email),
                 profiles!reports_user_id_fkey(nickname),
                 votes(*),
                 comments(*, profiles!comments_user_id_fkey(nickname))
-            """).eq("id", report_id).single().execute()
+            """).eq("id", report_id).single())
 
             if not response.data:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="제보를 찾을 수 없습니다")
@@ -81,7 +82,7 @@ class AdminReportService:
     ) -> Dict[str, Any]:
         """제보 상태 변경"""
         try:
-            report_response = self._supabase.table("reports").select("*").eq("id", report_id).single().execute()
+            report_response = await execute(self._supabase.table("reports").select("*").eq("id", report_id).single())
             if not report_response.data:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="제보를 찾을 수 없습니다")
 
@@ -92,7 +93,7 @@ class AdminReportService:
             if admin_comment: update_data["admin_comment"] = admin_comment
             if assigned_admin_id: update_data["assigned_admin_id"] = assigned_admin_id
 
-            update_response = self._supabase.table("reports").update(update_data).eq("id", report_id).execute()
+            update_response = await execute(self._supabase.table("reports").update(update_data).eq("id", report_id))
             if not update_response.data:
                 raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="제보 상태 변경에 실패했습니다")
             self._cache.invalidate_all()
@@ -121,7 +122,7 @@ class AdminReportService:
     ) -> Dict[str, Any]:
         """제보에 대한 관리자 액션 수행 (delete/assign). 상태 변경은 update_report_status(PUT /status)가 유일 경로다."""
         try:
-            report_response = self._supabase.table("reports").select("*").eq("id", report_id).single().execute()
+            report_response = await execute(self._supabase.table("reports").select("*").eq("id", report_id).single())
             if not report_response.data:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="제보를 찾을 수 없습니다")
 
@@ -132,14 +133,14 @@ class AdminReportService:
             if action == "delete":
                 if admin_role != "admin":
                     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="제보 삭제는 최고관리자만 가능합니다")
-                self._supabase.table("reports").delete().eq("id", report_id).execute()
+                await execute(self._supabase.table("reports").delete().eq("id", report_id))
                 message = "제보가 삭제되었습니다"
                 action_detail = "REPORT_DELETE"
             elif action == "assign":
                 if not assigned_admin_id: raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="담당자 ID가 필요합니다")
                 update_data = {"assigned_admin_id": assigned_admin_id, "updated_at": datetime.now(timezone.utc).isoformat()}
                 if admin_comment: update_data["admin_comment"] = admin_comment
-                self._supabase.table("reports").update(update_data).eq("id", report_id).execute()
+                await execute(self._supabase.table("reports").update(update_data).eq("id", report_id))
                 message = "담당자가 배정되었습니다"
                 action_detail = "REPORT_ASSIGN"
             else:
@@ -180,7 +181,7 @@ class AdminReportService:
 
         try:
             context = AdminActionContext(admin_id, ip_address, user_agent)
-            targets_res = self._supabase.table("reports").select("*").in_("id", report_ids).execute()
+            targets_res = await execute(self._supabase.table("reports").select("*").in_("id", report_ids))
             targets = {t["id"]: t for t in targets_res.data}
 
             missing_ids = set(report_ids) - set(targets.keys())
@@ -218,7 +219,7 @@ class AdminReportService:
                 if admin_role != "admin":
                     return {"success_count": 0, "error_count": error_count + len(targets), "results": results + [{"report_id": rid, "status": "error", "message": "제보 삭제는 최고관리자만 가능합니다"} for rid in targets]}
 
-                self._supabase.table("reports").delete().in_("id", list(targets.keys())).execute()
+                await execute(self._supabase.table("reports").delete().in_("id", list(targets.keys())))
                 self._cache.invalidate_all()
                 delete_count, delete_results = await record_bulk_success(
                     list(targets.keys()), id_field="report_id", message="제보가 삭제되었습니다",
@@ -234,7 +235,7 @@ class AdminReportService:
                 return {"success_count": 0, "error_count": error_count + len(targets), "results": results + [{"report_id": rid, "status": "error", "message": f"지원하지 않는 액션입니다: {action}"} for rid in targets]}
 
             if ids_to_update:
-                self._supabase.table("reports").update(update_payload).in_("id", ids_to_update).execute()
+                await execute(self._supabase.table("reports").update(update_payload).in_("id", ids_to_update))
                 self._cache.invalidate_all()
 
                 update_count, update_results = await record_bulk_success(

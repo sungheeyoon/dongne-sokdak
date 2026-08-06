@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from supabase.client import Client
 from app.schemas.comment import CommentCreate, CommentUpdate
 from app.db.supabase_client import supabase as default_supabase
+from app.utils.blocking_db import execute
 
 
 class CommentService:
@@ -22,13 +23,13 @@ class CommentService:
     ) -> Dict[str, Any]:
         """Create a new comment or reply."""
         # Check if report exists
-        report_response = self._supabase.table("reports").select("id").eq("id", str(comment_in.report_id)).execute()
+        report_response = await execute(self._supabase.table("reports").select("id").eq("id", str(comment_in.report_id)))
         if not report_response.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
 
         # Handle reply logic
         if comment_in.parent_comment_id:
-            parent_response = self._supabase.table("comments").select("id, parent_comment_id").eq("id", str(comment_in.parent_comment_id)).execute()
+            parent_response = await execute(self._supabase.table("comments").select("id, parent_comment_id").eq("id", str(comment_in.parent_comment_id)))
             if not parent_response.data:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent comment not found")
 
@@ -43,14 +44,14 @@ class CommentService:
             "parent_comment_id": str(comment_in.parent_comment_id) if comment_in.parent_comment_id else None
         }
 
-        response = self._supabase.table("comments").insert(comment_data).execute()
+        response = await execute(self._supabase.table("comments").insert(comment_data))
         if not response.data:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to create comment")
 
         comment = response.data[0]
 
         # Fetch user info
-        profile_response = self._supabase.table("profiles").select("nickname, avatar_url").eq("id", current_user_id).execute()
+        profile_response = await execute(self._supabase.table("profiles").select("nickname, avatar_url").eq("id", current_user_id))
         if profile_response.data:
             profile = profile_response.data[0]
             comment["user_nickname"] = profile.get("nickname") or "사용자"
@@ -70,15 +71,14 @@ class CommentService:
     ) -> List[Dict[str, Any]]:
         """Fetch comments for a report in hierarchical structure."""
         # Check report
-        report_response = self._supabase.table("reports").select("id").eq("id", report_id).execute()
+        report_response = await execute(self._supabase.table("reports").select("id").eq("id", report_id))
         if not report_response.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
 
-        response = self._supabase.table("comments") \
+        response = await execute(self._supabase.table("comments") \
             .select("*, profiles!comments_user_id_fkey(nickname, avatar_url)") \
             .eq("report_id", report_id) \
-            .order("created_at", desc=False) \
-            .execute()
+            .order("created_at", desc=False))
 
         all_comments = response.data
 
@@ -111,7 +111,7 @@ class CommentService:
         current_user_id: str
     ) -> Dict[str, Any]:
         """Update a comment's content."""
-        res = self._supabase.table("comments").select("*").eq("id", comment_id).execute()
+        res = await execute(self._supabase.table("comments").select("*").eq("id", comment_id))
         if not res.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
 
@@ -124,12 +124,12 @@ class CommentService:
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
 
-        response = self._supabase.table("comments").update(update_data).eq("id", comment_id).execute()
+        response = await execute(self._supabase.table("comments").update(update_data).eq("id", comment_id))
         if not response.data:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Update failed")
 
         updated_comment = response.data[0]
-        profile_response = self._supabase.table("profiles").select("nickname, avatar_url").eq("id", current_user_id).execute()
+        profile_response = await execute(self._supabase.table("profiles").select("nickname, avatar_url").eq("id", current_user_id))
         if profile_response.data:
             profile = profile_response.data[0]
             updated_comment["user_nickname"] = profile.get("nickname")
@@ -143,14 +143,14 @@ class CommentService:
         current_user_id: str
     ) -> None:
         """Delete a comment."""
-        res = self._supabase.table("comments").select("user_id").eq("id", comment_id).execute()
+        res = await execute(self._supabase.table("comments").select("user_id").eq("id", comment_id))
         if not res.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
 
         if res.data[0]["user_id"] != current_user_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
-        response = self._supabase.table("comments").delete().eq("id", comment_id).execute()
+        response = await execute(self._supabase.table("comments").delete().eq("id", comment_id))
         if not response.data:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Delete failed")
 

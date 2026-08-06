@@ -4,6 +4,7 @@ from supabase.client import Client
 from app.schemas.profile import ProfileUpdate, NeighborhoodUpdate
 from datetime import datetime, timezone
 from app.db.supabase_client import supabase as default_supabase
+from app.utils.blocking_db import execute
 
 
 class ProfileService:
@@ -17,7 +18,7 @@ class ProfileService:
         current_user_id: str
     ) -> Dict[str, Any]:
         """Fetch current user's profile and stats using RPC for efficiency."""
-        response = self._supabase.rpc("get_profile_with_stats", {"target_user_id": current_user_id}).execute()
+        response = await execute(self._supabase.rpc("get_profile_with_stats", {"target_user_id": current_user_id}))
 
         if not response.data:
             # Create default profile if not exists
@@ -32,10 +33,10 @@ class ProfileService:
                 "nickname": nickname,
                 "avatar_url": None
             }
-            self._supabase.table("profiles").insert(default_profile).execute()
+            await execute(self._supabase.table("profiles").insert(default_profile))
 
             # After creation, fetch again with stats
-            response = self._supabase.rpc("get_profile_with_stats", {"target_user_id": current_user_id}).execute()
+            response = await execute(self._supabase.rpc("get_profile_with_stats", {"target_user_id": current_user_id}))
             profile = response.data
         else:
             profile = response.data
@@ -52,7 +53,7 @@ class ProfileService:
         update_data = {}
         if profile_in.nickname is not None:
             # Check nickname
-            existing = self._supabase.table("profiles").select("id").neq("id", current_user_id).eq("nickname", profile_in.nickname).execute()
+            existing = await execute(self._supabase.table("profiles").select("id").neq("id", current_user_id).eq("nickname", profile_in.nickname))
             if existing.data:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nickname already in use")
             update_data["nickname"] = profile_in.nickname
@@ -62,7 +63,7 @@ class ProfileService:
 
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
 
-        response = self._supabase.table("profiles").update(update_data).eq("id", current_user_id).execute()
+        response = await execute(self._supabase.table("profiles").update(update_data).eq("id", current_user_id))
         if not response.data:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Update failed")
 
@@ -75,7 +76,7 @@ class ProfileService:
         user_id: str
     ) -> Optional[Dict[str, Any]]:
         """Fetch another user's public profile and stats using RPC."""
-        response = self._supabase.rpc("get_profile_with_stats", {"target_user_id": user_id}).execute()
+        response = await execute(self._supabase.rpc("get_profile_with_stats", {"target_user_id": user_id}))
         if not response.data:
             return None
 
@@ -93,7 +94,7 @@ class ProfileService:
             "avatar_url": avatar_url,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
-        response = self._supabase.table("profiles").update(update_data).eq("id", current_user_id).execute()
+        response = await execute(self._supabase.table("profiles").update(update_data).eq("id", current_user_id))
         if not response.data:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Update failed")
         return {"avatar_url": avatar_url}
@@ -114,7 +115,7 @@ class ProfileService:
             "neighborhood": neighborhood_json,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
-        response = self._supabase.table("profiles").update(update_data).eq("id", current_user_id).execute()
+        response = await execute(self._supabase.table("profiles").update(update_data).eq("id", current_user_id))
         if not response.data:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Update failed")
         return neighborhood_json
@@ -128,7 +129,7 @@ class ProfileService:
             "neighborhood": None,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
-        response = self._supabase.table("profiles").update(update_data).eq("id", current_user_id).execute()
+        response = await execute(self._supabase.table("profiles").update(update_data).eq("id", current_user_id))
         return len(response.data) > 0
 
 
