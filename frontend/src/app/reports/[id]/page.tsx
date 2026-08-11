@@ -1,6 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import { useReportViewModel } from '@/features/reports/presentation/hooks/useReportsViewModel'
 import { useMutateReportViewModel } from '@/features/reports/presentation/hooks/useMutateReportViewModel'
@@ -10,42 +11,18 @@ import ReportModal from '@/features/reports/presentation/components/ReportModal'
 import EditReportModal from '@/features/reports/presentation/components/EditReportModal'
 import Comments from '@/features/reports/presentation/components/Comments'
 import VoteButton from '@/features/reports/presentation/components/VoteButton'
-import { ReportCategory, ReportStatus } from '@/types'
-import dynamic from 'next/dynamic'
-import { useState } from 'react'
-import { parseReportLocation } from '@/lib/utils/locationDisplayUtils'
-import { Pencil, Trash2, ArrowLeft, MapPin } from 'lucide-react'
+import ReportDetailView, { ReportDetailSkeleton } from '@/features/reports/presentation/components/ReportDetailView'
+import { ArrowLeft, AlertTriangle } from 'lucide-react'
 import {
   UiButton as Button,
-  UiCard as Card,
-  UiBadge as Badge,
   UiDialog as Dialog,
   UiDialogContent as DialogContent,
   UiDialogHeader as DialogHeader,
   UiDialogTitle as DialogTitle,
   UiDialogFooter as DialogFooter,
-  UiDialogDescription as DialogDescription
-} from "@/shared/ui"
-import { SkeletonLoader } from '@/shared/ui/LoadingSpinner'
-
-const MapComponent = dynamic(() => import('@/features/map/presentation/components/MapComponent'), {
-  ssr: false,
-  loading: () => <div className="h-64 bg-gray-100 rounded-lg animate-pulse"></div>
-})
-
-const categoryLabels = {
-  [ReportCategory.NOISE]: '소음',
-  [ReportCategory.TRASH]: '쓰레기',
-  [ReportCategory.FACILITY]: '시설물',
-  [ReportCategory.TRAFFIC]: '교통',
-  [ReportCategory.OTHER]: '기타'
-}
-
-const statusLabels = {
-  [ReportStatus.OPEN]: '접수됨',
-  [ReportStatus.IN_PROGRESS]: '처리중',
-  [ReportStatus.RESOLVED]: '해결됨'
-}
+  UiDialogDescription as DialogDescription,
+  UiErrorState,
+} from '@/shared/ui'
 
 export default function ReportDetailPage() {
   const params = useParams()
@@ -55,7 +32,7 @@ export default function ReportDetailPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
-  const { report, isLoading, error } = useReportViewModel(reportId)
+  const { report, isLoading, error, refetch } = useReportViewModel(reportId)
   const { deleteReport } = useMutateReportViewModel()
 
   const handleDeleteConfirm = async () => {
@@ -68,239 +45,77 @@ export default function ReportDetailPage() {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50/50 pb-20">
-        <Header />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-          <Card className="overflow-hidden shadow-sm border-0 ring-1 ring-black/5">
-            {/* 헤더 섹션 */}
-            <div className="p-6 md:p-8 border-b border-gray-100">
-              <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
-                <div className="flex-1 space-y-3 w-full">
-                  <div className="flex items-center gap-2">
-                    <SkeletonLoader className="h-5 w-16 rounded-full" />
-                    <SkeletonLoader className="h-5 w-16 rounded-full" />
-                  </div>
-                  <SkeletonLoader className="h-8 w-3/4" />
-                  <SkeletonLoader className="h-4 w-40" />
-                </div>
-              </div>
-
-              <div className="mt-6 rounded-xl overflow-hidden">
-                <SkeletonLoader className="w-full h-64 rounded-xl" />
-              </div>
-            </div>
-
-            {/* 상세 내용 섹션 */}
-            <div className="p-6 md:p-8 border-b border-gray-100 bg-white space-y-2">
-              <SkeletonLoader className="h-6 w-28 mb-4" />
-              <SkeletonLoader className="h-4 w-full" />
-              <SkeletonLoader className="h-4 w-full" />
-              <SkeletonLoader className="h-4 w-2/3" />
-            </div>
-
-            {/* 위치 섹션 */}
-            <div className="p-6 md:p-8 bg-gray-50/50">
-              <SkeletonLoader className="h-6 w-28 mb-4" />
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="md:col-span-1 bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-fit space-y-2">
-                  <SkeletonLoader className="h-4 w-16" />
-                  <SkeletonLoader className="h-4 w-full" />
-                </div>
-                <div className="md:col-span-2 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                  <SkeletonLoader className="w-full h-[300px] rounded-none" />
-                </div>
-              </div>
-            </div>
-
-            {/* 액션 섹션 */}
-            <div className="p-6 md:p-8 bg-white border-t border-gray-100">
-              <SkeletonLoader className="h-9 w-24 rounded-md" />
-            </div>
-          </Card>
-        </main>
-      </div>
-    )
-  }
-
-  if (error || !report) {
-    return (
-      <div className="min-h-screen bg-gray-50/50">
-        <Header />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Card className="text-center py-12">
-            <p className="text-red-600 font-semibold mb-4">제보를 불러올 수 없습니다.</p>
-            <Button onClick={() => router.push('/')}>
-              홈으로 돌아가기
-            </Button>
-          </Card>
-        </main>
-      </div>
-    )
-  }
-
-  const isOwner = user && user.id === report.userId
-  const locationInfo = parseReportLocation(report.address)
+  const isOwner = Boolean(user && report && user.id === report.userId)
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
+    <div className="min-h-screen bg-background">
       <Header />
       <AuthDialog />
       <ReportModal />
-      <EditReportModal
-        report={report || null}
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-      />
+      {report && (
+        <EditReportModal
+          report={report}
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+        />
+      )}
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Navigation */}
-        <button
+      <main className="container mx-auto max-w-3xl px-4 py-6 lg:py-8">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mb-4 -ml-2 gap-1 text-muted-foreground"
           onClick={() => router.push('/')}
-          className="flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
         >
-          <ArrowLeft className="w-4 h-4 mr-1" /> 목록으로
-        </button>
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          목록으로
+        </Button>
 
-        {/* 제보 정보 카드 */}
-        <Card className="overflow-hidden shadow-sm border-0 ring-1 ring-black/5">
-          {/* 헤더 섹션 */}
-          <div className="p-6 md:p-8 border-b border-gray-100">
-            <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Badge variant={
-                    report.status === ReportStatus.OPEN ? 'destructive' :
-                      report.status === ReportStatus.IN_PROGRESS ? 'secondary' : 'default'
-                  }>
-                    {statusLabels[report.status]}
-                  </Badge>
-                  <Badge variant="outline" className="text-blue-600 bg-blue-50 border-blue-100">
-                    {categoryLabels[report.category]}
-                  </Badge>
-                </div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">{report.title}</h1>
-                <div className="text-sm text-gray-500 font-medium">
-                  {formatDate(report.createdAt)}
-                </div>
-              </div>
+        {isLoading && <ReportDetailSkeleton />}
 
-              {isOwner && (
-                <div className="flex gap-2 w-full md:w-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditModalOpen(true)}
-                    className="flex-1 md:flex-none"
-                  >
-                    <Pencil className="w-3.5 h-3.5 mr-2" /> 수정
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="flex-1 md:flex-none"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 mr-2" /> 삭제
-                  </Button>
-                </div>
-              )}
+        {!isLoading && (error || !report) && (
+          <UiErrorState
+            icon={<AlertTriangle className="h-7 w-7" aria-hidden="true" />}
+            title="제보를 불러오지 못했어요"
+            description="삭제되었거나 일시적으로 불러올 수 없는 제보예요"
+            primaryAction={{ label: '다시 시도', onClick: () => refetch() }}
+            secondaryAction={{ label: '목록으로', onClick: () => router.push('/') }}
+          />
+        )}
+
+        {!isLoading && !error && report && (
+          <>
+            <ReportDetailView
+              report={report}
+              isOwner={isOwner}
+              onEdit={() => setIsEditModalOpen(true)}
+              onDelete={() => setShowDeleteDialog(true)}
+              participation={<VoteButton reportId={report.id} initialCount={report.voteCount} />}
+            />
+
+            <div className="mt-6">
+              <Comments reportId={report.id} reportAuthorId={report.userId} />
             </div>
-
-            {/* 이미지 섹션 */}
-            {report.imageUrl && (
-              <div className="mt-6 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
-                <img
-                  src={report.imageUrl}
-                  alt="제보 이미지"
-                  className="w-full max-h-[500px] object-contain bg-gray-50"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* 상세 내용 섹션 */}
-          <div className="p-6 md:p-8 border-b border-gray-100 bg-white">
-            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-              <span className="w-1.5 h-6 bg-blue-500 rounded-full mr-3"></span>
-              상세 내용
-            </h2>
-            <div className="prose prose-sm md:prose-base max-w-none">
-              <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{report.description}</p>
-            </div>
-          </div>
-
-          {/* 위치 섹션 */}
-          <div className="p-6 md:p-8 bg-gray-50/50">
-            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-              <span className="w-1.5 h-6 bg-red-500 rounded-full mr-3"></span>
-              위치 정보
-            </h2>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {/* 주소 정보 */}
-              <div className="md:col-span-1 bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-fit">
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-5 h-5 text-red-500 mt-1 shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">
-                      {locationInfo.showSeparate ? locationInfo.placeName : '주소'}
-                    </h3>
-                    <p className="text-sm text-gray-600 break-keep">
-                      {locationInfo.address || '주소 정보가 없습니다.'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 지도 */}
-              <div className="md:col-span-2 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                <MapComponent
-                  reports={[report]}
-                  center={report.location}
-                  zoom={3}
-                  height="300px"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 액션 섹션 */}
-          <div className="p-6 md:p-8 bg-white border-t border-gray-100">
-            <div className="flex items-center justify-between">
-              <VoteButton reportId={report.id} initialCount={report.voteCount} />
-            </div>
-          </div>
-        </Card>
-
-        {/* 댓글 섹션 */}
-        <Comments reportId={report.id} reportAuthorId={report.userId} />
+          </>
+        )}
       </main>
 
-      {/* 삭제 확인 다이얼로그 */}
+      {/* 삭제 확인 — 초기 포커스는 취소, 확인 라벨에는 대상을 쓴다 (UI_V2_CONTRACT.md §4.5) */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>제보 삭제</DialogTitle>
+            <DialogTitle>제보를 삭제할까요?</DialogTitle>
             <DialogDescription>
-              정말로 이 제보를 삭제하시겠습니까?<br />
-              삭제된 데이터는 복구할 수 없습니다.
+              삭제한 제보와 댓글은 되돌릴 수 없어요.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>취소</Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm}>삭제하기</Button>
+            <Button variant="outline" autoFocus onClick={() => setShowDeleteDialog(false)}>
+              취소
+            </Button>
+            <Button variant="danger" onClick={handleDeleteConfirm}>
+              제보 삭제하기
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
