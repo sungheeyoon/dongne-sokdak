@@ -20,10 +20,9 @@ import { useMapControllerViewModel } from '@/features/map/presentation/hooks/use
 import { useMapFocusViewModel } from '@/features/map/presentation/hooks/useMapFocusViewModel'
 import MapInitializationGate, { MapLoadingFallback } from '@/features/map/presentation/components/MapInitializationGate'
 import UnifiedSearch from '@/components/UnifiedSearch'
-import { MapPin, FileText, X } from 'lucide-react'
-import ErrorDisplay from '@/shared/ui/ErrorDisplay'
+import { MapPin, FileText, X, AlertTriangle } from 'lucide-react'
 import LocalhostGuide from '@/shared/ui/LocalhostGuide'
-import { UiButton as Button, UiCard as Card } from '@/shared/ui'
+import { UiButton as Button, UiCard as Card, UiErrorState } from '@/shared/ui'
 import { useIsDesktop } from '@/shared/hooks/useMediaQuery'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 import { cn } from '@/lib/utils'
@@ -218,23 +217,6 @@ export default function Home() {
 
   const canReturnToNeighborhood = Boolean(searchedLocation || userCurrentLocation || isFarFromHome)
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <AuthDialog />
-        <ReportModal />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <ErrorDisplay
-            error={error}
-            title="제보를 불러올 수 없습니다"
-            onRetry={() => refetch()}
-          />
-        </main>
-      </div>
-    )
-  }
-
   const selectedMarkersSection = selectedMapMarkers && selectedMapMarkers.length > 0 ? (
     <Card className="overflow-hidden shadow-e2">
       <div className="flex items-center justify-between gap-2 border-b border-border bg-brand-subtle p-4">
@@ -337,7 +319,12 @@ export default function Home() {
         {showMap && (
           <div className="mb-6 space-y-4">
             <Card className="overflow-hidden">
-              <MapInitializationGate isAuthInitialized={isAuthInitialized} isLoadingProfile={isLoadingProfile}>
+              <MapInitializationGate
+                isAuthInitialized={isAuthInitialized}
+                isLoadingProfile={isLoadingProfile}
+                height={isDesktop ? DESKTOP_MAP_HEIGHT : MOBILE_MAP_HEIGHT}
+                compact={!isDesktop}
+              >
                 <MapComponent
                   reports={mapReports}
                   height={isDesktop ? DESKTOP_MAP_HEIGHT : MOBILE_MAP_HEIGHT}
@@ -376,6 +363,14 @@ export default function Home() {
               />
             </div>
 
+            {error ? (
+              <UiErrorState
+                icon={<AlertTriangle className="h-7 w-7" aria-hidden="true" />}
+                title="제보를 불러오지 못했어요"
+                description="검색어와 카테고리, 마지막으로 조회한 지역은 그대로 유지돼요"
+                primaryAction={{ label: '다시 시도', onClick: () => refetch() }}
+              />
+            ) : (
             <ReportList
               reports={listReports}
               isLoading={isListLoading}
@@ -401,6 +396,7 @@ export default function Home() {
                 </Card>
               }
             />
+            )}
           </section>
         )}
       </main>
