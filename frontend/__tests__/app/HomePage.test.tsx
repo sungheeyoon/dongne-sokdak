@@ -32,9 +32,15 @@ vi.mock('@/components/UnifiedSearch', () => ({
     default: () => <div data-testid="unified-search" />,
 }))
 
-vi.mock('@/features/map/presentation/components/MapInitializationGate', () => ({
-    default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    MapLoadingFallback: () => <div />,
+let mockMapStatus: 'loading' | 'ready' | 'error' = 'ready'
+const mapRetry = vi.fn()
+
+vi.mock('@/features/map/presentation/hooks/useMapInitializationViewModel', () => ({
+    useMapInitializationViewModel: () => ({
+        status: mockMapStatus,
+        technicalReason: mockMapStatus === 'error' ? 'Kakao SDK ready()가 false를 반환' : null,
+        retry: mapRetry,
+    }),
 }))
 
 vi.mock('@/features/map/presentation/components/MapComponent', () => ({
@@ -74,21 +80,28 @@ const reports = [
     },
 ]
 
+let mockListError: Error | null = null
+let mockListReports = reports
+const listRefetch = vi.fn()
+
 vi.mock('@/features/reports/presentation/hooks/useReportsViewModel', () => ({
-    useMapReportsViewModel: () => ({ reports, isLoading: false, currentLimit: 100 }),
+    useMapReportsViewModel: () => ({ reports: mockListReports, isLoading: false, currentLimit: 100 }),
     useListReportsViewModel: () => ({
-        reports,
-        totalCount: 1,
+        reports: mockListError ? [] : mockListReports,
+        totalCount: mockListError ? 0 : mockListReports.length,
         totalPages: 1,
         currentPage: 1,
         isLoading: false,
-        error: null,
-        refetch: vi.fn(),
+        error: mockListError,
+        refetch: listRefetch,
     }),
 }))
 
 beforeEach(() => {
     mockUser = null
+    mockMapStatus = 'ready'
+    mockListError = null
+    mockListReports = reports
     setViewport('mobile')
     useUIStore.setState({
         isAuthModalOpen: false,
@@ -207,5 +220,75 @@ describe('홈 — 제보하기', () => {
         expect(useUIStore.getState().authMode).toBe('signin')
         expect(useUIStore.getState().isReportModalOpen).toBe(false)
         expect(useUIStore.getState().pendingIntent).toBe('compose-report')
+    })
+})
+
+describe('홈 — 지도 상태와 제보 상태의 분리', () => {
+    it('지도 초기화 실패가 제보 피드를 오류 화면으로 대체하지 않는다', () => {
+        mockMapStatus = 'error'
+        setViewport('desktop')
+
+        render(<Home />)
+
+        expect(screen.getByText('지금은 지도를 표시할 수 없어요')).toBeInTheDocument()
+        expect(screen.getByText('도로에 큰 웅덩이가 생겼습니다')).toBeInTheDocument()
+        expect(screen.getByRole('radiogroup', { name: '카테고리 필터' })).toBeInTheDocument()
+    })
+
+    it('지도 실패 화면에 내부 기술 문구를 노출하지 않는다', () => {
+        mockMapStatus = 'error'
+        setViewport('desktop')
+
+        const { container } = render(<Home />)
+
+        expect(container.textContent).not.toMatch(/Kakao|SDK|NEXT_PUBLIC/i)
+    })
+
+    it('지도가 실패해도 카테고리 변경 같은 명시적 조회 트리거는 계속 동작한다', async () => {
+        mockMapStatus = 'error'
+        const user = userEvent.setup()
+        render(<Home />)
+
+        const before = useUIStore.getState().triggerMapSearch
+        await user.click(screen.getByRole('radio', { name: '소음' }))
+
+        expect(useUIStore.getState().triggerMapSearch).toBe(before + 1)
+    })
+
+    it('지도 재시도는 지도 초기화만 다시 실행하고 조회 조건을 건드리지 않는다', async () => {
+        mockMapStatus = 'error'
+        setViewport('desktop')
+        const user = userEvent.setup()
+        render(<Home />)
+
+        const before = useUIStore.getState().triggerMapSearch
+        await user.click(screen.getByRole('button', { name: '지도 다시 시도' }))
+
+        expect(mapRetry).toHaveBeenCalledOnce()
+        expect(useUIStore.getState().triggerMapSearch).toBe(before)
+    })
+
+    it('제보 조회 실패는 지도와 별도의 재시도를 목록 영역에만 그린다', async () => {
+        mockListError = new Error('boom')
+        setViewport('desktop')
+        const user = userEvent.setup()
+
+        render(<Home />)
+
+        expect(screen.getByTestId('map')).toBeInTheDocument()
+        const alert = screen.getByRole('alert')
+        expect(alert.textContent).toMatch('제보를 불러오지 못했어요')
+
+        await user.click(within(alert).getByRole('button', { name: '다시 시도' }))
+        expect(listRefetch).toHaveBeenCalledOnce()
+    })
+
+    it('제보 0건인 정상 빈 상태를 오류와 구분한다', () => {
+        mockListReports = []
+
+        render(<Home />)
+
+        expect(screen.getByText('이 지역에는 아직 제보가 없어요')).toBeInTheDocument()
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
 })
