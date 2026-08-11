@@ -160,7 +160,7 @@ export function useListReportsViewModel({
 
 // 특정 제보 상세 조회 (ViewModel)
 export function useReportViewModel(id: string) {
-    const { data: report, isLoading, error } = useQuery({
+    const { data: report, isLoading, error, refetch } = useQuery({
         queryKey: ['report', id],
         queryFn: () => reportUseCases.getReportById(id),
         enabled: !!id
@@ -169,7 +169,8 @@ export function useReportViewModel(id: string) {
     return {
         report,
         isLoading,
-        error
+        error,
+        refetch
     }
 }
 

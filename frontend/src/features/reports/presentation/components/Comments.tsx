@@ -20,15 +20,15 @@ interface CommentItemProps {
 
 function CommentAvatar({ label, className = 'w-8 h-8' }: { label: string; className?: string }) {
     return (
-        <div className={`${className} bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0`}>
-            <span className="text-sm font-semibold text-gray-600">{label}</span>
+        <div className={`${className} bg-surface-muted rounded-full flex items-center justify-center flex-shrink-0`}>
+            <span className="text-sm font-semibold text-muted-foreground">{label}</span>
         </div>
     )
 }
 
 function CommentRow({ avatar, isReply = false, children }: { avatar: React.ReactNode; isReply?: boolean; children: React.ReactNode }) {
     return (
-        <div className={`${isReply ? 'ml-12 border-l-2 border-gray-100 pl-4' : ''}`}>
+        <div className={`${isReply ? 'ml-12 border-l-2 border-border pl-4' : ''}`}>
             <div className="flex space-x-3">
                 {avatar}
                 <div className="flex-1 min-w-0">
@@ -44,7 +44,7 @@ function CommentMetaRow({ children }: { children: React.ReactNode }) {
 }
 
 function CommentActionsRow({ children }: { children: React.ReactNode }) {
-    return <div className="flex items-center space-x-4 text-xs text-gray-600">{children}</div>
+    return <div className="flex items-center space-x-4 text-xs text-muted-foreground">{children}</div>
 }
 
 function CommentSkeleton() {
@@ -142,10 +142,10 @@ function CommentItem({ comment, reportId, reportAuthorId, isReply = false }: Com
             avatar={<CommentAvatar label={comment.userNickname?.[0]?.toUpperCase() || 'U'} />}
         >
             <CommentMetaRow>
-                <span className="font-semibold text-gray-900 text-sm">
+                <span className="font-semibold text-foreground text-sm">
                     {getUserDisplayName()}
                 </span>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-muted-foreground">
                     {formatDate(comment.createdAt)}
                     {isEdited() && <span className="ml-1">(수정됨)</span>}
                 </span>
@@ -156,7 +156,7 @@ function CommentItem({ comment, reportId, reportAuthorId, isReply = false }: Com
                     <textarea
                         value={editContent}
                         onChange={(e) => setEditContent(e.target.value)}
-                        className="w-full px-3 py-2 border-2 border-gray-200 focus:border-blue-500 focus:outline-none resize-none text-gray-900 rounded-lg"
+                        className="w-full px-3 py-2 border-2 border-border focus:border-brand focus:outline-none resize-none text-foreground rounded-lg"
                         rows={3}
                         placeholder="댓글 수정..."
                     />
@@ -164,13 +164,13 @@ function CommentItem({ comment, reportId, reportAuthorId, isReply = false }: Com
                         <button
                             onClick={handleEditSubmit}
                             disabled={isUpdating || !editContent.trim()}
-                            className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50 transition-colors"
+                            className="px-4 py-1.5 text-sm bg-brand hover:bg-brand-hover text-white rounded-md disabled:opacity-50 transition-colors"
                         >
                             {isUpdating ? '수정 중...' : '저장'}
                         </button>
                         <button
                             onClick={handleEditCancel}
-                            className="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md border border-gray-300 transition-colors"
+                            className="px-4 py-1.5 text-sm text-muted-foreground hover:bg-surface-muted rounded-md border border-border-strong transition-colors"
                         >
                             취소
                         </button>
@@ -178,23 +178,23 @@ function CommentItem({ comment, reportId, reportAuthorId, isReply = false }: Com
                 </div>
             ) : (
                 <>
-                    <p className="text-gray-800 text-sm whitespace-pre-wrap mb-2">
+                    <p className="text-foreground text-sm whitespace-pre-wrap mb-2">
                         {comment.content}
                     </p>
 
                     <CommentActionsRow>
                         {!isReply && user && (
-                            <button onClick={() => setIsReplying(!isReplying)} className="hover:text-gray-800 font-medium">
+                            <button onClick={() => setIsReplying(!isReplying)} className="hover:text-foreground font-medium">
                                 답글
                             </button>
                         )}
 
                         {user && user.id === comment.userId && (
                             <>
-                                <button onClick={handleEdit} className="hover:text-gray-800 font-medium">
+                                <button onClick={handleEdit} className="hover:text-foreground font-medium">
                                     수정
                                 </button>
-                                <button onClick={handleDelete} disabled={isDeleting} className="hover:text-red-600 font-medium disabled:opacity-50">
+                                <button onClick={handleDelete} disabled={isDeleting} className="hover:text-danger font-medium disabled:opacity-50">
                                     삭제
                                 </button>
                             </>
@@ -209,17 +209,17 @@ function CommentItem({ comment, reportId, reportAuthorId, isReply = false }: Com
                                     <textarea
                                         value={replyContent}
                                         onChange={(e) => setReplyContent(e.target.value)}
-                                        className="w-full px-3 py-2 border-2 border-gray-200 focus:border-blue-500 focus:outline-none resize-none text-gray-900 rounded-lg"
+                                        className="w-full px-3 py-2 border-2 border-border focus:border-brand focus:outline-none resize-none text-foreground rounded-lg"
                                         rows={2}
                                         placeholder={`@${comment.userNickname || '사용자'}님에게 답글...`}
                                     />
                                 </div>
                             </div>
                             <div className="flex justify-end space-x-2 ml-9">
-                                <button onClick={() => { setIsReplying(false); setReplyContent(''); }} className="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md border border-gray-300 transition-colors">
+                                <button onClick={() => { setIsReplying(false); setReplyContent(''); }} className="px-4 py-1.5 text-sm text-muted-foreground hover:bg-surface-muted rounded-md border border-border-strong transition-colors">
                                     취소
                                 </button>
-                                <button onClick={handleReplySubmit} disabled={isCreating || !replyContent.trim()} className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50 transition-colors">
+                                <button onClick={handleReplySubmit} disabled={isCreating || !replyContent.trim()} className="px-4 py-1.5 text-sm bg-brand hover:bg-brand-hover text-white rounded-md disabled:opacity-50 transition-colors">
                                     {isCreating ? '답글 작성 중...' : '답글'}
                                 </button>
                             </div>
@@ -264,8 +264,8 @@ export default function Comments({ reportId, reportAuthorId }: CommentsProps) {
     }, 0)
 
     return (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">
+        <div className="bg-surface rounded-lg border border-border p-6">
+            <h3 className="text-lg font-bold text-foreground mb-4">
                 댓글 {totalCommentCount}개
             </h3>
 
@@ -278,7 +278,7 @@ export default function Comments({ reportId, reportAuthorId }: CommentsProps) {
                                 <textarea
                                     value={newComment}
                                     onChange={(e) => setNewComment(e.target.value)}
-                                    className="w-full px-3 py-2 border-2 border-gray-200 focus:border-blue-500 focus:outline-none resize-none text-gray-900 placeholder-gray-500 rounded-lg transition-all"
+                                    className="w-full px-3 py-2 border-2 border-border focus:border-brand focus:outline-none resize-none text-foreground placeholder-gray-500 rounded-lg transition-all"
                                     rows={newComment ? 3 : 1}
                                     placeholder="댓글 추가..."
                                     required
@@ -288,14 +288,14 @@ export default function Comments({ reportId, reportAuthorId }: CommentsProps) {
                                         <button
                                             type="button"
                                             onClick={() => setNewComment('')}
-                                            className="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md border border-gray-300 transition-colors"
+                                            className="px-4 py-1.5 text-sm text-muted-foreground hover:bg-surface-muted rounded-md border border-border-strong transition-colors"
                                         >
                                             취소
                                         </button>
                                         <button
                                             type="submit"
                                             disabled={isCreating || !newComment.trim()}
-                                            className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            className="px-4 py-1.5 text-sm bg-brand hover:bg-brand-hover text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                         >
                                             {isCreating ? '작성 중...' : '댓글'}
                                         </button>
@@ -306,8 +306,8 @@ export default function Comments({ reportId, reportAuthorId }: CommentsProps) {
                     </div>
                 </form>
             ) : (
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-gray-700 text-center">댓글을 작성하려면 로그인해주세요.</p>
+                <div className="mb-6 p-4 bg-surface-muted rounded-lg border border-border">
+                    <p className="text-foreground text-center">댓글을 작성하려면 로그인해주세요.</p>
                 </div>
             )}
 
@@ -329,7 +329,7 @@ export default function Comments({ reportId, reportAuthorId }: CommentsProps) {
                     ))
                 ) : (
                     <div className="text-center py-8">
-                        <p className="text-gray-600">가장 먼저 댓글을 남겨보세요.</p>
+                        <p className="text-muted-foreground">가장 먼저 댓글을 남겨보세요.</p>
                     </div>
                 )}
             </div>
