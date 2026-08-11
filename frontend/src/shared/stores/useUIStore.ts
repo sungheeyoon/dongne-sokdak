@@ -1,11 +1,18 @@
 import { create } from 'zustand'
 import { Report } from '@/types'
 
+/**
+ * 익명 주민이 로그인이 필요한 행동을 시도했을 때 기억해 두는 의도.
+ * 로그인에 성공하면 원래 하려던 행동으로 돌아간다 (UI_V2_CONTRACT.md §8).
+ */
+export type PendingIntent = 'compose-report' | null
+
 interface UIState {
   // 모달 상태
   isReportModalOpen: boolean
   isAuthModalOpen: boolean
   authMode: 'signin' | 'signup'
+  pendingIntent: PendingIntent
 
   // 지도 상태
   focusedLocation: { lat: number; lng: number } | null
@@ -31,6 +38,7 @@ interface UIState {
   closeReportModal: () => void
   openAuthModal: (mode: 'signin' | 'signup') => void
   closeAuthModal: () => void
+  setPendingIntent: (intent: PendingIntent) => void
   setFocusedLocation: (location: { lat: number; lng: number } | null) => void
   setMapZoom: (zoom: number) => void
   setSelectedLocation: (location: { lat: number; lng: number; address?: string } | null) => void
@@ -53,6 +61,7 @@ export const useUIStore = create<UIState>((set) => ({
   isReportModalOpen: false,
   isAuthModalOpen: false,
   authMode: 'signin',
+  pendingIntent: null,
   focusedLocation: null, // 초기값을 null로 변경하여 사용자 동네가 우선시되게 함
   mapZoom: 13,
   selectedLocation: null,
@@ -64,6 +73,7 @@ export const useUIStore = create<UIState>((set) => ({
   closeReportModal: () => set({ isReportModalOpen: false, selectedLocation: null }),
   openAuthModal: (mode) => set({ isAuthModalOpen: true, authMode: mode }),
   closeAuthModal: () => set({ isAuthModalOpen: false }),
+  setPendingIntent: (intent) => set({ pendingIntent: intent }),
   setFocusedLocation: (location) => set({ focusedLocation: location ? { lat: location.lat, lng: location.lng } : null }),
   setMapZoom: (zoom) => set({ mapZoom: zoom }),
   setSelectedLocation: (location) => set({ selectedLocation: location }),

@@ -9,11 +9,12 @@ import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
 import { Report as ReportType } from '@/types'
 import ReportModal from '@/features/reports/presentation/components/ReportModal'
 import dynamic from 'next/dynamic'
-import { ReportCategory } from '@/types'
 import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
 import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import { useMapReportsViewModel, useListReportsViewModel } from '@/features/reports/presentation/hooks/useReportsViewModel'
 import ReportList from '@/features/reports/presentation/components/ReportList'
+import CategoryFilterChips from '@/features/reports/presentation/components/CategoryFilterChips'
+import HomeViewModeTabs, { HomeViewMode } from '@/features/map/presentation/components/HomeViewModeTabs'
 import { useLocationViewModel } from '@/features/map/presentation/hooks/useLocationViewModel'
 import { useMapControllerViewModel } from '@/features/map/presentation/hooks/useMapControllerViewModel'
 import { useMapFocusViewModel } from '@/features/map/presentation/hooks/useMapFocusViewModel'
@@ -23,29 +24,29 @@ import { MapPin, FileText, X } from 'lucide-react'
 import ErrorDisplay from '@/shared/ui/ErrorDisplay'
 import LocalhostGuide from '@/shared/ui/LocalhostGuide'
 import { UiButton as Button, UiCard as Card } from '@/shared/ui'
+import { useIsDesktop } from '@/shared/hooks/useMediaQuery'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 import { cn } from '@/lib/utils'
 import { toast } from 'react-hot-toast'
-// LocationReportItem은 존재하지 않거나 경로가 다름, 어차피 안쓰이므로 제거
 
 const MapComponent = dynamic(() => import('@/features/map/presentation/components/MapComponent'), {
   ssr: false,
   loading: () => <MapLoadingFallback />
 })
 
-const categories = [
-  { value: 'all', label: '전체' },
-  { value: ReportCategory.NOISE, label: '소음' },
-  { value: ReportCategory.TRASH, label: '쓰레기' },
-  { value: ReportCategory.FACILITY, label: '시설물' },
-  { value: ReportCategory.TRAFFIC, label: '교통' },
-  { value: ReportCategory.OTHER, label: '기타' }
-]
+// 데스크톱 지도 높이 — 첫 화면에서 첫 카드 행의 상단이 보이도록 제한한다 (UI_V2_CONTRACT.md §7.2)
+const DESKTOP_MAP_HEIGHT = 'clamp(400px, 46vh, 480px)'
+// 모바일 지도 모드 — 고정 450px 패널이 아니라 남은 세로 공간을 쓴다 (§7.3)
+const MOBILE_MAP_HEIGHT = 'calc(100dvh - 13rem)'
 
 export default function Home() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { openReportModal, searchQuery, setSearchQuery, searchMode, setSearchMode } = useUIStore()
+  const {
+    openReportModal, openAuthModal,
+    pendingIntent, setPendingIntent,
+    searchQuery, setSearchQuery, searchMode, setSearchMode,
+  } = useUIStore()
 
   const {
     focusedLocation,
@@ -65,6 +66,13 @@ export default function Home() {
   // MapComponent가 실시간으로 갱신해 올려보낸다 (grilling 세션에서 합의된 설계).
   const [isFarFromHome, setIsFarFromHome] = useState(false)
 
+  // 모바일 홈의 기본 콘텐츠는 제보 피드이며, 지도는 명시적 전환으로만 연다 (UI_V2_CONTRACT.md §7.3).
+  // 데스크톱은 지도와 현재 영역 제보를 함께 보여주므로 전환 자체가 없다.
+  const isDesktop = useIsDesktop()
+  const [mobileViewMode, setMobileViewMode] = useState<HomeViewMode>('feed')
+  const showMap = isDesktop || mobileViewMode === 'map'
+  const showFeed = isDesktop || mobileViewMode === 'feed'
+
   // 행정동 기반 동네 표시명 계산 함수
   const getNeighborhoodDisplayName = (profile: { neighborhood?: { address: string; placeName: string } }) => {
     if (!profile?.neighborhood) return '내 동네'
@@ -77,7 +85,7 @@ export default function Home() {
   const [selectedLocation, setSelectedLocation] = useState<string>('') // 선택된 위치명
 
   const { profile, isLoading: isLoadingProfile } = useProfileViewModel()
-  const { initialized: isAuthInitialized } = useAuthViewModel()
+  const { user, initialized: isAuthInitialized } = useAuthViewModel()
   const { reverseGeocode, searchPlaces, isSearching } = useLocationViewModel()
 
   // 내 동네 위치 (로그인된 사용자의 설정된 동네)
@@ -143,6 +151,13 @@ export default function Home() {
     }
   }, [mapReports.length, mapLimit])
 
+  // 익명 주민이 시도했던 제보 작성으로 로그인 후 복귀한다 (UI_V2_CONTRACT.md §8)
+  useEffect(() => {
+    if (user && pendingIntent === 'compose-report') {
+      setPendingIntent(null)
+      openReportModal()
+    }
+  }, [user, pendingIntent, setPendingIntent, openReportModal])
 
   // 현재 사용 중인 위치 (외부 통제: 검색된 위치, 내 동네, 등)
   const mapFocus = useMapFocusViewModel({
@@ -167,11 +182,6 @@ export default function Home() {
     setSelectedLocation(name || '선택한 위치')
   }
 
-  // selectedMapMarkers 상태 변화 디버깅
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') console.log('🔄 Page: selectedMapMarkers 상태 변화:', selectedMapMarkers)
-  }, [selectedMapMarkers])
-
   // 검색어가 비워지면 지도 내 검색(bounds) 모드로 자동 복귀
   useEffect(() => {
     if (searchMode === 'text' && !searchQuery && !useMapBoundsFilter) {
@@ -180,20 +190,44 @@ export default function Home() {
     }
   }, [searchQuery, searchMode, useMapBoundsFilter, setUseMapBoundsFilter, setTriggerMapSearch])
 
-  // getCategoryLabel 함수 제거 - 사용하지 않음
+  // 카테고리 변경은 명시적 사용자 의도이므로 영역 조회를 커밋한다 (ADR-0007).
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category)
+    if (useMapBoundsFilter) setTriggerMapSearch((prev: number) => prev + 1)
+  }
 
-  // 개발용 디버깅 제거 (성능 최적화)
+  // 익명 주민에게는 데이터 오류가 아니라 로그인 안내를 주고, 원래 의도를 기억한다 (UI_V2_CONTRACT.md §8).
+  const handleComposeReport = () => {
+    if (user) {
+      openReportModal()
+      return
+    }
+
+    setPendingIntent('compose-report')
+    openAuthModal('signin')
+    toast('로그인하면 제보를 작성할 수 있어요.', { id: 'compose-requires-login' })
+  }
+
+  const contextLabel = searchedLocation
+    ? `${searchedLocation.placeName} 주변`
+    : (myNeighborhoodLocation && profile ? `${getNeighborhoodDisplayName(profile)} 주변` : '동네 이슈 지도')
+
+  const feedHeading = searchQuery
+    ? `'${searchQuery}' 검색 결과`
+    : (useMapBoundsFilter ? '현재 지역 제보' : '실시간 동네 제보')
+
+  const canReturnToNeighborhood = Boolean(searchedLocation || userCurrentLocation || isFarFromHome)
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Header />
         <AuthDialog />
         <ReportModal />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <ErrorDisplay
             error={error}
-            title="제보 데이터를 불러올 수 없습니다"
+            title="제보를 불러올 수 없습니다"
             onRetry={() => refetch()}
           />
         </main>
@@ -201,192 +235,185 @@ export default function Home() {
     )
   }
 
+  const selectedMarkersSection = selectedMapMarkers && selectedMapMarkers.length > 0 ? (
+    <Card className="overflow-hidden shadow-e2">
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-brand-subtle p-4">
+        <div className="min-w-0">
+          <h3 className="type-h3 flex items-center gap-2">
+            <MapPin className="h-5 w-5 shrink-0 text-brand" aria-hidden="true" />
+            <span className="truncate">{selectedLocation}</span>
+          </h3>
+          <p className="type-caption text-muted-foreground mt-1">
+            {selectedMapMarkers.length === 1
+              ? '이 지점의 단일 제보입니다'
+              : `이 지점의 제보 ${selectedMapMarkers.length}건입니다`}
+          </p>
+        </div>
+        <Button variant="ghost" size="icon" aria-label="선택 해제" onClick={() => setSelectedMapMarkers(null)}>
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 lg:grid-cols-3">
+        {selectedMapMarkers.map((report) => (
+          <ReportCard key={report.id} report={report as any} />
+        ))}
+      </div>
+    </Card>
+  ) : null
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <AuthDialog />
       <ReportModal />
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Welcome Section */}
-        <div className="mb-10 text-center md:text-left">
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">
-            우리 동네 <span className="text-primary">소식</span>을 한눈에
+      <main className="container mx-auto px-4 py-6 lg:py-8">
+        {/* 탐색 컨텍스트 — 지금 무엇을 보고 있는지 첫 줄에서 말한다 */}
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h1 className="type-h2 flex min-w-0 items-center gap-2">
+            <MapPin className="h-5 w-5 shrink-0 text-brand" aria-hidden="true" />
+            <span className="truncate">{contextLabel}</span>
           </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl">
-            불편사항부터 훈훈한 미담까지, 이웃과 함께 나누는 우리 동네 제보
-          </p>
+          {canReturnToNeighborhood && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => resetToMyNeighborhood(myNeighborhoodLocation)}
+            >
+              {myNeighborhoodLocation ? '내 동네로 돌아가기' : '검색 초기화'}
+            </Button>
+          )}
         </div>
 
-        {/* 지도 섹션 */}
-        <div className="mb-12">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" />
-                {searchedLocation ? `${searchedLocation.placeName} 주변` :
-                  myNeighborhoodLocation && profile ? `${getNeighborhoodDisplayName(profile)} 주변` :
-                    '동네 이슈 지도'}
-              </h2>
-            </div>
-            {(searchedLocation || userCurrentLocation || isFarFromHome) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => resetToMyNeighborhood(myNeighborhoodLocation)}
-                className="self-start"
-              >
-                {myNeighborhoodLocation ? '내 동네로 돌아가기' : '검색 초기화'}
-              </Button>
-            )}
+        {/* 모바일 전용 — 피드/지도 전환. 표현만 바꾸고 영역 조회를 실행하지 않는다 (ADR-0007) */}
+        {!isDesktop && (
+          <HomeViewModeTabs
+            mode={mobileViewMode}
+            onModeChange={setMobileViewMode}
+            className="mb-4"
+          />
+        )}
+
+        {/* 검색 — 위치/제보 모드 */}
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="flex w-fit shrink-0 gap-1 rounded-full bg-surface-muted p-1">
+            <button
+              type="button"
+              onClick={() => setSearchMode('location')}
+              aria-pressed={searchMode === 'location'}
+              className={cn(
+                'flex min-h-11 items-center gap-2 rounded-full px-4 type-label transition-colors',
+                searchMode === 'location' ? 'bg-surface text-brand shadow-e1' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <MapPin className="h-4 w-4" aria-hidden="true" />
+              위치
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchMode('text')}
+              aria-pressed={searchMode === 'text'}
+              className={cn(
+                'flex min-h-11 items-center gap-2 rounded-full px-4 type-label transition-colors',
+                searchMode === 'text' ? 'bg-surface text-brand shadow-e1' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <FileText className="h-4 w-4" aria-hidden="true" />
+              제보
+            </button>
           </div>
 
-          <Card className="overflow-hidden border-muted/50 shadow-md">
-            <div className="p-4 border-b bg-muted/30">
-              <div className="flex flex-col lg:flex-row gap-4">
-                {/* 검색 모드 탭 */}
-                <div className="flex bg-muted p-1 rounded-lg w-fit shrink-0">
-                  <button
-                    onClick={() => setSearchMode('location')}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-semibold transition-all",
-                      searchMode === 'location' ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <MapPin className="h-4 w-4" />
-                    <span>위치</span>
-                  </button>
-                  <button
-                    onClick={() => setSearchMode('text')}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-semibold transition-all",
-                      searchMode === 'text' ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span>제보</span>
-                  </button>
-                </div>
-
-                <div className="flex flex-1 flex-col md:flex-row gap-2">
-                  <UnifiedSearch
-                    searchMode={searchMode}
-                    onLocationSelect={handleLocationSearch}
-                    onTextSearch={(query) => setSearchQuery(query)}
-                    searchPlaces={searchPlaces}
-                    isSearching={isSearching}
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <MapInitializationGate isAuthInitialized={isAuthInitialized} isLoadingProfile={isLoadingProfile}>
-              <MapComponent
-                reports={mapReports}
-                height="450px"
-                zoom={5} // 초기 줌: 동네 단위(3)는 너무 확대되어 주변을 좀 더 넓게 보여줌
-                center={mapFocus ?? undefined}
-                onBoundsChange={handleMapBoundsChange}
-                onZoomChange={setMapZoom}
-                onMarkerClick={handleMarkerClick as any}
-                onGroupClick={handleGroupClick as any}
-                selectedMarkerId={selectedMapMarkers?.length === 1 ? (selectedMapMarkers[0] as any)?.id : undefined}
-                isBoundsQueryLoading={isMapLoading || isListLoading}
-                myNeighborhoodLocation={myNeighborhoodLocation}
-                onFarFromHomeChange={setIsFarFromHome}
-              />
-            </MapInitializationGate>
-          </Card>
+          <UnifiedSearch
+            searchMode={searchMode}
+            onLocationSelect={handleLocationSearch}
+            onTextSearch={(query) => setSearchQuery(query)}
+            searchPlaces={searchPlaces}
+            isSearching={isSearching}
+            className="flex-1"
+          />
         </div>
 
-        {/* 선택된 마커 섹션 — 개별 마커든 근접 그룹(ADR-0008)이든 이 자리에 그대로 나열한다 */}
-        {selectedMapMarkers && selectedMapMarkers.length > 0 && (
-          <div className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <Card className="border-primary/20 shadow-lg ring-1 ring-primary/5">
-              <div className="p-6 border-b bg-primary/5 flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold flex items-center gap-2">
-                    <MapPin className="h-6 w-6 text-primary" />
-                    {selectedLocation}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {selectedMapMarkers.length === 1
-                      ? '이 지점의 단일 제보입니다'
-                      : `이 지점의 제보 ${selectedMapMarkers.length}건입니다`}
-                  </p>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => setSelectedMapMarkers(null)}>
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {selectedMapMarkers.map((report) => (
-                    <ReportCard key={report.id} report={report as any} />
-                  ))}
-                </div>
-              </div>
+        {showMap && (
+          <div className="mb-6 space-y-4">
+            <Card className="overflow-hidden">
+              <MapInitializationGate isAuthInitialized={isAuthInitialized} isLoadingProfile={isLoadingProfile}>
+                <MapComponent
+                  reports={mapReports}
+                  height={isDesktop ? DESKTOP_MAP_HEIGHT : MOBILE_MAP_HEIGHT}
+                  zoom={5} // 초기 줌: 동네 단위(3)는 너무 확대되어 주변을 좀 더 넓게 보여줌
+                  center={mapFocus ?? undefined}
+                  onBoundsChange={handleMapBoundsChange}
+                  onZoomChange={setMapZoom}
+                  onMarkerClick={handleMarkerClick as any}
+                  onGroupClick={handleGroupClick as any}
+                  selectedMarkerId={selectedMapMarkers?.length === 1 ? (selectedMapMarkers[0] as any)?.id : undefined}
+                  isBoundsQueryLoading={isMapLoading || isListLoading}
+                  myNeighborhoodLocation={myNeighborhoodLocation}
+                  onFarFromHomeChange={setIsFarFromHome}
+                />
+              </MapInitializationGate>
             </Card>
+
+            {selectedMarkersSection}
           </div>
         )}
 
-        {/* 제보 목록 영역 */}
-        <div className="space-y-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">
-                {searchQuery ? `'${searchQuery}' 검색 결과` : (useMapBoundsFilter ? '현재 지역 이슈' : '실시간 동네 제보')}
-              </h2>
-              <p className="text-muted-foreground text-sm mt-1">
-                제보 {totalCount}건
-              </p>
+        {showFeed && (
+          <section className="space-y-4 pb-24 lg:pb-0" aria-label="제보 목록">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="type-h2">{feedHeading}</h2>
+                <p className="type-body-sm text-muted-foreground mt-1" aria-live="polite">
+                  제보 {totalCount}건
+                </p>
+              </div>
+
+              <CategoryFilterChips
+                value={selectedCategory}
+                onChange={handleCategoryChange}
+                className="lg:justify-end"
+              />
             </div>
 
-            <div className="flex flex-wrap gap-1.5 bg-muted/50 p-1.5 rounded-xl border border-muted w-fit">
-              {categories.map((category) => (
-                <button
-                  key={category.value}
-                  onClick={() => {
-                    setSelectedCategory(category.value)
-                    if (useMapBoundsFilter) setTriggerMapSearch((prev: number) => prev + 1)
-                  }}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-xs md:text-sm font-bold transition-all",
-                    selectedCategory === category.value
-                      ? "bg-background text-primary shadow-sm"
-                      : "text-muted-foreground hover:bg-background/50"
-                  )}
-                >
-                  {category.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <ReportList
-            reports={listReports}
-            isLoading={isListLoading}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setPaginationPage}
-            emptyMessage={
-              <Card className="p-12 text-center border-dashed">
-                <div className="max-w-xs mx-auto space-y-4">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
-                    <FileText className="h-8 w-8 text-muted-foreground" />
+            <ReportList
+              reports={listReports}
+              isLoading={isListLoading}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setPaginationPage}
+              emptyMessage={
+                <Card className="border-dashed p-10 text-center">
+                  <div className="mx-auto max-w-xs space-y-4">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-surface-muted">
+                      <FileText className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+                    </div>
+                    <h3 className="type-h3">
+                      {searchQuery ? `'${searchQuery}' 검색 결과가 없어요` : '이 지역에는 아직 제보가 없어요'}
+                    </h3>
+                    <p className="type-body-sm text-muted-foreground">
+                      {searchQuery
+                        ? '다른 검색어를 써보거나 카테고리 필터를 해제해보세요'
+                        : '첫 번째 제보를 남기거나 지도를 옮겨 다른 곳을 살펴보세요'}
+                    </p>
+                    <Button className="w-full" onClick={handleComposeReport}>제보하기</Button>
                   </div>
-                  <h3 className="text-lg font-bold">제보가 없습니다</h3>
-                  <p className="text-muted-foreground">
-                    {useMapBoundsFilter ? '이 지역엔 아직 등록된 제보가 없네요. 첫 번째 제보자가 되어보세요!' : '검색 결과가 없습니다.'}
-                  </p>
-                  <Button onClick={openReportModal} className="w-full">첫 제보 작성하기</Button>
-                </div>
-              </Card>
-            }
-          />
-        </div>
+                </Card>
+              }
+            />
+          </section>
+        )}
       </main>
+
+      {/* 모바일 제보하기 — 안전 영역을 지키고 마지막 카드를 가리지 않는다 (UI_V2_CONTRACT.md §3.7) */}
+      {!isDesktop && mobileViewMode === 'feed' && (
+        <div
+          data-testid="mobile-compose-cta"
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-4 pt-3 pb-safe backdrop-blur"
+        >
+          <Button size="lg" className="w-full" onClick={handleComposeReport}>제보하기</Button>
+        </div>
+      )}
 
       {/* localhost 접속 가이드 */}
       <LocalhostGuide />

@@ -2,6 +2,7 @@ import React from 'react'
 import { Report } from '../../domain/entities'
 import ReportCard from './ReportCard'
 import { ReportCardSkeleton } from '@/shared/ui/ReportCard'
+import { UiButton } from '@/shared/ui'
 
 interface ReportListProps {
     reports: Report[]
@@ -22,7 +23,7 @@ export default function ReportList({
 }: ReportListProps) {
     if (isLoading) {
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 lg:gap-5" aria-busy="true">
                 {[...Array(9)].map((_, i) => (
                     <ReportCardSkeleton key={i} />
                 ))}
@@ -36,7 +37,7 @@ export default function ReportList({
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 lg:gap-5">
                 {reports.map((report) => (
                     <ReportCard key={report.id} report={report} />
                 ))}
@@ -45,25 +46,25 @@ export default function ReportList({
             {/* Pagination Controls */}
             {totalPages > 1 && onPageChange && (
                 <div className="flex justify-center items-center gap-4 mt-8 pb-4">
-                    <button
+                    <UiButton
+                        variant="outline"
                         onClick={() => onPageChange(currentPage - 1)}
                         disabled={currentPage <= 1}
-                        className="px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors shadow-sm"
                     >
                         이전
-                    </button>
+                    </UiButton>
 
-                    <span className="text-sm font-medium text-gray-600">
+                    <span className="type-label text-muted-foreground">
                         {currentPage} / {totalPages}
                     </span>
 
-                    <button
+                    <UiButton
+                        variant="outline"
                         onClick={() => onPageChange(currentPage + 1)}
                         disabled={currentPage >= totalPages}
-                        className="px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors shadow-sm"
                     >
                         다음
-                    </button>
+                    </UiButton>
                 </div>
             )}
         </div>
