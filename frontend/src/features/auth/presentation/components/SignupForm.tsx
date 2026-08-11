@@ -132,7 +132,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
           />
 
           {error && (
-            <div className="text-sm text-red-500 bg-red-50 p-3 rounded-md flex items-center">
+            <div role="alert" className="type-body-sm text-danger bg-danger/10 p-3 rounded-md flex items-center">
               <span className="mr-2">⚠️</span> {error}
             </div>
           )}
@@ -147,8 +147,8 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
       <Dialog open={showSuccessDialog} onOpenChange={handleSuccessDialogClose}>
         <DialogContent className="sm:max-w-md text-center">
           <DialogHeader>
-            <div className="mx-auto bg-green-100 p-3 rounded-full w-fit mb-4">
-              <Mail className="h-8 w-8 text-green-600" />
+            <div className="mx-auto bg-success/10 p-3 rounded-full w-fit mb-4">
+              <Mail className="h-8 w-8 text-success" />
             </div>
             <DialogTitle className="text-xl text-center">이메일을 확인해주세요</DialogTitle>
             <DialogDescription className="text-center pt-2">

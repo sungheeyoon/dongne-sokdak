@@ -85,7 +85,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           />
 
           {error && (
-            <div className="text-sm text-red-500 bg-red-50 p-3 rounded-md">
+            <div role="alert" className="type-body-sm text-danger bg-danger/10 p-3 rounded-md">
               {error}
             </div>
           )}

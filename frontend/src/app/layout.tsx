@@ -1,12 +1,23 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import QueryProvider from "@/lib/providers/QueryProvider";
 import AuthProvider from "@/lib/providers/AuthProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import PortfolioNoticeMount from "@/components/PortfolioNoticeMount";
 
-const inter = Inter({ subsets: ["latin"] });
+// UI v2 글꼴 계약 (docs/design/UI_V2_CONTRACT.md §2.1)
+// 한글·라틴·숫자를 한 패밀리로 처리하고 OS별 우연한 fallback에 의존하지 않기 위해
+// Pretendard Variable을 셀프호스팅한다. 서브셋 범위와 용량 예산은 #28에서 확정한다.
+const pretendard = localFont({
+  src: "./fonts/PretendardVariable.subset.woff2",
+  weight: "400 700",
+  style: "normal",
+  display: "swap",
+  preload: true,
+  variable: "--font-pretendard",
+  fallback: ["-apple-system", "BlinkMacSystemFont", "Apple SD Gothic Neo", "system-ui", "sans-serif"],
+});
 
 export const metadata: Metadata = {
   title: "동네속닥 - 우리 동네 이슈 제보 커뮤니티",
@@ -25,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={pretendard.variable}>
       <head>
         {/* 파비콘 설정 */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -39,7 +50,7 @@ export default function RootLayout({
           src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY}&libraries=services,clusterer&autoload=true`}
         ></script>
       </head>
-      <body className={`${inter.className} antialiased`}>
+      <body className="font-sans antialiased">
         <ErrorBoundary>
           <QueryProvider>
             <AuthProvider>

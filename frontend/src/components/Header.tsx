@@ -4,13 +4,16 @@ import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthView
 import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
 import { useAdminViewModel } from '@/features/admin/presentation/hooks/useAdminViewModel'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Avatar from './Avatar'
 import MyNeighborhoodModal from './MyNeighborhoodModal'
-import { Home, Settings, User, LogOut, ChevronDown, Pencil, Menu, X } from 'lucide-react'
+import { Home, Settings, User, LogOut, ChevronDown, Pencil, Menu, X, ClipboardList } from 'lucide-react'
 import Image from 'next/image'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 import { UiButton } from '@/shared/ui'
 import { cn } from '@/lib/utils'
+
+const MOBILE_MENU_ID = 'header-mobile-menu'
 
 export default function Header() {
   const { openAuthModal, openReportModal } = useUIStore()
@@ -22,6 +25,7 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
   const profileDropdownRef = useRef<HTMLDivElement>(null)
+  const profileTriggerRef = useRef<HTMLButtonElement>(null)
 
   // 프로필 드롭다운 외부 클릭 감지
   useEffect(() => {
@@ -37,6 +41,21 @@ export default function Header() {
     }
   }, [])
 
+  // Escape로 프로필 메뉴를 닫고 포커스를 여닫은 버튼으로 되돌린다 (UI_V2_CONTRACT.md §3.5)
+  useEffect(() => {
+    if (!isProfileDropdownOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsProfileDropdownOpen(false)
+        profileTriggerRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isProfileDropdownOpen])
+
   const getNeighborhoodDisplayName = () => {
     if (!profile?.neighborhood) return '내 동네 설정'
     const adminAddress = formatToAdministrativeAddress(profile.neighborhood.address)
@@ -44,12 +63,11 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        {/* Logo Section */}
-        <div
-          className="flex items-center gap-2 cursor-pointer transition-opacity hover:opacity-80"
-          onClick={() => router.push('/')}
+        <Link
+          href="/"
+          className="flex items-center gap-2 rounded-md transition-opacity hover:opacity-80"
         >
           <Image
             src="/images/title.png"
@@ -59,17 +77,18 @@ export default function Header() {
             className="h-8 w-auto object-contain"
             priority
           />
-        </div>
+          <span className="sr-only">홈으로 이동</span>
+        </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-2">
+        {/* 데스크톱 내비게이션 */}
+        <nav aria-label="주요 메뉴" className="hidden md:flex items-center gap-2">
           {user ? (
             <>
               <UiButton
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsNeighborhoodModalOpen(true)}
-                className={cn("gap-2 font-semibold", profile?.neighborhood && "text-primary bg-primary/5 hover:bg-primary/10")}
+                className={cn("gap-2 font-semibold", profile?.neighborhood && "text-brand bg-brand-subtle hover:bg-brand-subtle")}
               >
                 <Home className="h-4 w-4" />
                 <span>{getNeighborhoodDisplayName()}</span>
@@ -80,52 +99,64 @@ export default function Header() {
               </UiButton>
 
               {isAdmin() && (
-                <UiButton variant="ghost" size="sm" onClick={() => router.push('/admin')} className="text-violet-600 hover:text-violet-700 hover:bg-violet-50">
+                <UiButton variant="ghost" size="sm" onClick={() => router.push('/admin')} className="text-brand hover:bg-brand-subtle">
                   <Settings className="mr-2 h-4 w-4" />
                   관리자
                 </UiButton>
               )}
 
-              <UiButton onClick={openReportModal} size="sm" className="ml-2 gap-2 shadow-sm shadow-primary/20">
+              <UiButton onClick={openReportModal} size="sm" className="ml-2 gap-2">
                 <Pencil className="h-4 w-4" />
                 제보하기
               </UiButton>
 
               <div className="relative ml-2" ref={profileDropdownRef}>
                 <UiButton
+                  ref={profileTriggerRef}
                   variant="outline"
                   size="sm"
                   onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                   className="gap-2 rounded-full px-3"
+                  aria-label={isProfileDropdownOpen ? '프로필 메뉴 닫기' : '프로필 메뉴 열기'}
+                  aria-expanded={isProfileDropdownOpen}
+                  aria-haspopup="menu"
                 >
                   <User className="h-4 w-4 text-muted-foreground" />
                   <ChevronDown className={cn("h-3 w-3 transition-transform duration-200", isProfileDropdownOpen && "rotate-180")} />
                 </UiButton>
 
                 {isProfileDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 animate-in fade-in zoom-in-95 rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-black/5">
-                    <div className="px-3 py-3 border-b border-muted">
+                  <div
+                    role="menu"
+                    aria-label="프로필 메뉴"
+                    className="absolute right-0 mt-2 w-56 animate-in fade-in zoom-in-95 rounded-lg border border-border bg-surface p-1 text-foreground shadow-e2"
+                  >
+                    <div className="px-3 py-3 border-b border-border">
                       <div className="flex items-center gap-3">
                         <Avatar src={profile?.avatarUrl} size="sm" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold truncate">{profile?.nickname || '사용자'}</p>
-                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          <p className="type-label truncate">{profile?.nickname || '사용자'}</p>
+                          <p className="type-caption text-muted-foreground truncate">{user.email}</p>
                         </div>
                       </div>
                     </div>
                     <div className="py-1">
-                      <button
+                      <UiButton
+                        role="menuitem"
+                        variant="ghost"
+                        className="w-full justify-start gap-2"
                         onClick={() => { router.push('/profile'); setIsProfileDropdownOpen(false) }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent rounded-md transition-colors"
                       >
                         <User className="h-4 w-4" /> 프로필 설정
-                      </button>
-                      <button
+                      </UiButton>
+                      <UiButton
+                        role="menuitem"
+                        variant="ghost"
+                        className="w-full justify-start gap-2 text-danger"
                         onClick={() => { signOut(); setIsProfileDropdownOpen(false) }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 rounded-md transition-colors"
                       >
                         <LogOut className="h-4 w-4" /> 로그아웃
-                      </button>
+                      </UiButton>
                     </div>
                   </div>
                 )}
@@ -136,51 +167,79 @@ export default function Header() {
               <UiButton variant="ghost" size="sm" onClick={() => openAuthModal('signin')}>
                 로그인
               </UiButton>
-              <UiButton size="sm" onClick={() => openAuthModal('signup')} className="shadow-sm shadow-primary/20">
-                시작하기
+              <UiButton size="sm" onClick={() => openAuthModal('signup')}>
+                회원가입
               </UiButton>
             </>
           )}
-        </div>
+        </nav>
 
-        {/* Mobile Navigation Controls */}
+        {/* 모바일 컨트롤 — 히트 영역 44px (UI_V2_CONTRACT.md §3.7) */}
         <div className="flex md:hidden items-center gap-2">
           {user && (
-            <UiButton size="icon" variant="ghost" onClick={openReportModal} className="text-primary">
+            <UiButton
+              size="icon"
+              variant="ghost"
+              onClick={openReportModal}
+              className="text-brand"
+              aria-label="제보하기"
+            >
               <Pencil className="h-5 w-5" />
             </UiButton>
           )}
-          <UiButton size="icon" variant="ghost" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+          <UiButton
+            size="icon"
+            variant="ghost"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label={isMobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
+            aria-expanded={isMobileMenuOpen}
+            aria-controls={MOBILE_MENU_ID}
+          >
             {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </UiButton>
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t bg-background p-4 animate-in slide-in-from-top-2 duration-200">
+        <nav
+          id={MOBILE_MENU_ID}
+          aria-label="모바일 메뉴"
+          className="md:hidden border-t border-border bg-surface p-4 animate-in slide-in-from-top-2"
+        >
           <div className="grid gap-2">
             {user ? (
               <>
-                <UiButton variant="outline" className="justify-start gap-3 h-12" onClick={() => { setIsNeighborhoodModalOpen(true); setIsMobileMenuOpen(false) }}>
-                  <Home className="h-5 w-5 text-primary" />
+                <UiButton variant="outline" className="justify-start gap-3 h-12 w-full" onClick={() => { setIsNeighborhoodModalOpen(true); setIsMobileMenuOpen(false) }}>
+                  <Home className="h-5 w-5 text-brand" />
                   <span>{getNeighborhoodDisplayName()}</span>
                 </UiButton>
-                <UiButton variant="ghost" className="justify-start h-12" onClick={() => { router.push('/my-reports'); setIsMobileMenuOpen(false) }}>
-                  📋 내 제보 내역
+                <UiButton variant="ghost" className="justify-start gap-3 h-12 w-full" onClick={() => { router.push('/my-reports'); setIsMobileMenuOpen(false) }}>
+                  <ClipboardList className="h-5 w-5" />
+                  <span>내 제보</span>
                 </UiButton>
-                <UiButton variant="ghost" className="justify-start h-12 text-destructive" onClick={() => { signOut(); setIsMobileMenuOpen(false) }}>
-                  <LogOut className="h-5 w-5 mr-3" /> 로그아웃
+                {isAdmin() && (
+                  <UiButton variant="ghost" className="justify-start gap-3 h-12 w-full text-brand" onClick={() => { router.push('/admin'); setIsMobileMenuOpen(false) }}>
+                    <Settings className="h-5 w-5" />
+                    <span>관리자</span>
+                  </UiButton>
+                )}
+                <UiButton variant="ghost" className="justify-start gap-3 h-12 w-full text-danger" onClick={() => { signOut(); setIsMobileMenuOpen(false) }}>
+                  <LogOut className="h-5 w-5" />
+                  <span>로그아웃</span>
                 </UiButton>
               </>
             ) : (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <UiButton variant="outline" onClick={() => { openAuthModal('signin'); setIsMobileMenuOpen(false) }}>로그인</UiButton>
-                <UiButton onClick={() => { openAuthModal('signup'); setIsMobileMenuOpen(false) }}>회원가입</UiButton>
+              <div className="grid grid-cols-2 gap-2">
+                <UiButton variant="outline" className="h-12 w-full" onClick={() => { openAuthModal('signin'); setIsMobileMenuOpen(false) }}>
+                  로그인
+                </UiButton>
+                <UiButton className="h-12 w-full" onClick={() => { openAuthModal('signup'); setIsMobileMenuOpen(false) }}>
+                  회원가입
+                </UiButton>
               </div>
             )}
           </div>
-        </div>
+        </nav>
       )}
 
       <MyNeighborhoodModal isOpen={isNeighborhoodModalOpen} onClose={() => setIsNeighborhoodModalOpen(false)} />

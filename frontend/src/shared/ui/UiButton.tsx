@@ -4,27 +4,41 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * UI v2 Button 계약 — docs/design/UI_V2_CONTRACT.md §4.1
+ *
+ * 계약 이름은 primary / secondary / ghost / danger 다.
+ * default / outline / destructive 는 전환이 끝나지 않은 화면을 위한 별칭이며
+ * 같은 스타일을 가리킨다 (#16–#20에서 호출부를 옮긴다).
+ *
+ * 비활성은 opacity로 표현하지 않는다 (§3.6) — 대비가 예측 불가능해지기 때문이다.
+ */
+const PRIMARY = "bg-brand text-brand-foreground hover:bg-brand-hover active:bg-brand-pressed"
+const SECONDARY = "border border-border-strong bg-surface text-foreground hover:bg-surface-muted"
+const GHOST = "text-foreground hover:bg-surface-muted"
+const DANGER = "bg-danger text-danger-foreground hover:bg-danger/90"
+
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md type-label transition-colors disabled:pointer-events-none disabled:bg-surface-muted disabled:text-muted-foreground disabled:border-border [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default:
-          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-        outline:
-          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-        secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+        primary: PRIMARY,
+        secondary: SECONDARY,
+        ghost: GHOST,
+        danger: DANGER,
+        // 별칭
+        default: PRIMARY,
+        outline: SECONDARY,
+        destructive: DANGER,
+        link: "text-brand underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        // md — 기본. 모바일 히트 영역 44px을 그대로 만족한다.
+        default: "h-11 px-4",
+        sm: "h-9 px-3",
+        lg: "h-13 px-5 type-body font-semibold",
+        icon: "h-11 w-11",
       },
     },
     defaultVariants: {

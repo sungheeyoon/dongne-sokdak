@@ -15,8 +15,9 @@ export function UiSocialButton({ provider, className, children, ...props }: UiSo
       type="button"
       className={`w-full flex items-center justify-center gap-2 ${
         isKakao 
-          ? "bg-[#FEE500] hover:bg-[#FEE500]/90 text-black border-none" 
-          : "bg-white hover:bg-gray-50 text-black border border-gray-200"
+          // 카카오·구글의 고정 브랜드 색은 공급자 자산이므로 의미 토큰으로 대체하지 않는다.
+          ? "bg-[#FEE500] hover:bg-[#FEE500]/90 text-[#191600] border-none"
+          : "bg-surface hover:bg-surface-muted text-foreground border border-border-strong"
       } ${className || ""}`}
       {...props}
     >
