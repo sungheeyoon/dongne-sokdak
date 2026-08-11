@@ -1,89 +1,243 @@
 @import "tailwindcss";
 
+/*
+ * UI v2 디자인 토큰 — docs/design/UI_V2_CONTRACT.md
+ *
+ * 화면 코드는 여기 정의된 의미 기반 토큰만 씁니다.
+ * gray, blue, red 같은 팔레트 유틸리티를 직접 쓰지 않습니다.
+ */
+
 @theme inline {
+  /* --- 면과 텍스트 --- */
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
   --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+
+  /* --- 경계 --- */
   --color-border: var(--border);
-  --color-input: var(--input);
+  --color-border-strong: var(--border-strong);
+
+  /* --- 브랜드 --- */
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-pressed: var(--brand-pressed);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-foreground: var(--brand-foreground);
+
+  /* --- 의미 색 --- */
+  --color-info: var(--info);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+
+  /* --- 제보 상태 (도메인) --- */
+  --color-status-open: var(--status-open);
+  --color-status-open-foreground: var(--status-open-foreground);
+  --color-status-progress: var(--status-progress);
+  --color-status-progress-foreground: var(--status-progress-foreground);
+  --color-status-resolved: var(--status-resolved);
+  --color-status-resolved-foreground: var(--status-resolved-foreground);
+
+  /*
+   * 레거시 shadcn 별칭 — 아직 UI v2로 전환되지 않은 화면이 깨지지 않게 유지합니다.
+   * 값은 위 토큰을 그대로 가리키며, 마지막 소비자가 사라지면 제거합니다 (#16–#20).
+   */
+  --color-card: var(--surface);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--foreground);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--brand-foreground);
+  --color-secondary: var(--surface-muted);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--surface-muted);
+  --color-accent: var(--surface-muted);
+  --color-accent-foreground: var(--foreground);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: var(--danger-foreground);
+  --color-input: var(--border-strong);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+
+  /* --- 형태 --- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* --- 깊이 --- */
+  --shadow-e1: 0 1px 2px rgb(26 24 21 / 0.06), 0 1px 3px rgb(26 24 21 / 0.04);
+  --shadow-e2: 0 4px 12px rgb(26 24 21 / 0.08);
+  --shadow-e3: 0 12px 32px rgb(26 24 21 / 0.14);
+
+  /* --- 글꼴 --- */
+  --font-sans: var(--font-pretendard), -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", system-ui, sans-serif;
 }
 
 @layer base {
   :root {
-    --background: hsl(0 0% 100%);
-    --foreground: hsl(222.2 84% 4.9%);
-    --card: hsl(0 0% 100%);
-    --card-foreground: hsl(222.2 84% 4.9%);
-    --popover: hsl(0 0% 100%);
-    --popover-foreground: hsl(222.2 84% 4.9%);
-    --primary: hsl(221.2 83.2% 53.3%);
-    --primary-foreground: hsl(210 40% 98%);
-    --secondary: hsl(210 40% 96.1%);
-    --secondary-foreground: hsl(222.2 47.4% 11.2%);
-    --muted: hsl(210 40% 96.1%);
-    --muted-foreground: hsl(215.4 16.3% 46.9%);
-    --accent: hsl(210 40% 96.1%);
-    --accent-foreground: hsl(222.2 47.4% 11.2%);
-    --destructive: hsl(0 84.2% 60.2%);
-    --destructive-foreground: hsl(210 40% 98%);
-    --border: hsl(214.3 31.8% 91.4%);
-    --input: hsl(214.3 31.8% 91.4%);
-    --ring: hsl(221.2 83.2% 53.3%);
-    --radius: 0.75rem;
+    /* 면과 텍스트 */
+    --background: #fbfaf8;
+    --surface: #ffffff;
+    --surface-muted: #f2efea;
+    --foreground: #1a1815;
+    --muted-foreground: #6b6660;
+
+    /* 경계 — border는 장식 전용, 컨트롤 경계는 border-strong */
+    --border: #e7e3dd;
+    --border-strong: #948a7c;
+
+    /* 브랜드 — 로고 코발트 블루 계승 */
+    --brand: #1e52e0;
+    --brand-hover: #1a47c4;
+    --brand-pressed: #163ca8;
+    --brand-subtle: #edf1fe;
+    --brand-foreground: #ffffff;
+
+    /* 의미 색 — 모두 흰 배경에서 AA 이상 */
+    --info: #2563eb;
+    --success: #2e7d5b;
+    --warning: #8a5200;
+    --danger: #c1352b;
+    --danger-foreground: #ffffff;
+
+    /* 제보 상태 — 중성 → 앰버 → 초록 진행. 빨강은 오류·파괴적 행동 전용 */
+    --status-open: #f2efea;
+    --status-open-foreground: #4a443c;
+    --status-progress: #fbf0dc;
+    --status-progress-foreground: #7a4a00;
+    --status-resolved: #e3f2ea;
+    --status-resolved-foreground: #1f5c43;
+
+    --ring: #1e52e0;
+    --scrim: rgb(26 24 21 / 0.48);
+
+    /* 모션 */
+    --duration-fast: 120ms;
+    --duration-base: 180ms;
+    --duration-slow: 260ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   }
 
-  .dark {
-    --background: hsl(222.2 84% 4.9%);
-    --foreground: hsl(210 40% 98%);
-    --card: hsl(222.2 84% 4.9%);
-    --card-foreground: hsl(210 40% 98%);
-    --popover: hsl(222.2 84% 4.9%);
-    --popover-foreground: hsl(210 40% 98%);
-    --primary: hsl(217.2 91.2% 59.8%);
-    --primary-foreground: hsl(222.2 47.4% 11.2%);
-    --secondary: hsl(217.2 32.6% 17.5%);
-    --secondary-foreground: hsl(210 40% 98%);
-    --muted: hsl(217.2 32.6% 17.5%);
-    --muted-foreground: hsl(215 20.2% 65.1%);
-    --accent: hsl(217.2 32.6% 17.5%);
-    --accent-foreground: hsl(210 40% 98%);
-    --destructive: hsl(0 62.8% 30.6%);
-    --destructive-foreground: hsl(210 40% 98%);
-    --border: hsl(217.2 32.6% 17.5%);
-    --input: hsl(217.2 32.6% 17.5%);
-    --ring: hsl(224.3 76.3% 48%);
-  }
-}
+  /*
+   * UI v2는 라이트 모드만 지원합니다. 다크 토큰 세트는 #22에서 정의합니다.
+   * 검증되지 않은 shadcn 기본 .dark 블록은 제거했습니다.
+   */
 
-@layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  /* 포커스는 모든 인터랙티브 요소에서 보입니다 — outline만 지우는 코드를 금지합니다 */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
 
-/* --- Legacy Compatibility & Utilities (To be removed later) --- */
+/* ---------------------------------------------------------------------------
+ * 타입 스케일 — UI_V2_CONTRACT.md §2.2
+ * 한글 본문 기준으로 행간을 넉넉히 잡고, 자간 음수는 제목에만 씁니다.
+ * ------------------------------------------------------------------------ */
+@layer components {
+  .type-display {
+    font-size: 26px;
+    line-height: 36px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    word-break: keep-all;
+  }
+
+  .type-h1 {
+    font-size: 22px;
+    line-height: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    word-break: keep-all;
+  }
+
+  .type-h2 {
+    font-size: 19px;
+    line-height: 28px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    word-break: keep-all;
+  }
+
+  .type-h3 {
+    font-size: 16px;
+    line-height: 25px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    word-break: keep-all;
+  }
+
+  .type-body-lg {
+    font-size: 16px;
+    line-height: 27px;
+    font-weight: 400;
+  }
+
+  .type-body {
+    font-size: 15px;
+    line-height: 25px;
+    font-weight: 400;
+  }
+
+  .type-body-sm {
+    font-size: 13px;
+    line-height: 21px;
+    font-weight: 400;
+  }
+
+  .type-label {
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 600;
+  }
+
+  .type-caption {
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 400;
+  }
+
+  @media (min-width: 1024px) {
+    .type-display {
+      font-size: 32px;
+      line-height: 42px;
+    }
+
+    .type-h1 {
+      font-size: 24px;
+      line-height: 34px;
+    }
+
+    .type-h2 {
+      font-size: 20px;
+      line-height: 30px;
+    }
+
+    .type-h3 {
+      font-size: 17px;
+      line-height: 26px;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 유틸리티
+ * ------------------------------------------------------------------------ */
+
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -91,13 +245,35 @@
   overflow: hidden;
 }
 
-/* Touch optimization */
 .touch-manipulation {
   touch-action: manipulation;
 }
 
+/* 화면 하단에 고정되는 요소의 안전 영역 (UI_V2_CONTRACT.md §3.7) */
+.pb-safe {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+
+/* 모바일 입력은 16px 이상 — iOS의 자동 확대를 막습니다 */
 @media (max-width: 768px) {
-  input[type="text"], input[type="email"], input[type="password"], textarea {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  textarea,
+  select {
     font-size: 16px;
+  }
+}
+
+/* 모션 축소 요청 시 이동 효과를 제거하고 색·텍스트로만 상태를 전달합니다 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

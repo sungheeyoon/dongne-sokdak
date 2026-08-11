@@ -214,7 +214,7 @@ export default function Home() {
             우리 동네 <span className="text-primary">소식</span>을 한눈에
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl">
-            불편사항부터 훈훈한 미담까지, 이웃과 함께 나누는 실시간 동네 리포트
+            불편사항부터 훈훈한 미담까지, 이웃과 함께 나누는 우리 동네 제보
           </p>
         </div>
 
@@ -339,7 +339,7 @@ export default function Home() {
                 {searchQuery ? `'${searchQuery}' 검색 결과` : (useMapBoundsFilter ? '현재 지역 이슈' : '실시간 동네 제보')}
               </h2>
               <p className="text-muted-foreground text-sm mt-1">
-                총 {totalCount}개의 리포트가 발견되었습니다
+                제보 {totalCount}건
               </p>
             </div>
 

@@ -29,7 +29,7 @@ export function AuthDialog() {
     <UiDialog open={isAuthModalOpen} onOpenChange={(open) => !open && closeAuthModal()}>
       <UiDialogContent className="sm:max-w-md w-[320px] rounded-xl sm:rounded-xl">
         <UiDialogHeader className="mb-4">
-          <UiDialogTitle className="text-xl font-bold text-center">동네 속닥</UiDialogTitle>
+          <UiDialogTitle className="type-h2 text-center">동네속닥</UiDialogTitle>
           <UiDialogDescription className="text-center">
             {authMode === 'signin' ? '로그인하고 동네 이야기를 나눠보세요' : '회원가입하고 동네 소식에 참여하세요'}
           </UiDialogDescription>
