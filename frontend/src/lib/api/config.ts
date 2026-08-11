@@ -13,6 +13,27 @@ export const createApiUrl = (endpoint: string) => {
   return `${baseUrl}${path}`
 }
 
+/**
+ * HTTP 상태 코드를 보존하는 API 오류.
+ *
+ * 화면은 "없음"과 "실패"를 다르게 그려야 한다 — 프로필 미생성(404)을
+ * 서버 실패와 같은 오류 화면으로 합치면 주민이 할 수 있는 다음 행동을
+ * 알 수 없다 (UI_V2_CONTRACT.md §8).
+ */
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+/** 요청한 리소스가 아직 없다 — 실패가 아니라 빈 상태로 그려야 한다. */
+export const isNotFoundError = (error: unknown): boolean =>
+  error instanceof ApiError && error.status === 404
+
 // HTTP 요청 헬퍼 함수
 export const apiRequest = async (
   url: string, 
@@ -42,10 +63,10 @@ export const apiRequest = async (
       
       // 401 오류는 인증 문제이므로 특별히 처리
       if (response.status === 401) {
-        throw new Error('로그인이 필요합니다')
+        throw new ApiError('로그인이 필요합니다', 401)
       }
-      
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
+
+      throw new ApiError(errorData.detail || `HTTP error! status: ${response.status}`, response.status)
     }
 
     if (response.status === 204) {
