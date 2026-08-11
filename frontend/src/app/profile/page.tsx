@@ -2,179 +2,171 @@
 
 import { useState } from 'react'
 import { useProfileViewModel } from '@/features/profile/presentation/hooks/useProfileViewModel'
-import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
 import Header from '@/components/Header'
 import Avatar from '@/components/Avatar'
 import ProfileEditModal from '@/components/ProfileEditModal'
-import { Edit, Calendar, MessageCircle, Heart, FileText, Loader2, Mail, Shield, MapPin } from 'lucide-react'
+import { AuthDialog } from '@/features/auth/presentation/components/AuthDialog'
+import AuthRequiredGate from '@/features/auth/presentation/components/AuthRequiredGate'
+import MyActivitySkeleton from '@/features/profile/presentation/components/MyActivitySkeleton'
+import { useAuthViewModel } from '@/features/auth/presentation/hooks/useAuthViewModel'
+import { isNotFoundError } from '@/lib/api/config'
+import { Edit, Calendar, MessageCircle, Heart, FileText, Mail, Shield, MapPin, UserPlus, AlertTriangle } from 'lucide-react'
 import {
   UiButton as Button,
   UiCard as Card,
   UiCardContent as CardContent,
   UiCardHeader as CardHeader,
-  UiCardTitle as CardTitle
+  UiCardTitle as CardTitle,
+  UiEmptyState,
+  UiErrorState,
 } from '@/shared/ui'
 
-export default function ProfilePage() {
-  const { profile, isLoading, error } = useProfileViewModel()
+const formatDate = (dateString: string) =>
+  new Date(dateString).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+
+function ProfileStatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+  return (
+    <Card className="p-5 text-center">
+      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-surface-muted text-muted-foreground">
+        {icon}
+      </div>
+      <p className="type-caption text-muted-foreground">{label}</p>
+      <p className="type-h1 mt-1">{value}</p>
+    </Card>
+  )
+}
+
+/**
+ * 프로필 — 내 활동 여정의 계정 쪽 화면.
+ *
+ * "프로필이 아직 없다"와 "프로필을 못 불러왔다"는 다른 사실이므로 다른
+ * 화면과 다른 행동을 준다 (UI_V2_CONTRACT.md §8).
+ */
+function ProfileContent({ onEdit }: { onEdit: () => void }) {
+  const { profile, isLoading, error, refetch } = useProfileViewModel()
   const { user } = useAuthViewModel()
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="animate-spin text-primary h-8 w-8" />
-      </div>
-    )
+    return <MyActivitySkeleton />
   }
 
-  if (error || !profile) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <main className="container mx-auto px-4 py-20">
-          <Card className="max-w-md mx-auto text-center p-8 border-dashed shadow-none bg-transparent">
-            <p className="text-muted-foreground mb-6">프로필 정보를 불러올 수 없습니다.</p>
-            <Button onClick={() => window.location.reload()}>다시 시도</Button>
-          </Card>
-        </main>
-      </div>
-    )
-  }
+  if (!profile) {
+    if (isNotFoundError(error)) {
+      return (
+        <UiEmptyState
+          icon={<UserPlus className="h-7 w-7" aria-hidden="true" />}
+          title="프로필을 아직 만들지 않았어요"
+          description="닉네임과 내 동네를 정하면 이웃에게 내 제보가 어떻게 보이는지 확인할 수 있어요"
+          primaryAction={{ label: '프로필 만들기', onClick: onEdit }}
+        />
+      )
+    }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
-      year: 'numeric', month: 'long', day: 'numeric'
-    })
+    return (
+      <UiErrorState
+        icon={<AlertTriangle className="h-7 w-7" aria-hidden="true" />}
+        title="프로필을 불러오지 못했어요"
+        description="잠시 후 다시 시도해주세요"
+        primaryAction={{ label: '다시 시도', onClick: () => refetch() }}
+      />
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
-      <Header />
+    <div className="space-y-6">
+      <Card className="p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <Avatar src={profile.avatarUrl} size="xl" alt={profile.nickname} />
 
-      <main className="container mx-auto px-4 py-10">
-        <div className="max-w-4xl mx-auto space-y-8">
-          {/* Profile Header Card */}
-          <Card className="overflow-hidden border-0 shadow-sm ring-1 ring-black/5 bg-white">
-            <div className="h-40 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10" />
-            <CardContent className="relative px-8 pb-8">
-              <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-16 mb-6">
-                <div className="relative group">
-                  <div className="rounded-full ring-4 ring-white shadow-lg overflow-hidden bg-white">
-                    <Avatar
-                      src={profile.avatarUrl}
-                      size="xl"
-                      alt={profile.nickname}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex-1 space-y-2 mb-2">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{profile.nickname}</h1>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 font-medium">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4" />
-                      <span>{formatDate(profile.createdAt)} 가입</span>
-                    </div>
-                    {profile.neighborhood && (
-                      <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                        <MapPin className="w-3.5 h-3.5" />
-                        {profile.neighborhood.placeName}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <Button
-                  onClick={() => setIsEditModalOpen(true)}
-                  variant="outline"
-                  className="w-full md:w-auto gap-2 font-medium shadow-sm"
-                >
-                  <Edit className="w-4 h-4" />
-                  프로필 수정
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Activity Stats */}
-            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Card className="border-0 shadow-sm ring-1 ring-black/5 hover:shadow-md transition-shadow">
-                <CardContent className="p-6 flex flex-col items-center text-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0 text-blue-600">
-                    <FileText className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">작성한 제보</p>
-                    <p className="text-3xl font-bold text-gray-900">{profile.stats?.reportCount || 0}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-sm ring-1 ring-black/5 hover:shadow-md transition-shadow">
-                <CardContent className="p-6 flex flex-col items-center text-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0 text-emerald-600">
-                    <MessageCircle className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">작성한 댓글</p>
-                    <p className="text-3xl font-bold text-gray-900">{profile.stats?.commentCount || 0}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-sm ring-1 ring-black/5 hover:shadow-md transition-shadow">
-                <CardContent className="p-6 flex flex-col items-center text-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center shrink-0 text-rose-600">
-                    <Heart className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">누른 공감</p>
-                    <p className="text-3xl font-bold text-gray-900">{profile.stats?.voteCount || 0}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Additional Info / Settings Links */}
-            <div className="lg:col-span-1 space-y-6">
-              <Card className="border-0 shadow-sm ring-1 ring-black/5 h-full">
-                <CardHeader className="pb-3 border-b border-gray-100">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-gray-500" />
-                    계정 정보
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-6">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-1">
-                      <Mail className="w-4 h-4" /> 이메일
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg text-sm font-medium text-gray-900 break-all">
-                      {user?.email || '이메일 정보 없음'}
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-gray-100">
-                    <Button variant="link" className="px-0 h-auto text-gray-500 hover:text-primary font-medium text-sm">
-                      비밀번호 변경하기
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+          <div className="min-w-0 flex-1 space-y-2">
+            <h2 className="type-h1 truncate">{profile.nickname}</h2>
+            <div className="flex flex-wrap items-center gap-3 type-caption text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="h-4 w-4" aria-hidden="true" />
+                {formatDate(profile.createdAt)} 가입
+              </span>
+              {profile.neighborhood && (
+                <span className="flex items-center gap-1.5 rounded-full bg-brand-subtle px-2 py-0.5 text-brand">
+                  <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                  {profile.neighborhood.placeName}
+                </span>
+              )}
             </div>
           </div>
+
+          <Button variant="outline" className="gap-2 sm:w-auto" onClick={onEdit}>
+            <Edit className="h-4 w-4" aria-hidden="true" />
+            프로필 수정
+          </Button>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <ProfileStatCard
+          icon={<FileText className="h-6 w-6" aria-hidden="true" />}
+          label="작성한 제보"
+          value={profile.stats?.reportCount || 0}
+        />
+        <ProfileStatCard
+          icon={<MessageCircle className="h-6 w-6" aria-hidden="true" />}
+          label="작성한 댓글"
+          value={profile.stats?.commentCount || 0}
+        />
+        <ProfileStatCard
+          icon={<Heart className="h-6 w-6" aria-hidden="true" />}
+          label="누른 공감"
+          value={profile.stats?.voteCount || 0}
+        />
+      </div>
+
+      <Card>
+        <CardHeader className="border-b border-border pb-3">
+          <CardTitle className="type-h3 flex items-center gap-2">
+            <Shield className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            계정 정보
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-6">
+          <div>
+            <div className="mb-1 flex items-center gap-2 type-label text-muted-foreground">
+              <Mail className="h-4 w-4" aria-hidden="true" /> 이메일
+            </div>
+            <div className="rounded-md bg-surface-muted p-3 type-body-sm break-all">
+              {user?.email || '이메일 정보 없음'}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+export default function ProfilePage() {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <AuthDialog />
+
+      <main className="container mx-auto max-w-5xl px-4 py-6 lg:py-8">
+        <div className="mb-6">
+          <h1 className="type-h1">프로필</h1>
+          <p className="mt-1 type-body-sm text-muted-foreground">
+            이웃에게 보이는 내 정보와 활동 기록이에요
+          </p>
         </div>
 
-        {/* 편집 모달 */}
-        <ProfileEditModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-        />
+        <AuthRequiredGate
+          title="로그인하면 프로필을 볼 수 있어요"
+          description="닉네임, 내 동네, 활동 기록은 본인만 볼 수 있어요"
+          skeleton={<MyActivitySkeleton />}
+        >
+          <ProfileContent onEdit={() => setIsEditModalOpen(true)} />
+        </AuthRequiredGate>
       </main>
+
+      <ProfileEditModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} />
     </div>
   )
 }

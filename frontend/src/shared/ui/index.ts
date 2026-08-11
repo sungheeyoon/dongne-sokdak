@@ -62,6 +62,7 @@ export { default as MarkerIcon } from './MarkerIcon'
 export { SearchButton } from './SearchButton'
 export { SearchInput } from './SearchInput'
 export { default as LocalhostGuide } from './LocalhostGuide'
+export { UiEmptyState, UiErrorState } from './UiStateView'
 
 // 타입 정의
 export type { BaseModalProps } from './UiBaseModal'

@@ -53,6 +53,7 @@ export const useProfileViewModel = () => {
         profile: profileQuery.data,
         isLoading: profileQuery.isLoading,
         error: profileQuery.error,
+        refetch: profileQuery.refetch,
 
         updateProfile: updateProfileMutation.mutateAsync,
         isUpdatingProfile: updateProfileMutation.isPending,
