@@ -12,6 +12,8 @@ _Last verified: 2026-07-24_
 | [`../CONTEXT.md`](../CONTEXT.md) | 프로젝트 도메인 용어 |
 | [`FRONTEND_CLEAN_ARCHITECTURE.md`](FRONTEND_CLEAN_ARCHITECTURE.md) | 프론트엔드 계층과 의존성 규칙 |
 | [`adr/`](adr/) | 현재까지 유지되는 설계 결정 |
+| [`design/UI_V2_CONTRACT.md`](design/UI_V2_CONTRACT.md) | 주민용 UI v2 제품·비주얼 계약 (토큰, 타이포, 컴포넌트, 용어) |
+| [`design/UI_V2_REFERENCE_LAYOUTS.md`](design/UI_V2_REFERENCE_LAYOUTS.md) | UI v2 레퍼런스 레이아웃 (1440 / 390, 9개 화면) |
 | [`../backend/README.md`](../backend/README.md) | 백엔드 구조와 실행 방법 |
 | [`../backend/results/locust/BOUNDS_EVENT_LOOP_BENCHMARK_20260804.md`](../backend/results/locust/BOUNDS_EVENT_LOOP_BENCHMARK_20260804.md) | bounds API 동시 부하 측정 원문 (현행) |
 | [`../backend/results/locust/BOUNDS_RPC_BENCHMARK_20260724.md`](../backend/results/locust/BOUNDS_RPC_BENCHMARK_20260724.md) | bounds SQL 최적화 측정 원문 — API 수준 수치는 위 문서로 대체됨 |
