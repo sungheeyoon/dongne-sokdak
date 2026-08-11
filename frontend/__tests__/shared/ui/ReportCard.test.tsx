@@ -1,0 +1,200 @@
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { ReportCard, ReportCardSkeleton, REPORT_CARD_REGIONS } from '@/shared/ui/ReportCard'
+import type { ReportCardProps } from '@/shared/ui/ReportCard'
+
+vi.mock('next/navigation', () => ({
+    useRouter: () => ({ push: vi.fn() }),
+}))
+
+afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+})
+
+const baseReport: ReportCardProps = {
+    id: 'r1',
+    href: '/reports/r1',
+    title: '도로에 큰 웅덩이가 생겼습니다',
+    description: '비 온 뒤부터 물이 고여 있어 보행자가 지나가기 어렵습니다',
+    category: 'FACILITY',
+    status: 'OPEN',
+    address: '서울특별시 성동구 성수동2가 100-1',
+    voteCount: 12,
+    commentCount: 3,
+    createdAt: '2026-08-01T09:00:00Z',
+}
+
+function renderCard(overrides: Partial<ReportCardProps> = {}) {
+    return render(<ReportCard {...baseReport} {...overrides} />)
+}
+
+describe('ReportCard — 탐색 단위', () => {
+    it('카드 전체가 상세로 가는 링크다', () => {
+        renderCard()
+
+        const link = screen.getByRole('link')
+        expect(link).toHaveAttribute('href', '/reports/r1')
+        expect(link).toHaveAccessibleName(expect.stringContaining('도로에 큰 웅덩이가 생겼습니다') as unknown as string)
+    })
+
+    it('클릭 가능한 div에 의존하지 않는다', () => {
+        const { container } = renderCard()
+
+        container.querySelectorAll('div').forEach((div) => {
+            expect(div.getAttribute('onclick')).toBeNull()
+            expect(div.getAttribute('role')).not.toBe('button')
+        })
+    })
+
+    it('키보드로 도달할 수 있다', () => {
+        renderCard()
+
+        const link = screen.getByRole('link')
+        link.focus()
+        expect(document.activeElement).toBe(link)
+    })
+
+    it('카드 안에 중첩된 인터랙티브 요소를 만들지 않는다', () => {
+        const { container } = renderCard()
+
+        const link = screen.getByRole('link')
+        expect(link.querySelectorAll('a, button')).toHaveLength(0)
+        expect(container.querySelectorAll('a')).toHaveLength(1)
+    })
+})
+
+describe('ReportCard — 상태 표현', () => {
+    it.each([
+        ['OPEN', '접수됨'],
+        ['IN_PROGRESS', '처리중'],
+        ['RESOLVED', '해결됨'],
+    ] as const)('%s 상태를 읽을 수 있는 텍스트로 보여준다', (status, label) => {
+        renderCard({ status })
+
+        expect(screen.getByText(label)).toBeInTheDocument()
+    })
+
+    it('상태를 색만으로 구분하지 않는다', () => {
+        renderCard({ status: 'RESOLVED' })
+
+        const badge = screen.getByText('해결됨')
+        expect(badge.textContent?.trim()).toBe('해결됨')
+    })
+
+    it.each([
+        ['NOISE', '소음'],
+        ['TRASH', '쓰레기'],
+        ['FACILITY', '시설물'],
+        ['TRAFFIC', '교통'],
+        ['OTHER', '기타'],
+    ] as const)('%s 카테고리를 한글 라벨로 보여준다', (category, label) => {
+        renderCard({ category })
+
+        expect(screen.getByText(label)).toBeInTheDocument()
+    })
+})
+
+describe('ReportCard — 미디어 슬롯', () => {
+    it('이미지가 있으면 슬롯에 렌더한다', () => {
+        renderCard({ imageUrl: 'https://example.com/pothole.jpg' })
+
+        const slot = screen.getByTestId(REPORT_CARD_REGIONS.media)
+        expect(slot.querySelector('img')).toBeInTheDocument()
+    })
+
+    it('이미지가 없어도 같은 미디어 슬롯을 유지한다', () => {
+        renderCard({ imageUrl: undefined })
+
+        const slot = screen.getByTestId(REPORT_CARD_REGIONS.media)
+        expect(slot).toBeInTheDocument()
+        expect(slot.className).toMatch(/aspect-video/)
+        expect(slot.querySelector('img')).not.toBeInTheDocument()
+    })
+
+    it('이미지 로드에 실패하면 이미지 없음과 같은 표현으로 되돌린다', () => {
+        renderCard({ imageUrl: 'https://example.com/broken.jpg' })
+
+        const image = screen.getByTestId(REPORT_CARD_REGIONS.media).querySelector('img')!
+        fireEvent.error(image)
+
+        const slot = screen.getByTestId(REPORT_CARD_REGIONS.media)
+        expect(slot.querySelector('img')).not.toBeInTheDocument()
+        expect(slot.className).toMatch(/aspect-video/)
+    })
+
+    it('빈 문자열 이미지 URL을 이미지 없음으로 다룬다', () => {
+        renderCard({ imageUrl: '' })
+
+        expect(screen.getByTestId(REPORT_CARD_REGIONS.media).querySelector('img')).not.toBeInTheDocument()
+    })
+})
+
+describe('ReportCard — 긴 콘텐츠', () => {
+    it('긴 제목과 설명을 말줄임한다', () => {
+        renderCard({
+            title: '가'.repeat(200),
+            description: '나'.repeat(500),
+        })
+
+        expect(screen.getByTestId(REPORT_CARD_REGIONS.title).className).toMatch(/line-clamp-2/)
+        expect(screen.getByTestId(REPORT_CARD_REGIONS.description).className).toMatch(/line-clamp-2/)
+    })
+
+    it('긴 주소가 카드 폭을 넓히지 않는다', () => {
+        renderCard({ address: '서울특별시 '.repeat(30) })
+
+        expect(screen.getByTestId(REPORT_CARD_REGIONS.location).className).toMatch(/truncate/)
+    })
+
+    it('주소가 없으면 위치 정보 없음을 알린다', () => {
+        renderCard({ address: undefined })
+
+        expect(screen.getByText('위치 정보 없음')).toBeInTheDocument()
+    })
+})
+
+describe('ReportCard — 반응 수', () => {
+    it('공감과 댓글이 0건이어도 접근 가능한 이름과 함께 보여준다', () => {
+        renderCard({ voteCount: 0, commentCount: 0 })
+
+        expect(screen.getByLabelText('공감 0')).toBeInTheDocument()
+        expect(screen.getByLabelText('댓글 0')).toBeInTheDocument()
+    })
+
+    it('반응 수가 없으면 0으로 다룬다', () => {
+        renderCard({ voteCount: undefined, commentCount: undefined })
+
+        expect(screen.getByLabelText('공감 0')).toBeInTheDocument()
+        expect(screen.getByLabelText('댓글 0')).toBeInTheDocument()
+    })
+})
+
+describe('ReportCardSkeleton — 실제 카드와의 구조 계약 (ADR-0009)', () => {
+    it('실제 카드와 같은 주요 구역을 그린다', () => {
+        const { unmount } = renderCard()
+        const realRegions = Object.values(REPORT_CARD_REGIONS)
+            .filter((region) => screen.queryByTestId(region))
+            .sort()
+        unmount()
+
+        render(<ReportCardSkeleton />)
+        const skeletonRegions = Object.values(REPORT_CARD_REGIONS)
+            .filter((region) => screen.queryByTestId(region))
+            .sort()
+
+        expect(skeletonRegions).toEqual(realRegions)
+    })
+
+    it('실제 카드와 같은 미디어 정책을 쓴다', () => {
+        render(<ReportCardSkeleton />)
+
+        expect(screen.getByTestId(REPORT_CARD_REGIONS.media).className).toMatch(/aspect-video/)
+    })
+
+    it('링크가 아니다', () => {
+        render(<ReportCardSkeleton />)
+
+        expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    })
+})

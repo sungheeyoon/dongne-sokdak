@@ -414,7 +414,7 @@ export const UIShowcase: React.FC = () => {
                   </h4>
                   <UIReportCard
                     {...report}
-                    onClick={() => alert(`제보 ${report.id} 클릭!`)}
+                    href={`/reports/${report.id}`}
                   />
                 </div>
               ))}
