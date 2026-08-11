@@ -1,42 +1,27 @@
 'use client'
 
 import { Report } from '../../domain/entities'
-import { useRouter } from 'next/navigation'
-import { ReportCard as UIReportCard } from '@/shared/ui/ReportCard'
+import { ReportCard as UIReportCard, ReportCardCategory, ReportCardStatus } from '@/shared/ui/ReportCard'
 
 interface ReportCardProps {
     report: Report
 }
 
 export default function ReportCard({ report }: ReportCardProps) {
-    const router = useRouter()
-
-    const handleClick = () => {
-        router.push(`/reports/${report.id}`)
-    }
-
-    // Report 타입을 UI ReportCard Props에 맞게 변환
-    const reportData = {
-        id: report.id,
-        title: report.title,
-        description: report.description,
-        category: report.category as 'NOISE' | 'TRASH' | 'FACILITY' | 'TRAFFIC' | 'OTHER',
-        status: report.status as 'OPEN' | 'IN_PROGRESS' | 'RESOLVED',
-        imageUrl: report.imageUrl,
-        address: report.address,
-        location: report.location ? {
-            lat: report.location.lat,
-            lng: report.location.lng
-        } : undefined,
-        voteCount: report.voteCount || 0,
-        commentCount: report.commentCount || 0,
-        createdAt: report.createdAt,
-        onClick: handleClick
-    }
-
     return (
         <UIReportCard
-            {...reportData}
+            id={report.id}
+            href={`/reports/${report.id}`}
+            title={report.title}
+            description={report.description}
+            category={report.category as ReportCardCategory}
+            status={report.status as ReportCardStatus}
+            imageUrl={report.imageUrl}
+            address={report.address}
+            location={report.location ? { lat: report.location.lat, lng: report.location.lng } : undefined}
+            voteCount={report.voteCount || 0}
+            commentCount={report.commentCount || 0}
+            createdAt={report.createdAt}
         />
     )
 }
