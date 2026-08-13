@@ -47,7 +47,20 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Read(//c/Users/torus/AppData/Local/Temp/claude/C--dev-web-projects-dongne-sokdak/bcb55943-f906-42c5-9631-360647ae79b1/scratchpad/**)",
       "Bash(rm -rf profile-readme)",
-      "Bash(gh repo *)"
+      "Bash(gh repo *)",
+      "Bash(gh pr *)",
+      "Bash(git checkout *)",
+      "Bash(git pull *)",
+      "Bash(git mv *)",
+      "Bash(npm test *)",
+      "Bash(npm run *)",
+      "Bash(git fetch *)",
+      "Bash(venv/bin/python -m pytest tests/ -q -x)",
+      "Bash(venv/bin/python -c \"import sys; sys.path.insert\\(0,'.'\\); from fastapi.testclient import TestClient; from app.main import app; c=TestClient\\(app\\); r=c.get\\('/health/live'\\); print\\(r.status_code, r.json\\(\\)\\); r2=c.get\\('/health'\\); print\\(r2.status_code, 'has_database_field=', 'database' in r2.json\\(\\)\\)\")",
+      "Read(/Users/kyunglee/Documents/projects/dongne-sokdak/**)",
+      "Bash(find . -maxdepth 2 -iname \"*layer0*\")",
+      "Bash(npx vitest *)",
+      "Bash(npx eslint *)"
     ],
     "deny": []
   }
