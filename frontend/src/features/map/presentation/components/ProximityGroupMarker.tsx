@@ -24,13 +24,13 @@ const BADGE_STYLE: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-// 선택된 근접 그룹 — 개별 마커와 같은 브랜드 색으로 채우고 흰 테두리를 두껍게 해
-// 배지들 사이에서 즉시 구분되게 한다. 크기는 그대로 둬서 지도가 출렁이지 않게 한다.
+// 선택된 근접 그룹 — 브랜드 색으로 바꾸되 크기와 그림자는 절제한다. 실제 선택 표시는
+// 뒤의 정적 halo가 담당하므로 배지 자체까지 과하게 키우지 않는다.
 const SELECTED_BADGE_STYLE: React.CSSProperties = {
   ...BADGE_STYLE,
   background: '#1E52E0',
-  border: '3px solid white',
-  boxShadow: '0 4px 12px rgba(26, 24, 21, 0.28)',
+  border: '2px solid white',
+  boxShadow: '0 3px 10px rgba(30, 82, 224, 0.24)',
 }
 
 interface ProximityGroupMarkerProps {

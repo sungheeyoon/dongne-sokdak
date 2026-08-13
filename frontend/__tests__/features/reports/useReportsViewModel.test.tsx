@@ -63,6 +63,17 @@ describe('useReportsViewModel', () => {
                 north: 1, south: 0, east: 1, west: 0, category: 'TRAFFIC', search: undefined, page: 1, limit: 500
             })
         })
+
+        it('should allow the initial bounds query before an explicit map interaction increments the trigger', async () => {
+            vi.mocked(apiReportRepository.getReportsInBounds).mockResolvedValue({ items: [{ id: '1' }] } as any)
+            const bounds = { north: 1, south: 0, east: 1, west: 0 }
+
+            const { result } = renderHook(() => useMapReportsViewModel({
+                mode: 'bounds', category: 'all', searchQuery: '', bounds, trigger: 0, zoom: 5
+            }), { wrapper })
+
+            await waitFor(() => expect(result.current.reports).toHaveLength(1))
+        })
     })
 
     describe('useListReportsViewModel', () => {
@@ -76,6 +87,17 @@ describe('useReportsViewModel', () => {
 
             await waitFor(() => expect(result.current.reports).toHaveLength(1))
             expect(apiReportRepository.getReports).toHaveBeenCalled()
+        })
+
+        it('should fetch the initial bounds list with trigger zero', async () => {
+            vi.mocked(apiReportRepository.getReportsInBounds).mockResolvedValue({ items: [{ id: '1' }] } as any)
+            const bounds = { north: 1, south: 0, east: 1, west: 0 }
+
+            const { result } = renderHook(() => useListReportsViewModel({
+                mode: 'bounds', category: 'all', searchQuery: '', bounds, trigger: 0, page: 1
+            }), { wrapper })
+
+            await waitFor(() => expect(result.current.reports).toHaveLength(1))
         })
     })
 

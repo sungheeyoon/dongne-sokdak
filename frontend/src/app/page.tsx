@@ -27,6 +27,7 @@ import { useIsDesktop } from '@/shared/hooks/useMediaQuery'
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 import { cn } from '@/lib/utils'
 import { toast } from 'react-hot-toast'
+import { boundsAround } from '@/features/map/domain/geo'
 
 const MapComponent = dynamic(() => import('@/features/map/presentation/components/MapComponent'), {
   ssr: false,
@@ -35,8 +36,8 @@ const MapComponent = dynamic(() => import('@/features/map/presentation/component
 
 // 데스크톱 지도 높이 — 첫 화면에서 첫 카드 행의 상단이 보이도록 제한한다 (UI_V2_CONTRACT.md §7.2)
 const DESKTOP_MAP_HEIGHT = 'clamp(400px, 46vh, 480px)'
-// 모바일 지도 모드 — 고정 450px 패널이 아니라 남은 세로 공간을 쓴다 (§7.3)
-const MOBILE_MAP_HEIGHT = 'calc(100dvh - 13rem)'
+// 모바일 지도는 높이를 직접 계산하지 않고, 앱 셸 아래 flex 패널의 남은 공간을 전부 쓴다 (§7.3).
+const MOBILE_MAP_HEIGHT = '100%'
 
 export default function Home() {
   const router = useRouter()
@@ -95,17 +96,35 @@ export default function Home() {
     } : null
   }, [profile?.neighborhood])
 
+  // 현재 사용 중인 위치 (외부 통제: 검색된 위치, 내 동네, 등)
+  const mapFocus = useMapFocusViewModel({
+    focusedLocation,
+    myNeighborhoodLocation,
+    userCurrentLocation,
+    isAuthInitialized,
+    isLoadingProfile,
+  })
+
   // Pagination 상태
   const [paginationPage, setPaginationPage] = useState<number>(1)
 
+  // 모바일은 피드가 먼저 열려 지도 SDK가 아직 bounds를 만들지 않았을 수 있다. 기본 지도 중심
+  // 반경 1km를 초기 영역으로 사용하고, 지도 진입 후 SDK가 측정한 실제 bounds로 교체한다.
+  const initialMapBounds = useMemo(() => boundsAround(mapFocus, 1000), [mapFocus])
+  const queryBounds = currentMapBounds ?? initialMapBounds
+  const reportsMode = (searchMode === 'text' && searchQuery)
+    ? 'all'
+    : (useMapBoundsFilter ? 'bounds' : 'all')
+
   // 상단 지도 마커용 경량/대량 데이터 페칭 (페이지네이션 없음)
   const { reports: mapReports = [], isLoading: isMapLoading, currentLimit: mapLimit } = useMapReportsViewModel({
-    mode: (searchMode === 'text' && searchQuery) ? 'all' : (useMapBoundsFilter ? 'bounds' : 'all'),
+    mode: reportsMode,
     category: selectedCategory,
     searchQuery,
-    bounds: currentMapBounds,
+    bounds: queryBounds,
     trigger: triggerMapSearch,
-    zoom: mapZoom
+    zoom: mapZoom,
+    enabled: showMap,
   })
 
   // 하단 리스트용 상세/소량 페이징 데이터 페칭
@@ -118,10 +137,10 @@ export default function Home() {
     error,
     refetch
   } = useListReportsViewModel({
-    mode: (searchMode === 'text' && searchQuery) ? 'all' : (useMapBoundsFilter ? 'bounds' : 'all'),
+    mode: reportsMode,
     category: selectedCategory,
     searchQuery,
-    bounds: currentMapBounds,
+    bounds: queryBounds,
     trigger: triggerMapSearch,
     page: paginationPage
   })
@@ -157,15 +176,6 @@ export default function Home() {
       openReportModal()
     }
   }, [user, pendingIntent, setPendingIntent, openReportModal])
-
-  // 현재 사용 중인 위치 (외부 통제: 검색된 위치, 내 동네, 등)
-  const mapFocus = useMapFocusViewModel({
-    focusedLocation,
-    myNeighborhoodLocation,
-    userCurrentLocation,
-    isAuthInitialized,
-    isLoadingProfile,
-  })
 
   // 마커 클릭 핸들러 — 단일 제보를 "선택된 마커 섹션"에 채운다.
   const handleMarkerClick = async (report: ReportType) => {
@@ -213,17 +223,17 @@ export default function Home() {
 
   const feedHeading = searchQuery
     ? `'${searchQuery}' 검색 결과`
-    : (useMapBoundsFilter ? '현재 지역 제보' : '실시간 동네 제보')
+    : (reportsMode === 'bounds' ? '현재 지역 제보' : '실시간 동네 제보')
 
   const canReturnToNeighborhood = Boolean(searchedLocation || userCurrentLocation || isFarFromHome)
 
-  const selectedMarkersSection = selectedMapMarkers && selectedMapMarkers.length > 0 ? (
+  const desktopSelectedMarkersSection = selectedMapMarkers && selectedMapMarkers.length > 0 ? (
     <Card className="overflow-hidden shadow-e2">
       <div className="flex items-center justify-between gap-2 border-b border-border bg-brand-subtle p-4">
         <div className="min-w-0">
           <h3 className="type-h3 flex items-center gap-2">
             <MapPin className="h-5 w-5 shrink-0 text-brand" aria-hidden="true" />
-            <span className="truncate">{selectedLocation}</span>
+            <span className="truncate">{selectedLocation || '선택한 위치'}</span>
           </h3>
           <p className="type-caption text-muted-foreground mt-1">
             {selectedMapMarkers.length === 1
@@ -243,13 +253,47 @@ export default function Home() {
     </Card>
   ) : null
 
+  const mobileSelectedMarkersSheet = selectedMapMarkers && selectedMapMarkers.length > 0 ? (
+    <Card
+      data-testid="mobile-selected-reports-sheet"
+      className="absolute inset-x-0 bottom-0 z-20 max-h-[40%] overflow-y-auto rounded-t-xl border-border bg-surface shadow-e3"
+    >
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur">
+        <div className="min-w-0">
+          <h3 className="type-h3 flex items-center gap-2">
+            <MapPin className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+            <span className="truncate">{selectedLocation || '선택한 위치'}</span>
+          </h3>
+          <p className="type-caption mt-0.5 text-muted-foreground">
+            제보 {selectedMapMarkers.length}건
+          </p>
+        </div>
+        <Button variant="ghost" size="icon" aria-label="선택 해제" onClick={() => setSelectedMapMarkers(null)}>
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+      <div className="flex gap-3 overflow-x-auto p-3">
+        {selectedMapMarkers.map((report) => (
+          <div key={report.id} className="w-[82%] shrink-0">
+            <ReportCard report={report as any} />
+          </div>
+        ))}
+      </div>
+    </Card>
+  ) : null
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <AuthDialog />
       <ReportModal />
 
-      <main className="container mx-auto px-4 py-6 lg:py-8">
+      <main
+        className={cn(
+          'container mx-auto px-4 py-6 lg:py-8',
+          !isDesktop && mobileViewMode === 'map' && 'flex h-[calc(100dvh-3.5rem-1px)] min-h-0 flex-col overflow-hidden py-4'
+        )}
+      >
         {/* 탐색 컨텍스트 — 지금 무엇을 보고 있는지 첫 줄에서 말한다 */}
         <div className="mb-4 flex items-center justify-between gap-3">
           <h1 className="type-h2 flex min-w-0 items-center gap-2">
@@ -317,8 +361,14 @@ export default function Home() {
         </div>
 
         {showMap && (
-          <div className="mb-6 space-y-4">
-            <Card className="overflow-hidden">
+          <div
+            data-testid={!isDesktop ? 'mobile-map-panel' : undefined}
+            className={cn(
+              'mb-6 space-y-4',
+              !isDesktop && 'relative mb-0 flex min-h-0 flex-1'
+            )}
+          >
+            <Card className={cn('overflow-hidden', !isDesktop && 'h-full w-full')}>
               <MapInitializationGate
                 isAuthInitialized={isAuthInitialized}
                 isLoadingProfile={isLoadingProfile}
@@ -342,7 +392,7 @@ export default function Home() {
               </MapInitializationGate>
             </Card>
 
-            {selectedMarkersSection}
+            {isDesktop ? desktopSelectedMarkersSection : mobileSelectedMarkersSheet}
           </div>
         )}
 
@@ -391,7 +441,7 @@ export default function Home() {
                         ? '다른 검색어를 써보거나 카테고리 필터를 해제해보세요'
                         : '첫 번째 제보를 남기거나 지도를 옮겨 다른 곳을 살펴보세요'}
                     </p>
-                    <Button className="w-full" onClick={handleComposeReport}>제보하기</Button>
+                    {isDesktop && <Button className="w-full" onClick={handleComposeReport}>제보하기</Button>}
                   </div>
                 </Card>
               }

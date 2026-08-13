@@ -115,6 +115,19 @@ describe('Header — 익명 주민의 인증 진입', () => {
 })
 
 describe('Header — 모바일 메뉴 토글', () => {
+    it('앱 셸과 홈이 같은 1024px 데스크톱 브레이크포인트를 쓴다', async () => {
+        const user = userEvent.setup()
+        render(<Header />)
+
+        expect(screen.getByRole('banner').firstElementChild?.className).toMatch(/h-14.*lg:h-16/)
+        expect(screen.getByAltText('동네속닥').className).toMatch(/h-auto.*w-auto/)
+        expect(screen.getByRole('navigation', { name: '주요 메뉴' }).className).toMatch(/hidden lg:flex/)
+        expect(screen.getByRole('button', { name: '메뉴 열기' }).parentElement?.className).toMatch(/lg:hidden/)
+
+        await user.click(screen.getByRole('button', { name: '메뉴 열기' }))
+        expect(screen.getByRole('navigation', { name: '모바일 메뉴' }).className).toMatch(/lg:hidden/)
+    })
+
     it('토글 버튼에 접근 가능한 이름과 확장 상태가 있다', async () => {
         const user = userEvent.setup()
         render(<Header />)

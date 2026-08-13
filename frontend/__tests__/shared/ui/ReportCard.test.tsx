@@ -95,24 +95,26 @@ describe('ReportCard — 상태 표현', () => {
     })
 })
 
-describe('ReportCard — 미디어 슬롯', () => {
-    it('이미지가 있으면 슬롯에 렌더한다', () => {
+describe('ReportCard — 콘텐츠 미리보기', () => {
+    it('이미지가 있으면 본문 옆의 작은 썸네일로 렌더한다', () => {
         renderCard({ imageUrl: 'https://example.com/pothole.jpg' })
 
         const slot = screen.getByTestId(REPORT_CARD_REGIONS.media)
         expect(slot.querySelector('img')).toBeInTheDocument()
+        expect(slot.className).not.toMatch(/aspect-video/)
     })
 
-    it('이미지가 없어도 같은 미디어 슬롯을 유지한다', () => {
+    it('이미지가 없으면 빈 미디어 면을 그리지 않고 본문만 보여준다', () => {
         renderCard({ imageUrl: undefined })
 
         const slot = screen.getByTestId(REPORT_CARD_REGIONS.media)
         expect(slot).toBeInTheDocument()
-        expect(slot.className).toMatch(/aspect-video/)
+        expect(slot.className).not.toMatch(/aspect-video|bg-surface-muted/)
         expect(slot.querySelector('img')).not.toBeInTheDocument()
+        expect(slot).toContainElement(screen.getByTestId(REPORT_CARD_REGIONS.description))
     })
 
-    it('이미지 로드에 실패하면 이미지 없음과 같은 표현으로 되돌린다', () => {
+    it('이미지 로드에 실패하면 썸네일만 제거하고 본문 폭을 회복한다', () => {
         renderCard({ imageUrl: 'https://example.com/broken.jpg' })
 
         const image = screen.getByTestId(REPORT_CARD_REGIONS.media).querySelector('img')!
@@ -120,7 +122,8 @@ describe('ReportCard — 미디어 슬롯', () => {
 
         const slot = screen.getByTestId(REPORT_CARD_REGIONS.media)
         expect(slot.querySelector('img')).not.toBeInTheDocument()
-        expect(slot.className).toMatch(/aspect-video/)
+        expect(slot.className).not.toMatch(/aspect-video/)
+        expect(slot).toContainElement(screen.getByTestId(REPORT_CARD_REGIONS.description))
     })
 
     it('빈 문자열 이미지 URL을 이미지 없음으로 다룬다', () => {
@@ -137,19 +140,10 @@ describe('ReportCard — 긴 콘텐츠', () => {
         expect(screen.getByTestId(REPORT_CARD_REGIONS.title).className).toMatch(/line-clamp-2/)
     })
 
-    it('사진이 있으면 설명을 2줄 요약으로 말줄임한다', () => {
+    it('사진 유무와 무관하게 설명을 3줄로 말줄임한다', () => {
         renderCard({ imageUrl: 'https://example.com/p.jpg', description: '나'.repeat(500) })
 
-        expect(screen.getByTestId(REPORT_CARD_REGIONS.description).className).toMatch(/line-clamp-2/)
-    })
-
-    it('사진이 없으면 본문이 미디어 슬롯을 채우고 4줄까지 보여준다', () => {
-        renderCard({ imageUrl: undefined, description: '나'.repeat(500) })
-
-        const description = screen.getByTestId(REPORT_CARD_REGIONS.description)
-        expect(description.className).toMatch(/line-clamp-4/)
-        // 부재를 그리지 않고 콘텐츠가 그 자리를 채운다
-        expect(screen.getByTestId(REPORT_CARD_REGIONS.media)).toContainElement(description)
+        expect(screen.getByTestId(REPORT_CARD_REGIONS.description).className).toMatch(/line-clamp-3/)
     })
 
     it('본문을 두 번 보여주지 않는다', () => {
@@ -211,10 +205,11 @@ describe('ReportCardSkeleton — 실제 카드와의 구조 계약 (ADR-0009)', 
         expect(skeletonRegions).toEqual(realRegions)
     })
 
-    it('실제 카드와 같은 미디어 정책을 쓴다', () => {
+    it('실제 카드와 같은 컴팩트 미리보기 정책을 쓴다', () => {
         render(<ReportCardSkeleton />)
 
-        expect(screen.getByTestId(REPORT_CARD_REGIONS.media).className).toMatch(/aspect-video/)
+        expect(screen.getByTestId(REPORT_CARD_REGIONS.media).className).not.toMatch(/aspect-video/)
+        expect(screen.getByTestId(REPORT_CARD_REGIONS.media).className).toMatch(/min-h/)
     })
 
     it('링크가 아니다', () => {

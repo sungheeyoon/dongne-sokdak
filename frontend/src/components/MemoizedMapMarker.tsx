@@ -30,7 +30,7 @@ const MemoizedMapMarker = memo(({
   const markerImage = useMemo(() => {
     // 선택된 핀은 카테고리 색을 버리고 브랜드 색으로 통일한다 — 카테고리 색을 유지하면
     // "무엇을 골랐는지"가 "무슨 카테고리인지"와 뒤섞여 선택 신호가 묻힌다.
-    // 흰 테두리도 두껍게 해서 배경 위에서 떨어져 보이게 한다 (MapFocusRing과 함께 쓴다).
+    // 흰 테두리도 두껍게 해서 배경 위에서 떨어져 보이게 한다 (작은 정적 halo와 함께 쓴다).
     const fillColor = isSelected ? '#1E52E0' : getMarkerColor(category)
     const strokeColor = 'white'
     const strokeWidth = isSelected ? '2.5' : '1.5'
@@ -41,8 +41,8 @@ const MemoizedMapMarker = memo(({
     // Data URI로 변환하여 브라우저에서 가상 이미지처럼 쓸 수 있게 만듦
     const encodedSvg = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 
-    // 선택 여부에 따라 사이즈 확장 (28px -> 44px)
-    const size = isSelected ? { width: 44, height: 44 } : { width: 28, height: 28 }
+    // 선택 핀은 36px까지만 키운다. 44px은 주변 정보와 겹치고 halo와 강조가 중복됐다.
+    const size = isSelected ? { width: 36, height: 36 } : { width: 28, height: 28 }
 
     return {
       src: encodedSvg,

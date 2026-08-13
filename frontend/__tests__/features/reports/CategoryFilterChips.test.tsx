@@ -52,6 +52,12 @@ describe('CategoryFilterChips', () => {
         expect(group.className).not.toMatch(/flex-wrap/)
     })
 
+    it('가로 스크롤 끝에 더 많은 필터가 있음을 페이드로 알린다', () => {
+        render(<CategoryFilterChips value="all" onChange={vi.fn()} />)
+
+        expect(screen.getByTestId('category-filter-overflow-hint')).toHaveAttribute('aria-hidden', 'true')
+    })
+
     it('칩의 히트 영역이 44px 계약을 지킨다', () => {
         render(<CategoryFilterChips value="all" onChange={vi.fn()} />)
 

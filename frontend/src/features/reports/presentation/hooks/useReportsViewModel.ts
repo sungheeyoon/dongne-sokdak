@@ -13,6 +13,7 @@ export interface UseMapReportsParams {
     bounds: { north: number; south: number; east: number; west: number } | null
     trigger: number
     zoom: number
+    enabled?: boolean
 }
 
 // 지도용 마커 제보 목록 조회 (ViewModel) - limit 동적 계산, page 1 고정
@@ -22,7 +23,8 @@ export function useMapReportsViewModel({
     searchQuery,
     bounds,
     trigger,
-    zoom
+    zoom,
+    enabled = true,
 }: UseMapReportsParams) {
 
     const { data, isLoading, error, refetch } = useQuery({
@@ -68,9 +70,7 @@ export function useMapReportsViewModel({
         refetchOnWindowFocus: false,
         refetchOnMount: false,
         retry: 1,
-        enabled: mode === 'bounds'
-            ? !!bounds && trigger > 0
-            : !!searchQuery,
+        enabled: enabled && (mode === 'bounds' ? !!bounds : !!searchQuery),
         staleTime: 5 * 60 * 1000,
     })
 
@@ -140,9 +140,7 @@ export function useListReportsViewModel({
         refetchOnWindowFocus: false,
         refetchOnMount: false,
         retry: 1,
-        enabled: mode === 'bounds'
-            ? !!bounds && trigger > 0
-            : true,
+        enabled: mode === 'bounds' ? !!bounds : true,
         staleTime: 5 * 60 * 1000,
     })
 

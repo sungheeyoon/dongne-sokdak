@@ -27,8 +27,8 @@ vi.mock('@/features/map/presentation/components/ProximityGroupMarker', () => ({
 }))
 
 vi.mock('@/features/map/presentation/components/MapFocusRing', () => ({
-  MapFocusRing: ({ center }: { center: { lat: number, lng: number } }) => (
-    <div data-testid="map-focus-ring" data-lat={center.lat} data-lng={center.lng} />
+  MapFocusRing: ({ center, variant }: { center: { lat: number, lng: number }, variant?: string }) => (
+    <div data-testid="map-focus-ring" data-lat={center.lat} data-lng={center.lng} data-variant={variant} />
   )
 }))
 
@@ -527,9 +527,21 @@ describe('MapMarkerLayer — 선택 지점 포커스 표시', () => {
 
     const ring = getByTestId('map-focus-ring')
     expect(Number(ring.getAttribute('data-lat'))).toBeCloseTo(report.location.lat)
+    expect(ring.getAttribute('data-variant')).toBe('marker')
 
     const selectedMarkers = getAllByTestId('marker').filter(el => el.getAttribute('data-selected') === 'true')
     expect(selectedMarkers.map(el => el.getAttribute('data-id'))).toEqual(['a'])
+  })
+
+  it('근접 그룹 단계에서도 혼자인 제보는 개별 핀 포커스를 쓴다', () => {
+    const adapter = createStatefulAdapter(3)
+    const { getByTestId } = renderLayer({
+      reports: [near('a', 0), near('b', 1000)],
+      selectedReportIds: ['a'],
+      adapter,
+    })
+
+    expect(getByTestId('map-focus-ring').getAttribute('data-variant')).toBe('marker')
   })
 
   it('근접 그룹이 선택되면 그룹 중심에 같은 포커스 링을 그린다 (ADR-0008)', () => {
@@ -540,7 +552,7 @@ describe('MapMarkerLayer — 선택 지점 포커스 표시', () => {
       adapter,
     })
 
-    expect(getByTestId('map-focus-ring')).toBeTruthy()
+    expect(getByTestId('map-focus-ring').getAttribute('data-variant')).toBe('group')
     expect(getByTestId('proximity-group-marker').getAttribute('data-selected')).toBe('true')
   })
 

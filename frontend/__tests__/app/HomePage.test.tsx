@@ -4,6 +4,11 @@ import userEvent from '@testing-library/user-event'
 import Home from '@/app/page'
 import { useUIStore } from '@/shared/stores/useUIStore'
 
+const { reportViewModelCalls, mapComponentProps } = vi.hoisted(() => ({
+    reportViewModelCalls: { list: [] as any[], map: [] as any[] },
+    mapComponentProps: { current: {} as Record<string, any> },
+}))
+
 let mockUser: { email: string } | null = null
 
 /** 데스크톱 여부를 matchMedia로 제어한다 — 모바일에서는 지도를 아예 마운트하지 않는다. */
@@ -44,7 +49,10 @@ vi.mock('@/features/map/presentation/hooks/useMapInitializationViewModel', () =>
 }))
 
 vi.mock('@/features/map/presentation/components/MapComponent', () => ({
-    default: () => <div data-testid="map" />,
+    default: (props: Record<string, any>) => {
+        mapComponentProps.current = props
+        return <div data-testid="map" data-height={props.height} />
+    },
 }))
 
 vi.mock('@/features/profile/presentation/hooks/useProfileViewModel', () => ({
@@ -85,16 +93,22 @@ let mockListReports = reports
 const listRefetch = vi.fn()
 
 vi.mock('@/features/reports/presentation/hooks/useReportsViewModel', () => ({
-    useMapReportsViewModel: () => ({ reports: mockListReports, isLoading: false, currentLimit: 100 }),
-    useListReportsViewModel: () => ({
-        reports: mockListError ? [] : mockListReports,
-        totalCount: mockListError ? 0 : mockListReports.length,
-        totalPages: 1,
-        currentPage: 1,
-        isLoading: false,
-        error: mockListError,
-        refetch: listRefetch,
-    }),
+    useMapReportsViewModel: (params: any) => {
+        reportViewModelCalls.map.push(params)
+        return { reports: mockListReports, isLoading: false, currentLimit: 100 }
+    },
+    useListReportsViewModel: (params: any) => {
+        reportViewModelCalls.list.push(params)
+        return {
+            reports: mockListError ? [] : mockListReports,
+            totalCount: mockListError ? 0 : mockListReports.length,
+            totalPages: 1,
+            currentPage: 1,
+            isLoading: false,
+            error: mockListError,
+            refetch: listRefetch,
+        }
+    },
 }))
 
 beforeEach(() => {
@@ -102,6 +116,9 @@ beforeEach(() => {
     mockMapStatus = 'ready'
     mockListError = null
     mockListReports = reports
+    reportViewModelCalls.list.length = 0
+    reportViewModelCalls.map.length = 0
+    mapComponentProps.current = {}
     setViewport('mobile')
     useUIStore.setState({
         isAuthModalOpen: false,
@@ -111,6 +128,7 @@ beforeEach(() => {
         searchMode: 'location',
         triggerMapSearch: 0,
         useMapBoundsFilter: true,
+        currentMapBounds: null,
         selectedMapMarkers: null,
         pendingIntent: null,
     })
@@ -130,6 +148,15 @@ describe('홈 — 모바일 기본 진입', () => {
         expect(screen.getByText('도로에 큰 웅덩이가 생겼습니다')).toBeInTheDocument()
     })
 
+    it('아직 지도 bounds가 없어도 기본 중심의 초기 지역을 조회해 0건으로 멈추지 않는다', () => {
+        render(<Home />)
+
+        expect(reportViewModelCalls.list.at(-1)).toMatchObject({
+            mode: 'bounds',
+            bounds: expect.objectContaining({ north: expect.any(Number), south: expect.any(Number) }),
+        })
+    })
+
     it('첫 화면에 탐색 컨텍스트, 카테고리 필터, 제보하기가 함께 보인다', () => {
         render(<Home />)
 
@@ -144,6 +171,13 @@ describe('홈 — 모바일 기본 진입', () => {
         const cta = screen.getByTestId('mobile-compose-cta')
         expect(cta.className).toMatch(/pb-safe/)
     })
+
+    it('빈 상태에서도 제보하기 행동을 하단 CTA 하나로만 제공한다', () => {
+        mockListReports = []
+        render(<Home />)
+
+        expect(screen.getAllByRole('button', { name: '제보하기' })).toHaveLength(1)
+    })
 })
 
 describe('홈 — 피드/지도 전환', () => {
@@ -154,6 +188,28 @@ describe('홈 — 피드/지도 전환', () => {
         await user.click(screen.getByRole('tab', { name: '지도' }))
 
         expect(screen.getByTestId('map')).toBeInTheDocument()
+    })
+
+    it('지도 모드는 고정 픽셀 계산 대신 남은 패널 높이를 전부 쓴다', async () => {
+        const user = userEvent.setup()
+        render(<Home />)
+
+        await user.click(screen.getByRole('tab', { name: '지도' }))
+
+        expect(screen.getByTestId('map')).toHaveAttribute('data-height', '100%')
+        expect(screen.getByTestId('mobile-map-panel').className).toMatch(/flex-1|min-h-0/)
+    })
+
+    it('선택한 제보를 지도 위 최대 40% 하단 시트에 보여준다', async () => {
+        useUIStore.setState({ selectedMapMarkers: reports as any })
+        const user = userEvent.setup()
+        render(<Home />)
+
+        await user.click(screen.getByRole('tab', { name: '지도' }))
+
+        const sheet = screen.getByTestId('mobile-selected-reports-sheet')
+        expect(sheet.className).toMatch(/max-h-\[40%\]/)
+        expect(within(sheet).getByText('도로에 큰 웅덩이가 생겼습니다')).toBeInTheDocument()
     })
 
     it('전환만으로는 새 영역 조회를 실행하지 않는다', async () => {

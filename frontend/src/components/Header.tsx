@@ -64,7 +64,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+      <div className="container mx-auto flex h-14 items-center justify-between px-4 lg:h-16">
         <Link
           href="/"
           className="flex items-center gap-2 rounded-md transition-opacity hover:opacity-80"
@@ -74,14 +74,14 @@ export default function Header() {
             alt="동네속닥"
             width={120}
             height={32}
-            className="h-8 w-auto object-contain"
+            className="h-auto w-auto object-contain"
             priority
           />
           <span className="sr-only">홈으로 이동</span>
         </Link>
 
         {/* 데스크톱 내비게이션 */}
-        <nav aria-label="주요 메뉴" className="hidden md:flex items-center gap-2">
+        <nav aria-label="주요 메뉴" className="hidden lg:flex items-center gap-2">
           {user ? (
             <>
               <UiButton
@@ -175,7 +175,7 @@ export default function Header() {
         </nav>
 
         {/* 모바일 컨트롤 — 히트 영역 44px (UI_V2_CONTRACT.md §3.7) */}
-        <div className="flex md:hidden items-center gap-2">
+        <div className="flex items-center gap-2 lg:hidden">
           {user && (
             <UiButton
               size="icon"
@@ -204,7 +204,7 @@ export default function Header() {
         <nav
           id={MOBILE_MENU_ID}
           aria-label="모바일 메뉴"
-          className="md:hidden border-t border-border bg-surface p-4 animate-in slide-in-from-top-2"
+          className="border-t border-border bg-surface p-4 animate-in slide-in-from-top-2 lg:hidden"
         >
           <div className="grid gap-2">
             {user ? (

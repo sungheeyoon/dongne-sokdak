@@ -26,37 +26,44 @@ interface CategoryFilterChipsProps {
  */
 export default function CategoryFilterChips({ value, onChange, className }: CategoryFilterChipsProps) {
     return (
-        <div
-            role="radiogroup"
-            aria-label="카테고리 필터"
-            className={cn(
-                'flex gap-2 overflow-x-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-                className
-            )}
-        >
-            {CATEGORY_FILTERS.map((category) => {
-                const selected = value === category.value
+        <div className="relative min-w-0">
+            <div
+                role="radiogroup"
+                aria-label="카테고리 필터"
+                className={cn(
+                    'flex gap-2 overflow-x-auto py-1 pr-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:pr-0',
+                    className
+                )}
+            >
+                {CATEGORY_FILTERS.map((category) => {
+                    const selected = value === category.value
 
-                return (
-                    <button
-                        key={category.value}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        onClick={() => {
-                            if (!selected) onChange(category.value)
-                        }}
-                        className={cn(
-                            'min-h-11 shrink-0 rounded-full border px-4 type-label transition-colors',
-                            selected
-                                ? 'border-brand bg-brand-subtle text-brand'
-                                : 'border-border bg-surface text-muted-foreground hover:text-foreground'
-                        )}
-                    >
-                        {category.label}
-                    </button>
-                )
-            })}
+                    return (
+                        <button
+                            key={category.value}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            onClick={() => {
+                                if (!selected) onChange(category.value)
+                            }}
+                            className={cn(
+                                'min-h-11 shrink-0 rounded-full border px-4 type-label transition-colors',
+                                selected
+                                    ? 'border-brand bg-brand-subtle text-brand'
+                                    : 'border-border bg-surface text-muted-foreground hover:text-foreground'
+                            )}
+                        >
+                            {category.label}
+                        </button>
+                    )
+                })}
+            </div>
+            <div
+                data-testid="category-filter-overflow-hint"
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-1 right-0 w-8 bg-gradient-to-l from-background to-transparent lg:hidden"
+            />
         </div>
     )
 }

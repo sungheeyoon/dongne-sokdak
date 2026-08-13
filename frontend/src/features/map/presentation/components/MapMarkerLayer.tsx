@@ -272,23 +272,27 @@ export function MapMarkerLayer({
     />
   )
 
-  // 선택된 지점의 좌표 — 그룹이 선택됐으면 그룹 중심, 개별이면 그 마커 위치.
-  // 현재 표시 단계에서 실제로 그려지는 대상만 링을 받는다.
-  const focusCenter = useMemo(() => {
+  // 현재 표시 단계에서 실제로 그려지는 선택 대상과 종류. 개별 핀은 위치 좌표가 핀 끝을
+  // 가리키므로 halo를 위로 보정하고, 원형 그룹 배지는 좌표 중심을 그대로 쓴다.
+  const focusTarget = useMemo(() => {
     if (selectedIdSet.size === 0) return null
 
     if (tier === 'near') {
       const group = visibleProximityGroups.find(g => g.members.some(m => selectedIdSet.has(m.id)))
-      if (group) return group.center
+      if (group && group.members.length >= 2) {
+        return { center: group.center, variant: 'group' as const }
+      }
     }
 
     const marker = visibleReports.find(r => selectedIdSet.has(r.id))
-    return marker ? { lat: marker.location.lat, lng: marker.location.lng } : null
+    return marker
+      ? { center: { lat: marker.location.lat, lng: marker.location.lng }, variant: 'marker' as const }
+      : null
   }, [selectedIdSet, tier, visibleProximityGroups, visibleReports])
 
   return (
     <>
-      {focusCenter && <MapFocusRing center={focusCenter} />}
+      {focusTarget && <MapFocusRing center={focusTarget.center} variant={focusTarget.variant} />}
 
       {tier === 'far' && (
         <MarkerClusterer
