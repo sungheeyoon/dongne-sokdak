@@ -80,10 +80,12 @@ export const apiRequest = async (
     if (error instanceof Error) {
       console.error('❌ API Request Failed:', error.message)
       
-      // 연결 실패 에러 처리
+      // 연결 실패 에러 처리.
+      // "Failed to fetch"는 서버가 죽었을 때만 나는 신호가 아니다 — 서버가 살아서
+      // 500을 돌려줬는데 CORS 헤더가 없어도 똑같이 난다. 원인을 단정하지 않는다.
       if (error.message.includes('fetch') || error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-        console.error('🔌 서버 연결 실패 - 백엔드 서버가 실행되고 있는지 확인하세요')
-        throw new Error('서버에 연결할 수 없습니다. 백엔드 서버가 실행되고 있는지 확인해주세요.')
+        console.error('🔌 응답을 받지 못했습니다 - 네트워크, 서버 상태, CORS 설정을 확인하세요:', url)
+        throw new Error('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.')
       }
       
       throw error

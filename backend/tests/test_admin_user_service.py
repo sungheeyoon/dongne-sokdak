@@ -10,6 +10,14 @@ def make_service(mocker):
     return AdminUserService(mock_supabase, log_admin_activity=mock_log_admin_activity), mock_supabase
 
 
+def stub_emails(mocker, mock_supabase, emails: dict[str, str]):
+    """이메일은 profiles가 아니라 auth.users에 있다 — Auth Admin API를 스텁한다."""
+    def get_user_by_id(user_id):
+        return mocker.Mock(user=mocker.Mock(email=emails.get(user_id, "")))
+
+    mock_supabase.auth.admin.get_user_by_id.side_effect = get_user_by_id
+
+
 @pytest.mark.asyncio
 async def test_update_user_role_success(mocker):
     service, mock_supabase = make_service(mocker)
@@ -71,18 +79,36 @@ async def test_bulk_user_action_success(mocker):
     assert len(result["results"]) == 2
 
 @pytest.mark.asyncio
-async def test_get_users_success(mocker):
+async def test_get_users_attaches_emails_from_auth(mocker):
+    """profiles에는 email 컬럼이 없다 — auth.users에서 읽어 붙여야 한다."""
     service, mock_supabase = make_service(mocker)
-    mock_users = [{"id": str(uuid4()), "email": "u1@test.com"}]
+    user_id = str(uuid4())
+    mock_users = [{"id": user_id, "nickname": "u1"}]
 
     mock_query = mocker.Mock()
     mock_query.order.return_value.range.return_value.execute.return_value.data = mock_users
     mock_supabase.table.return_value.select.return_value = mock_query
+    stub_emails(mocker, mock_supabase, {user_id: "u1@test.com"})
 
     result = await service.get_users()
 
     assert len(result) == 1
     assert result[0]["email"] == "u1@test.com"
+
+
+@pytest.mark.asyncio
+async def test_get_users_search_filters_nickname_only(mocker):
+    """profiles에 email 컬럼이 없으므로 email.ilike를 걸면 PostgREST가 통째로 실패한다."""
+    service, mock_supabase = make_service(mocker)
+
+    mock_query = mocker.Mock()
+    mock_query.ilike.return_value.order.return_value.range.return_value.execute.return_value.data = []
+    mock_supabase.table.return_value.select.return_value = mock_query
+
+    await service.get_users(search="hong")
+
+    mock_query.ilike.assert_called_once_with("nickname", "%hong%")
+    mock_query.or_.assert_not_called()
 
 @pytest.mark.asyncio
 async def test_set_user_active_status_success(mocker):
@@ -122,8 +148,9 @@ async def test_get_my_info_success(mocker):
     user_id = str(uuid4())
 
     mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
-        "id": user_id, "email": "me@test.com", "nickname": "Me", "role": "admin", "is_active": True
+        "id": user_id, "nickname": "Me", "role": "admin", "is_active": True
     }
+    stub_emails(mocker, mock_supabase, {user_id: "me@test.com"})
 
     result = await service.get_my_info(user_id)
 

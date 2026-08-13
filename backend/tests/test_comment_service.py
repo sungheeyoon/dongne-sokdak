@@ -64,15 +64,11 @@ async def test_get_comments_by_report(make_service, mocker):
     report_id = str(uuid4())
     user_id = "user-123"
 
+    # 작성자 정보는 임베딩(profiles!comments_user_id_fkey)이 아니라 별도 조회로 붙는다 —
+    # comments와 profiles 사이에 외래키가 없어 PostgREST 임베딩이 실패하기 때문이다.
     comments_data = [
-        {
-            "id": "1", "report_id": report_id, "user_id": user_id, "content": "Parent 1", "parent_comment_id": None,
-            "profiles": {"nickname": "tester", "avatar_url": None}
-        },
-        {
-            "id": "2", "report_id": report_id, "user_id": user_id, "content": "Reply 1-1", "parent_comment_id": "1",
-            "profiles": {"nickname": "tester", "avatar_url": None}
-        }
+        {"id": "1", "report_id": report_id, "user_id": user_id, "content": "Parent 1", "parent_comment_id": None},
+        {"id": "2", "report_id": report_id, "user_id": user_id, "content": "Reply 1-1", "parent_comment_id": "1"},
     ]
 
     def mock_table(name):
@@ -80,8 +76,11 @@ async def test_get_comments_by_report(make_service, mocker):
         if name == "reports":
             mock.select.return_value.eq.return_value.execute.return_value.data = [{"id": report_id}]
         elif name == "comments":
-            # Chaining: .select().eq().order().execute()
             mock.select.return_value.eq.return_value.order.return_value.execute.return_value.data = comments_data
+        elif name == "profiles":
+            mock.select.return_value.in_.return_value.execute.return_value.data = [
+                {"id": user_id, "nickname": "tester", "avatar_url": None}
+            ]
         return mock
 
     mock_supabase.table.side_effect = mock_table
@@ -91,6 +90,8 @@ async def test_get_comments_by_report(make_service, mocker):
     assert len(result) == 1
     assert result[0]["content"] == "Parent 1"
     assert result[0]["user_nickname"] == "tester"
+    # 임베딩이 아니라 명시적 조회를 썼는지 — 조인을 되살리면 실서버에서 PGRST200으로 깨진다
+    assert "profiles!" not in str(mock_supabase.table("comments").select.call_args)
     assert len(result[0]["replies"]) == 1
     assert result[0]["replies"][0]["content"] == "Reply 1-1"
 
@@ -210,7 +211,7 @@ async def test_get_comments_by_report_defaults_nickname_when_profile_missing(mak
     report_id = str(uuid4())
 
     comments_data = [
-        {"id": "1", "report_id": report_id, "user_id": "user-123", "content": "Parent 1", "parent_comment_id": None, "profiles": None},
+        {"id": "1", "report_id": report_id, "user_id": "user-123", "content": "Parent 1", "parent_comment_id": None},
     ]
 
     def mock_table(name):
@@ -219,6 +220,9 @@ async def test_get_comments_by_report_defaults_nickname_when_profile_missing(mak
             mock.select.return_value.eq.return_value.execute.return_value.data = [{"id": report_id}]
         elif name == "comments":
             mock.select.return_value.eq.return_value.order.return_value.execute.return_value.data = comments_data
+        elif name == "profiles":
+            # 프로필 행이 없는 작성자
+            mock.select.return_value.in_.return_value.execute.return_value.data = []
         return mock
 
     mock_supabase.table.side_effect = mock_table

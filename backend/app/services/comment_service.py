@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from supabase.client import Client
 from app.schemas.comment import CommentCreate, CommentUpdate
 from app.db.supabase_client import supabase as default_supabase
+from app.services.user_directory import UNKNOWN_NICKNAME, fetch_profiles
 from app.utils.blocking_db import execute
 
 
@@ -76,21 +77,20 @@ class CommentService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
 
         response = await execute(self._supabase.table("comments") \
-            .select("*, profiles!comments_user_id_fkey(nickname, avatar_url)") \
+            .select("*") \
             .eq("report_id", report_id) \
             .order("created_at", desc=False))
 
         all_comments = response.data
 
-        # User info enrichment
+        # 작성자 정보는 임베딩이 아니라 명시적 조회로 붙인다 — comments와 profiles
+        # 사이에 외래키가 없어 PostgREST 임베딩이 불가능하다 (user_directory 참고).
+        profiles = await fetch_profiles(self._supabase, (c.get("user_id") for c in all_comments))
+
         for comment in all_comments:
-            profile = comment.get("profiles")
-            if profile:
-                comment["user_nickname"] = profile.get("nickname") or "알 수 없음"
-                comment["user_avatar_url"] = profile.get("avatar_url")
-            else:
-                comment["user_nickname"] = "알 수 없음"
-                comment["user_avatar_url"] = None
+            profile = profiles.get(str(comment.get("user_id"))) or {}
+            comment["user_nickname"] = profile.get("nickname") or UNKNOWN_NICKNAME
+            comment["user_avatar_url"] = profile.get("avatar_url")
             comment["replies"] = []
 
         parent_comments = [c for c in all_comments if not c.get("parent_comment_id")]

@@ -8,6 +8,7 @@ from app.db.supabase_client import supabase as default_supabase
 from app.services.report_service import report_service
 from app.services.spatial_report_cache import SpatialReportCache
 from app.services.admin.bulk_utils import record_bulk_success, AdminActionContext
+from app.services.user_directory import attach_author, fetch_emails, fetch_profiles
 from app.utils.blocking_db import execute
 
 logger = get_logger(__name__)
@@ -36,10 +37,11 @@ class AdminReportService:
     ) -> List[Dict[str, Any]]:
         """제보 관리 목록 조회"""
         try:
+            # 작성자(profiles)와 이메일(auth.users)은 임베딩할 수 없다 — reports와
+            # profiles 사이에 외래키가 없고 auth 스키마는 PostgREST에 노출되지 않는다.
+            # votes/comments는 reports를 직접 참조하므로 집계 임베딩이 가능하다.
             query = self._supabase.table("reports").select("""
                 *,
-                user:user_id(id, email),
-                profiles!reports_user_id_fkey(nickname),
                 vote_count:votes(count),
                 comment_count:comments(count)
             """)
@@ -47,7 +49,12 @@ class AdminReportService:
             if category: query = query.eq("category", category)
             if assigned_admin_id: query = query.eq("assigned_admin_id", assigned_admin_id)
             response = await execute(query.order("created_at", desc=True).range(skip, skip + limit - 1))
-            return response.data or []
+
+            rows = response.data or []
+            author_ids = [row.get("user_id") for row in rows]
+            profiles = await fetch_profiles(self._supabase, author_ids)
+            emails = await fetch_emails(self._supabase, author_ids)
+            return [attach_author(row, profiles, emails) for row in rows]
         except Exception as e:
             logger.error(f"Error fetching reports: {e}")
             return []
@@ -57,15 +64,24 @@ class AdminReportService:
         try:
             response = await execute(self._supabase.table("reports").select("""
                 *,
-                user:user_id(id, email),
-                profiles!reports_user_id_fkey(nickname),
                 votes(*),
-                comments(*, profiles!comments_user_id_fkey(nickname))
+                comments(*)
             """).eq("id", report_id).single())
 
             if not response.data:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="제보를 찾을 수 없습니다")
-            return response.data
+
+            report = response.data
+            comments = report.get("comments") or []
+            # 제보 작성자와 댓글 작성자를 한 번에 모아 조회한다.
+            author_ids = [report.get("user_id"), *(c.get("user_id") for c in comments)]
+            profiles = await fetch_profiles(self._supabase, author_ids)
+            emails = await fetch_emails(self._supabase, [report.get("user_id")])
+
+            attach_author(report, profiles, emails)
+            for comment in comments:
+                attach_author(comment, profiles, {})
+            return report
         except Exception as e:
             if isinstance(e, HTTPException): raise e
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="제보 상세 조회 중 오류가 발생했습니다")
