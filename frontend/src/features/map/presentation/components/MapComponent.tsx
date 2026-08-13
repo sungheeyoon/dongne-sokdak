@@ -25,7 +25,8 @@ interface MapComponentProps {
   onZoomChange?: (zoom: number) => void
   onMarkerClick?: (report: ReportType) => void
   onGroupClick?: (reports: ReportType[], center: Coordinates) => void
-  selectedMarkerId?: string
+  /** 선택된 제보 id들 — 개별 마커 하나이거나 근접 그룹 멤버 전체 */
+  selectedReportIds?: string[]
   adapter?: KakaoMapAdapter
   isBoundsQueryLoading?: boolean
   myNeighborhoodLocation?: Coordinates | null
@@ -42,7 +43,7 @@ export default function MapComponent({
   onZoomChange,
   onMarkerClick,
   onGroupClick,
-  selectedMarkerId,
+  selectedReportIds,
   adapter = defaultKakaoMapAdapter,
   isBoundsQueryLoading = false,
   myNeighborhoodLocation = null,
@@ -143,7 +144,7 @@ export default function MapComponent({
               map={map}
               reports={reports}
               currentBounds={currentBounds}
-              selectedMarkerId={selectedMarkerId}
+              selectedReportIds={selectedReportIds}
               onMarkerClick={onInternalMarkerClick}
               onGroupClick={onGroupClick}
               adapter={adapter}

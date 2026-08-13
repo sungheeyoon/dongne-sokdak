@@ -24,16 +24,32 @@ const BADGE_STYLE: React.CSSProperties = {
   cursor: 'pointer',
 }
 
+// 선택된 근접 그룹 — 개별 마커와 같은 브랜드 색으로 채우고 흰 테두리를 두껍게 해
+// 배지들 사이에서 즉시 구분되게 한다. 크기는 그대로 둬서 지도가 출렁이지 않게 한다.
+const SELECTED_BADGE_STYLE: React.CSSProperties = {
+  ...BADGE_STYLE,
+  background: '#1E52E0',
+  border: '3px solid white',
+  boxShadow: '0 4px 12px rgba(26, 24, 21, 0.28)',
+}
+
 interface ProximityGroupMarkerProps {
   center: Coordinates
   count: number
   onClick: () => void
+  /** 이 그룹이 지금 선택된 지점인지 — 선택 표시는 MapFocusRing과 함께 쓴다 */
+  isSelected?: boolean
 }
 
-export function ProximityGroupMarker({ center, count, onClick }: ProximityGroupMarkerProps) {
+export function ProximityGroupMarker({ center, count, onClick, isSelected = false }: ProximityGroupMarkerProps) {
   return (
-    <CustomOverlayMap position={center} yAnchor={0.5} xAnchor={0.5}>
-      <div data-testid="proximity-group-marker" style={BADGE_STYLE} onClick={onClick}>
+    <CustomOverlayMap position={center} yAnchor={0.5} xAnchor={0.5} zIndex={isSelected ? 50 : 1}>
+      <div
+        data-testid="proximity-group-marker"
+        data-selected={isSelected || undefined}
+        style={isSelected ? SELECTED_BADGE_STYLE : BADGE_STYLE}
+        onClick={onClick}
+      >
         {count}
       </div>
     </CustomOverlayMap>

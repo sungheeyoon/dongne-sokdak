@@ -334,7 +334,7 @@ export default function Home() {
                   onZoomChange={setMapZoom}
                   onMarkerClick={handleMarkerClick as any}
                   onGroupClick={handleGroupClick as any}
-                  selectedMarkerId={selectedMapMarkers?.length === 1 ? (selectedMapMarkers[0] as any)?.id : undefined}
+                  selectedReportIds={selectedMapMarkers?.map((r) => r.id)}
                   isBoundsQueryLoading={isMapLoading || isListLoading}
                   myNeighborhoodLocation={myNeighborhoodLocation}
                   onFarFromHomeChange={setIsFarFromHome}

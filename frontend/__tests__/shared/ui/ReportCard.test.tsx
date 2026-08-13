@@ -131,14 +131,39 @@ describe('ReportCard — 미디어 슬롯', () => {
 })
 
 describe('ReportCard — 긴 콘텐츠', () => {
-    it('긴 제목과 설명을 말줄임한다', () => {
-        renderCard({
-            title: '가'.repeat(200),
-            description: '나'.repeat(500),
-        })
+    it('긴 제목을 2줄로 말줄임한다', () => {
+        renderCard({ title: '가'.repeat(200) })
 
         expect(screen.getByTestId(REPORT_CARD_REGIONS.title).className).toMatch(/line-clamp-2/)
+    })
+
+    it('사진이 있으면 설명을 2줄 요약으로 말줄임한다', () => {
+        renderCard({ imageUrl: 'https://example.com/p.jpg', description: '나'.repeat(500) })
+
         expect(screen.getByTestId(REPORT_CARD_REGIONS.description).className).toMatch(/line-clamp-2/)
+    })
+
+    it('사진이 없으면 본문이 미디어 슬롯을 채우고 4줄까지 보여준다', () => {
+        renderCard({ imageUrl: undefined, description: '나'.repeat(500) })
+
+        const description = screen.getByTestId(REPORT_CARD_REGIONS.description)
+        expect(description.className).toMatch(/line-clamp-4/)
+        // 부재를 그리지 않고 콘텐츠가 그 자리를 채운다
+        expect(screen.getByTestId(REPORT_CARD_REGIONS.media)).toContainElement(description)
+    })
+
+    it('본문을 두 번 보여주지 않는다', () => {
+        renderCard({ imageUrl: undefined })
+
+        expect(screen.getAllByTestId(REPORT_CARD_REGIONS.description)).toHaveLength(1)
+    })
+
+    it('이미지 로드에 실패해도 본문이 두 번 나오지 않는다', () => {
+        renderCard({ imageUrl: 'https://example.com/broken.jpg' })
+
+        fireEvent.error(screen.getByTestId(REPORT_CARD_REGIONS.media).querySelector('img')!)
+
+        expect(screen.getAllByTestId(REPORT_CARD_REGIONS.description)).toHaveLength(1)
     })
 
     it('긴 주소가 카드 폭을 넓히지 않는다', () => {

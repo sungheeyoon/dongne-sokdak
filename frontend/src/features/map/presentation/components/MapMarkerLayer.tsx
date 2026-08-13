@@ -5,6 +5,7 @@ import MemoizedMapMarker from '@/components/MemoizedMapMarker'
 import { KakaoMapAdapter, defaultKakaoMapAdapter } from '@/features/map/data/kakaoMapAdapter'
 import { computeProximityGroups } from '@/features/map/domain/proximityGrouping'
 import { ProximityGroupMarker } from '@/features/map/presentation/components/ProximityGroupMarker'
+import { MapFocusRing } from '@/features/map/presentation/components/MapFocusRing'
 import {
   CLUSTER_BADGE_SIZE_PX,
   CLUSTER_BADGE_COLOR,
@@ -94,7 +95,11 @@ interface MapMarkerLayerProps {
   map: any
   reports: ReportType[]
   currentBounds: { north: number; south: number; east: number; west: number } | null
-  selectedMarkerId?: string
+  /**
+   * 지금 선택된 제보 id들. 개별 마커 하나일 수도, 근접 그룹의 멤버 전체일 수도 있다 —
+   * 어느 쪽이든 지도에는 같은 포커스 표시가 나간다 (ADR-0008).
+   */
+  selectedReportIds?: string[]
   onMarkerClick: (report: ReportType) => void
   // 근접 그룹(2건 이상) 클릭 시 호출된다 — 지도 위에 팝업을 띄우지 않고, 호출부(페이지)가
   // 기존 "선택된 마커 섹션"과 동일한 자리에 멤버 전체를 나열하도록 위임한다.
@@ -106,11 +111,13 @@ export function MapMarkerLayer({
   map,
   reports,
   currentBounds,
-  selectedMarkerId,
+  selectedReportIds,
   onMarkerClick,
   onGroupClick,
   adapter = defaultKakaoMapAdapter
 }: MapMarkerLayerProps) {
+  const selectedIdSet = useMemo(() => new Set(selectedReportIds ?? []), [selectedReportIds])
+
   // 개별 마커를 클러스터링하기 위한 데이터 준비
   const validReports = useMemo(() => {
     return reports.filter(r => r.location && typeof r.location.lat === 'number' && typeof r.location.lng === 'number');
@@ -260,13 +267,29 @@ export function MapMarkerLayer({
       lat={report.location.lat}
       lng={report.location.lng}
       category={report.category}
-      isSelected={selectedMarkerId === report.id}
+      isSelected={selectedIdSet.has(report.id)}
       onClick={handleMarkerClick}
     />
   )
 
+  // 선택된 지점의 좌표 — 그룹이 선택됐으면 그룹 중심, 개별이면 그 마커 위치.
+  // 현재 표시 단계에서 실제로 그려지는 대상만 링을 받는다.
+  const focusCenter = useMemo(() => {
+    if (selectedIdSet.size === 0) return null
+
+    if (tier === 'near') {
+      const group = visibleProximityGroups.find(g => g.members.some(m => selectedIdSet.has(m.id)))
+      if (group) return group.center
+    }
+
+    const marker = visibleReports.find(r => selectedIdSet.has(r.id))
+    return marker ? { lat: marker.location.lat, lng: marker.location.lng } : null
+  }, [selectedIdSet, tier, visibleProximityGroups, visibleReports])
+
   return (
     <>
+      {focusCenter && <MapFocusRing center={focusCenter} />}
+
       {tier === 'far' && (
         <MarkerClusterer
           averageCenter={true}
@@ -286,6 +309,7 @@ export function MapMarkerLayer({
             key={group.id}
             center={group.center}
             count={group.members.length}
+            isSelected={group.members.some(m => selectedIdSet.has(m.id))}
             onClick={() => onGroupClick?.(group.members, group.center)}
           />
         ) : (
