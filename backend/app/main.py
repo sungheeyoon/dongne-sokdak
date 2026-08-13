@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.api import router as api_router
 from app.core.config import settings
 from app.core.logging import setup_logging, log_api_request, log_api_response, get_logger
@@ -31,6 +32,30 @@ app = FastAPI(
     description="우리 동네 이슈 제보 커뮤니티 플랫폼 API",
     version="0.1.0",
 )
+
+# 처리되지 않은 예외를 일반 응답으로 바꾼다.
+#
+# 미들웨어 순서가 이 파일에서 유일하게 까다로운 부분이다. Starlette은 나중에
+# 추가한 미들웨어를 바깥에 두므로, **CORS보다 먼저 추가해야** 이 미들웨어가 가장
+# 안쪽에 놓이고 여기서 만든 500 응답이 CORSMiddleware를 거쳐 나가면서 헤더를 얻는다.
+#
+# @app.exception_handler(Exception)으로는 안 된다 — FastAPI는 그 핸들러를 CORS보다
+# 바깥인 ServerErrorMiddleware에 붙이기 때문에 응답에 Access-Control-Allow-Origin이
+# 붙지 않는다. 그러면 브라우저는 본문을 읽지 못하고 fetch를 "Failed to fetch"로
+# 실패시키고, 프론트엔드는 서버가 꺼졌다고 오진한다 — 실제로는 서버가 살아서 500을
+# 돌려준 상황이다.
+@app.middleware("http")
+async def unhandled_exception_middleware(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception:
+        # 원인은 서버 로그에만 남기고, 응답 본문에는 내부 상세를 싣지 않는다.
+        logger.exception(f"처리되지 않은 예외: {request.method} {request.url.path}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "서버에서 요청을 처리하지 못했습니다"},
+        )
+
 
 # CORS 설정
 app.add_middleware(

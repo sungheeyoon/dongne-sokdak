@@ -6,6 +6,7 @@ from app.middleware.admin_auth import log_admin_activity as default_log_admin_ac
 from app.core.logging import get_logger
 from app.db.supabase_client import supabase as default_supabase
 from app.services.admin.bulk_utils import record_bulk_success, AdminActionContext
+from app.services.user_directory import fetch_emails
 from app.utils.blocking_db import execute
 
 logger = get_logger(__name__)
@@ -29,9 +30,11 @@ class AdminUserService:
             return None
 
         user = response.data
+        # profiles에는 email 컬럼이 없다 — auth.users에서 읽어 온다 (user_directory 참고).
+        emails = await fetch_emails(self._supabase, [user_id])
         return {
             "id": user.get("id"),
-            "email": user.get("email"),
+            "email": emails.get(user_id),
             "nickname": user.get("nickname"),
             "role": user.get("role", "user"),
             "is_active": user.get("is_active"),
@@ -57,11 +60,17 @@ class AdminUserService:
             if is_active is not None:
                 query = query.eq("is_active", is_active)
             if search:
-                # PostgreSQL ILIKE for search
-                query = query.or_(f"nickname.ilike.%{search}%,email.ilike.%{search}%")
+                # 검색은 닉네임에만 건다 — profiles에 email 컬럼이 없어서 email.ilike는
+                # PostgREST 오류가 되고, 그 예외를 삼키면 목록이 통째로 빈 배열이 된다.
+                query = query.ilike("nickname", f"%{search}%")
 
             response = await execute(query.order("created_at", desc=True).range(skip, skip + limit - 1))
-            return response.data or []
+            rows = response.data or []
+
+            emails = await fetch_emails(self._supabase, [row.get("id") for row in rows])
+            for row in rows:
+                row["email"] = emails.get(str(row.get("id")))
+            return rows
         except Exception as e:
             logger.error(f"Error fetching users: {e}")
             return []
