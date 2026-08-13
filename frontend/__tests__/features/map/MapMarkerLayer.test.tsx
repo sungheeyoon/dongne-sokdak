@@ -15,14 +15,20 @@ vi.mock('react-kakao-maps-sdk', () => ({
 }))
 
 vi.mock('@/components/MemoizedMapMarker', () => ({
-  default: ({ id, onClick }: { id: string, onClick: (id: string) => void }) => (
-    <div data-testid="marker" data-id={id} onClick={() => onClick(id)} />
+  default: ({ id, onClick, isSelected }: { id: string, onClick: (id: string) => void, isSelected?: boolean }) => (
+    <div data-testid="marker" data-id={id} data-selected={isSelected ? 'true' : undefined} onClick={() => onClick(id)} />
   )
 }))
 
 vi.mock('@/features/map/presentation/components/ProximityGroupMarker', () => ({
-  ProximityGroupMarker: ({ count, onClick }: { count: number, onClick: () => void }) => (
-    <div data-testid="proximity-group-marker" data-count={count} onClick={onClick} />
+  ProximityGroupMarker: ({ count, onClick, isSelected }: { count: number, onClick: () => void, isSelected?: boolean }) => (
+    <div data-testid="proximity-group-marker" data-count={count} data-selected={isSelected ? 'true' : undefined} onClick={onClick} />
+  )
+}))
+
+vi.mock('@/features/map/presentation/components/MapFocusRing', () => ({
+  MapFocusRing: ({ center }: { center: { lat: number, lng: number } }) => (
+    <div data-testid="map-focus-ring" data-lat={center.lat} data-lng={center.lng} />
   )
 }))
 
@@ -482,5 +488,82 @@ describe('MapMarkerLayer — proximity group display tiers (ADR-0008)', () => {
 
     expect(queryByTestId('clusterer')).not.toBeInTheDocument()
     expect(getByTestId('proximity-group-marker')).toBeInTheDocument()
+  })
+})
+
+describe('MapMarkerLayer — 선택 지점 포커스 표시', () => {
+  const near = (id: string, offsetMeters: number) => ({
+    id,
+    location: { lat: 37.5665 + offsetMeters / 111_000, lng: 126.9780 },
+    category: 'INFRASTRUCTURE'
+  }) as any
+
+  function renderLayer(props: { reports: any[] } & Record<string, any>) {
+    return render(
+      <MapMarkerLayer
+        map={{}}
+        currentBounds={null}
+        onMarkerClick={vi.fn()}
+        {...props}
+      />
+    )
+  }
+
+  it('아무것도 선택되지 않았으면 포커스 링을 그리지 않는다', () => {
+    const adapter = createStatefulAdapter(2)
+    const { queryByTestId } = renderLayer({ reports: [near('a', 0)], adapter })
+
+    expect(queryByTestId('map-focus-ring')).toBeNull()
+  })
+
+  it('선택된 개별 마커 위치에 포커스 링을 그린다', () => {
+    const adapter = createStatefulAdapter(2)
+    const report = near('a', 0)
+    const { getByTestId, getAllByTestId } = renderLayer({
+      reports: [report, near('b', 1000)],
+      selectedReportIds: ['a'],
+      adapter,
+    })
+
+    const ring = getByTestId('map-focus-ring')
+    expect(Number(ring.getAttribute('data-lat'))).toBeCloseTo(report.location.lat)
+
+    const selectedMarkers = getAllByTestId('marker').filter(el => el.getAttribute('data-selected') === 'true')
+    expect(selectedMarkers.map(el => el.getAttribute('data-id'))).toEqual(['a'])
+  })
+
+  it('근접 그룹이 선택되면 그룹 중심에 같은 포커스 링을 그린다 (ADR-0008)', () => {
+    const adapter = createStatefulAdapter(3)
+    const { getByTestId } = renderLayer({
+      reports: [near('a', 0), near('b', 10)],
+      selectedReportIds: ['a', 'b'],
+      adapter,
+    })
+
+    expect(getByTestId('map-focus-ring')).toBeTruthy()
+    expect(getByTestId('proximity-group-marker').getAttribute('data-selected')).toBe('true')
+  })
+
+  it('그룹 멤버 하나만 선택돼도 그룹 전체가 선택 표시를 받는다', () => {
+    const adapter = createStatefulAdapter(3)
+    const { getByTestId } = renderLayer({
+      reports: [near('a', 0), near('b', 10)],
+      selectedReportIds: ['a'],
+      adapter,
+    })
+
+    expect(getByTestId('proximity-group-marker').getAttribute('data-selected')).toBe('true')
+  })
+
+  it('선택되지 않은 그룹에는 선택 표시를 주지 않는다', () => {
+    const adapter = createStatefulAdapter(3)
+    const { getAllByTestId } = renderLayer({
+      reports: [near('a', 0), near('b', 10), near('c', 1000), near('d', 1010)],
+      selectedReportIds: ['a'],
+      adapter,
+    })
+
+    const selected = getAllByTestId('proximity-group-marker').map(el => el.getAttribute('data-selected'))
+    expect(selected.filter(Boolean)).toHaveLength(1)
   })
 })

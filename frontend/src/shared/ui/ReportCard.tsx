@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { MapPin, ThumbsUp, MessageCircle, Volume2, Trash2, Wrench, Car, CircleDot, ImageOff } from 'lucide-react';
+import { MapPin, ThumbsUp, MessageCircle, Volume2, Trash2, Wrench, Car, CircleDot } from 'lucide-react';
 import Image from 'next/image';
 import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils';
 import { UiCard as Card } from '@/shared/ui';
@@ -70,14 +70,27 @@ function formatDate(dateString: string) {
 /**
  * 미디어 슬롯 (UI_V2_CONTRACT.md §7).
  *
- * 슬롯은 이미지가 없어도 항상 자리를 지킨다 — 같은 그리드 행의 카드 높이가
- * 이미지 유무로 갈리지 않게 하는 핵심 규칙이다. 로드 실패는 이미지 없음과
- * 똑같이 다뤄서 깨진 아이콘과 alt 텍스트가 노출되지 않게 한다.
+ * 슬롯은 이미지가 없어도 항상 같은 자리·같은 비율을 지킨다 — 같은 그리드 행의
+ * 카드 높이가 이미지 유무로 갈리지 않게 하는 핵심 규칙이다.
+ *
+ * 다만 빈 자리에 카테고리 아이콘만 놓으면 **없음을 그리게 된다** — 회색 상자가
+ * 구멍처럼 읽히고, 사진 있는 카드 옆에서 미완성으로 보인다. 그래서 이미지가
+ * 없을 때는 그 자리를 제보 본문으로 채운다. 부재가 아니라 콘텐츠가 놓이므로
+ * 리듬은 유지되면서 카드가 의도된 '글 제보'로 읽힌다.
+ *
+ * 로드 실패는 이미지 없음과 똑같이 다뤄서 깨진 아이콘과 alt 텍스트가 노출되지 않게 한다.
  */
-function ReportCardMedia({ imageUrl, category }: Pick<ReportCardProps, 'imageUrl' | 'category'>) {
-  const [failed, setFailed] = React.useState(false);
+function ReportCardMedia({
+  imageUrl,
+  category,
+  description,
+  showImage,
+  onImageError,
+}: Pick<ReportCardProps, 'imageUrl' | 'category' | 'description'> & {
+  showImage: boolean
+  onImageError: () => void
+}) {
   const CategoryIcon = categoryIcons[category] ?? CircleDot;
-  const showImage = Boolean(imageUrl) && !failed;
 
   return (
     <div
@@ -91,12 +104,17 @@ function ReportCardMedia({ imageUrl, category }: Pick<ReportCardProps, 'imageUrl
           fill
           className="object-cover transition-transform duration-200 group-hover:scale-105"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          onError={() => setFailed(true)}
+          onError={onImageError}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center gap-2 text-muted-foreground">
-          <CategoryIcon className="h-7 w-7" aria-hidden="true" />
-          {failed && <ImageOff className="h-4 w-4" aria-hidden="true" />}
+        <div className="flex h-full w-full items-center gap-3 border-l-2 border-brand/30 px-4 py-3">
+          <CategoryIcon className="h-5 w-5 shrink-0 self-start text-muted-foreground/70" aria-hidden="true" />
+          <p
+            data-testid={REPORT_CARD_REGIONS.description}
+            className="type-body line-clamp-4 text-foreground/80"
+          >
+            {description}
+          </p>
         </div>
       )}
     </div>
@@ -110,6 +128,10 @@ export const ReportCard = React.forwardRef<HTMLAnchorElement, ReportCardProps>(
   }, ref) => {
     const statusLabel = statusLabels[status];
     const categoryLabel = categoryLabels[category];
+    // 로드 실패는 이미지 없음과 똑같이 다룬다 — 판정을 카드가 들고 있어야
+    // 요약 문단과 미디어 슬롯이 같은 결론을 쓴다 (본문이 두 번 나오지 않게).
+    const [imageFailed, setImageFailed] = React.useState(false);
+    const showImage = Boolean(imageUrl) && !imageFailed;
 
     return (
       <Link
@@ -132,14 +154,24 @@ export const ReportCard = React.forwardRef<HTMLAnchorElement, ReportCardProps>(
             {title}
           </h3>
 
-          <p
-            data-testid={REPORT_CARD_REGIONS.description}
-            className="mt-1 mb-3 type-body-sm text-muted-foreground line-clamp-2"
-          >
-            {description}
-          </p>
+          {/* 사진이 있을 때만 요약을 따로 둔다 — 사진이 없으면 본문이 미디어 슬롯을 채우므로
+              여기서 또 보여주면 같은 문장이 두 번 나온다. */}
+          {showImage && (
+            <p
+              data-testid={REPORT_CARD_REGIONS.description}
+              className="mt-1 mb-3 type-body-sm text-muted-foreground line-clamp-2"
+            >
+              {description}
+            </p>
+          )}
 
-          <ReportCardMedia imageUrl={imageUrl || undefined} category={category} />
+          <ReportCardMedia
+            imageUrl={imageUrl || undefined}
+            category={category}
+            description={description}
+            showImage={showImage}
+            onImageError={() => setImageFailed(true)}
+          />
 
           <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
             <span className="flex min-w-0 items-center gap-1.5">
