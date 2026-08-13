@@ -20,4 +20,26 @@ describe('ProximityGroupMarker', () => {
 
     expect(onClick).toHaveBeenCalledTimes(1)
   })
+
+  it('선택 원과 40px 배지를 같은 52px 중심 프레임 안에 둔다', () => {
+    render(
+      <ProximityGroupMarker
+        center={{ lat: 37.5, lng: 127.0 }}
+        count={2}
+        onClick={vi.fn()}
+        isSelected
+      />
+    )
+
+    const frame = screen.getByTestId('proximity-group-focus-frame')
+    const halo = screen.getByTestId('map-focus-halo')
+    const marker = screen.getByTestId('proximity-group-marker')
+
+    expect(frame.style.width).toBe('52px')
+    expect(frame.style.height).toBe('52px')
+    expect(halo.parentElement).toBe(frame)
+    expect(marker.parentElement).toBe(frame)
+    expect(marker.style.left).toBe('6px')
+    expect(marker.style.top).toBe('6px')
+  })
 })

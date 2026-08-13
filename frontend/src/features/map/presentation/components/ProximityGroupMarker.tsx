@@ -31,27 +31,56 @@ const SELECTED_BADGE_STYLE: React.CSSProperties = {
   background: '#1E52E0',
   border: '2px solid white',
   boxShadow: '0 3px 10px rgba(30, 82, 224, 0.24)',
+  position: 'absolute',
+  left: 6,
+  top: 6,
+  zIndex: 1,
+}
+
+const FOCUS_FRAME_STYLE: React.CSSProperties = {
+  position: 'relative',
+  width: 52,
+  height: 52,
+}
+
+const FOCUS_HALO_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  pointerEvents: 'none',
+  borderRadius: '50%',
+  border: '2px solid #1E52E0',
+  background: 'rgba(30, 82, 224, 0.12)',
+  boxShadow: '0 0 0 4px rgba(255, 255, 255, 0.92), 0 4px 14px rgba(30, 82, 224, 0.22)',
 }
 
 interface ProximityGroupMarkerProps {
   center: Coordinates
   count: number
   onClick: () => void
-  /** 이 그룹이 지금 선택된 지점인지 — 선택 표시는 MapFocusRing과 함께 쓴다 */
+  /** 이 그룹이 지금 선택된 지점인지 — 선택 원과 배지는 같은 중심 프레임에서 그린다 */
   isSelected?: boolean
 }
 
 export function ProximityGroupMarker({ center, count, onClick, isSelected = false }: ProximityGroupMarkerProps) {
+  const badge = (
+    <div
+      data-testid="proximity-group-marker"
+      data-selected={isSelected || undefined}
+      style={isSelected ? SELECTED_BADGE_STYLE : BADGE_STYLE}
+      onClick={onClick}
+    >
+      {count}
+    </div>
+  )
+
   return (
     <CustomOverlayMap position={center} yAnchor={0.5} xAnchor={0.5} zIndex={isSelected ? 50 : 1}>
-      <div
-        data-testid="proximity-group-marker"
-        data-selected={isSelected || undefined}
-        style={isSelected ? SELECTED_BADGE_STYLE : BADGE_STYLE}
-        onClick={onClick}
-      >
-        {count}
-      </div>
+      {isSelected ? (
+        <div data-testid="proximity-group-focus-frame" style={FOCUS_FRAME_STYLE}>
+          <span data-testid="map-focus-halo" aria-hidden="true" style={FOCUS_HALO_STYLE} />
+          {badge}
+        </div>
+      ) : badge}
     </CustomOverlayMap>
   )
 }

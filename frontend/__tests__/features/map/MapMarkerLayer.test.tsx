@@ -26,12 +26,6 @@ vi.mock('@/features/map/presentation/components/ProximityGroupMarker', () => ({
   )
 }))
 
-vi.mock('@/features/map/presentation/components/MapFocusRing', () => ({
-  MapFocusRing: ({ center, variant }: { center: { lat: number, lng: number }, variant?: string }) => (
-    <div data-testid="map-focus-ring" data-lat={center.lat} data-lng={center.lng} data-variant={variant} />
-  )
-}))
-
 // map.setLevel/setCenter/panTo가 실제 지도 상태를 바꾸는 것처럼 흉내 내는 stateful adapter.
 // 실제 카카오 SDK처럼 'idle' 리스너를 여러 개 동시에 등록할 수 있게 배열로 관리한다 —
 // 애니메이션을 취소했을 때 오래된 리스너가 살아있어도 문제가 없는지 검증하기 위함.
@@ -491,7 +485,7 @@ describe('MapMarkerLayer — proximity group display tiers (ADR-0008)', () => {
   })
 })
 
-describe('MapMarkerLayer — 선택 지점 포커스 표시', () => {
+describe('MapMarkerLayer — 선택 지점 표시', () => {
   const near = (id: string, offsetMeters: number) => ({
     id,
     location: { lat: 37.5665 + offsetMeters / 111_000, lng: 126.9780 },
@@ -509,42 +503,39 @@ describe('MapMarkerLayer — 선택 지점 포커스 표시', () => {
     )
   }
 
-  it('아무것도 선택되지 않았으면 포커스 링을 그리지 않는다', () => {
+  it('아무것도 선택되지 않았으면 선택된 마커가 없다', () => {
     const adapter = createStatefulAdapter(2)
-    const { queryByTestId } = renderLayer({ reports: [near('a', 0)], adapter })
+    const { getByTestId } = renderLayer({ reports: [near('a', 0)], adapter })
 
-    expect(queryByTestId('map-focus-ring')).toBeNull()
+    expect(getByTestId('marker').getAttribute('data-selected')).toBeNull()
   })
 
-  it('선택된 개별 마커 위치에 포커스 링을 그린다', () => {
+  it('선택된 개별 마커가 자체 포커스 표시를 받는다', () => {
     const adapter = createStatefulAdapter(2)
     const report = near('a', 0)
-    const { getByTestId, getAllByTestId } = renderLayer({
+    const { getAllByTestId } = renderLayer({
       reports: [report, near('b', 1000)],
       selectedReportIds: ['a'],
       adapter,
     })
 
-    const ring = getByTestId('map-focus-ring')
-    expect(Number(ring.getAttribute('data-lat'))).toBeCloseTo(report.location.lat)
-    expect(ring.getAttribute('data-variant')).toBe('marker')
-
     const selectedMarkers = getAllByTestId('marker').filter(el => el.getAttribute('data-selected') === 'true')
     expect(selectedMarkers.map(el => el.getAttribute('data-id'))).toEqual(['a'])
   })
 
-  it('근접 그룹 단계에서도 혼자인 제보는 개별 핀 포커스를 쓴다', () => {
+  it('근접 그룹 단계에서도 혼자인 제보는 개별 핀 자체 포커스를 쓴다', () => {
     const adapter = createStatefulAdapter(3)
-    const { getByTestId } = renderLayer({
+    const { getAllByTestId } = renderLayer({
       reports: [near('a', 0), near('b', 1000)],
       selectedReportIds: ['a'],
       adapter,
     })
 
-    expect(getByTestId('map-focus-ring').getAttribute('data-variant')).toBe('marker')
+    const selected = getAllByTestId('marker').filter(el => el.getAttribute('data-selected') === 'true')
+    expect(selected.map(el => el.getAttribute('data-id'))).toEqual(['a'])
   })
 
-  it('근접 그룹이 선택되면 그룹 중심에 같은 포커스 링을 그린다 (ADR-0008)', () => {
+  it('근접 그룹이 선택되면 그룹 배지 자체가 포커스 표시를 받는다 (ADR-0008)', () => {
     const adapter = createStatefulAdapter(3)
     const { getByTestId } = renderLayer({
       reports: [near('a', 0), near('b', 10)],
@@ -552,7 +543,6 @@ describe('MapMarkerLayer — 선택 지점 포커스 표시', () => {
       adapter,
     })
 
-    expect(getByTestId('map-focus-ring').getAttribute('data-variant')).toBe('group')
     expect(getByTestId('proximity-group-marker').getAttribute('data-selected')).toBe('true')
   })
 

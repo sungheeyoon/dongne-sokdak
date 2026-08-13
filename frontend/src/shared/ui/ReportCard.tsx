@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { MapPin, ThumbsUp, MessageCircle, Volume2, Trash2, Wrench, Car, CircleDot } from 'lucide-react';
 import Image from 'next/image';
-import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils';
+import { formatReportCardAddress } from '@/lib/utils/addressUtils';
 import { UiCard as Card } from '@/shared/ui';
 import { SkeletonLoader } from '@/shared/ui/LoadingSpinner';
 import { cn } from '@/lib/utils';
@@ -164,7 +164,7 @@ export const ReportCard = React.forwardRef<HTMLAnchorElement, ReportCardProps>(
                 data-testid={REPORT_CARD_REGIONS.location}
                 className="type-caption text-muted-foreground truncate"
               >
-                {address ? formatToAdministrativeAddress(address) : '위치 정보 없음'}
+                {address ? formatReportCardAddress(address) : '위치 정보 없음'}
               </span>
             </span>
 

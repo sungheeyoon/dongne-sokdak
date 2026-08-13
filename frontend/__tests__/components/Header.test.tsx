@@ -120,7 +120,7 @@ describe('Header — 모바일 메뉴 토글', () => {
         render(<Header />)
 
         expect(screen.getByRole('banner').firstElementChild?.className).toMatch(/h-14.*lg:h-16/)
-        expect(screen.getByAltText('동네속닥').className).toMatch(/h-auto.*w-auto/)
+        expect(screen.getByAltText('동네속닥').className).toMatch(/h-8.*w-\[120px\]/)
         expect(screen.getByRole('navigation', { name: '주요 메뉴' }).className).toMatch(/hidden lg:flex/)
         expect(screen.getByRole('button', { name: '메뉴 열기' }).parentElement?.className).toMatch(/lg:hidden/)
 

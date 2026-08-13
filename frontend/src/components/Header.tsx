@@ -74,7 +74,7 @@ export default function Header() {
             alt="동네속닥"
             width={120}
             height={32}
-            className="h-auto w-auto object-contain"
+            className="h-8 w-[120px] object-contain"
             priority
           />
           <span className="sr-only">홈으로 이동</span>

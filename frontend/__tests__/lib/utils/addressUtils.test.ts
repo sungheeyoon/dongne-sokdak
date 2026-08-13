@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
+import { formatReportCardAddress, formatToAdministrativeAddress } from '@/lib/utils/addressUtils'
 import { isValidReportCoordinate } from '@/features/reports/domain/entities'
 import { ReportCategory, ReportStatus } from '@/types'
 
@@ -14,6 +14,22 @@ describe('addressUtils', () => {
     it('should return "주소 없음" for empty or invalid input', () => {
       expect(formatToAdministrativeAddress('')).toBe('주소 없음')
       expect(formatToAdministrativeAddress('주소 없음')).toBe('주소 없음')
+    })
+  })
+
+  describe('formatReportCardAddress', () => {
+    it.each([
+      ['서울특별시 강남구 봉은사로 630', '강남구 봉은사로 630'],
+      ['서울특별시 강남구 삼성동 451-82', '강남구 삼성동 451-82'],
+      ['경상북도 성남시 수정구 가락195길 586-60', '성남시 수정구 가락195길 586-60'],
+      ['충청남도 강릉시 봉은사길 지하136 (경수이김동)', '강릉시 봉은사길 지하136'],
+      ['중구 태평로1가', '중구 태평로1가'],
+    ])('%s를 사람이 찾을 수 있는 같은 주소 단위로 줄인다', (address, expected) => {
+      expect(formatReportCardAddress(address)).toBe(expected)
+    })
+
+    it('행정 정보 없는 지번 숫자만 있으면 오해를 막기 위해 위치 없음으로 표시한다', () => {
+      expect(formatReportCardAddress('451-82')).toBe('위치 정보 없음')
     })
   })
 })

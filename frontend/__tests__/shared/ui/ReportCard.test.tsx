@@ -171,6 +171,18 @@ describe('ReportCard — 긴 콘텐츠', () => {
 
         expect(screen.getByText('위치 정보 없음')).toBeInTheDocument()
     })
+
+    it('주소를 시·구 + 동/도로명 + 번지 단위로 일관되게 보여준다', () => {
+        renderCard({ address: '서울특별시 강남구 봉은사로 630' })
+
+        expect(screen.getByTestId(REPORT_CARD_REGIONS.location)).toHaveTextContent('강남구 봉은사로 630')
+    })
+
+    it('숫자 지번만 받은 경우 위치를 아는 것처럼 표시하지 않는다', () => {
+        renderCard({ address: '451-82' })
+
+        expect(screen.getByTestId(REPORT_CARD_REGIONS.location)).toHaveTextContent('위치 정보 없음')
+    })
 })
 
 describe('ReportCard — 반응 수', () => {

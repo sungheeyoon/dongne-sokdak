@@ -136,6 +136,58 @@ export const formatToAdministrativeAddress = (address: string): string => {
   return cleanParts[cleanParts.length - 1] || '주소 없음'
 }
 
+const PROVINCE_LEVEL_NAMES = new Set([
+  '서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '제주',
+  '서울특별시', '부산광역시', '대구광역시', '인천광역시', '광주광역시',
+  '대전광역시', '울산광역시', '세종특별자치시',
+  '경기도', '강원도', '강원특별자치도', '충청북도', '충청남도',
+  '전북특별자치도', '전라북도', '전라남도', '경상북도', '경상남도',
+  '제주특별자치도',
+])
+
+const isCityDistrict = (part: string) => /(?:시|군|구)$/.test(part)
+const hasReadableLocality = (part: string) => /[가-힣]/.test(part) && /(?:동|읍|면|리|가|로|길|거리|대로)$/.test(part)
+
+/**
+ * 제보카드용 주소 표기.
+ *
+ * 행정동 한 토막만 뽑는 `formatToAdministrativeAddress`와 달리, 카드는 사용자가
+ * 실제 위치를 가늠할 수 있어야 한다. 광역 단위는 덜어내되 가장 가까운 시·구 두
+ * 단계와 동/도로명, 번지를 함께 보존한다. 건물 설명용 괄호는 카드에서 제외한다.
+ */
+export const formatReportCardAddress = (address: string): string => {
+  if (!address || address === '주소 없음') return '위치 정보 없음'
+
+  const withoutBuildingNote = address
+    .replace(/\s*\([^)]*\)\s*$/, '')
+    .replace(/^대한민국\s+/, '')
+    .trim()
+
+  if (!withoutBuildingNote) return '위치 정보 없음'
+
+  const parts = withoutBuildingNote.split(/\s+/).filter(Boolean)
+  const localParts = parts.filter(part => !PROVINCE_LEVEL_NAMES.has(part))
+  const firstDetailIndex = localParts.findIndex(part => !isCityDistrict(part))
+
+  if (firstDetailIndex === -1) {
+    return localParts.slice(-2).join(' ') || '위치 정보 없음'
+  }
+
+  const administrativeContext = localParts
+    .slice(0, firstDetailIndex)
+    .filter(isCityDistrict)
+    .slice(-2)
+  const detail = localParts.slice(firstDetailIndex)
+
+  // 숫자 지번만 들어오면 어느 지역인지 복원할 정보가 없다. 그 숫자를 주소처럼
+  // 단정해 보여주는 것보다 위치 정보가 부족하다고 말하는 편이 정확하다.
+  if (administrativeContext.length === 0 && !detail.some(hasReadableLocality)) {
+    return '위치 정보 없음'
+  }
+
+  return [...administrativeContext, ...detail].join(' ') || '위치 정보 없음'
+}
+
 /**
  * 카카오 장소 검색 결과를 행정동 주소로 변환
  */
