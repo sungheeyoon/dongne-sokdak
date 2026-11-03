@@ -8,6 +8,8 @@ _Last verified: 2026-07-24_
 - 1인 개발 · Next.js 16 · TypeScript · FastAPI · Supabase(PostgreSQL/PostGIS) · Kakao Maps
 - 포트폴리오 데모의 데이터는 합성 데이터이며, Render 무료 플랜의 콜드 스타트가 발생할 수 있습니다.
 
+![현재 지도 영역의 제보 밀집도와 지역 이슈 목록을 함께 보여 주는 메인 화면](docs/images/main.png)
+
 ## 현재 제품 흐름
 
 지도 화면은 반경 2km/3km 조회가 아니라 **현재 화면의 사각 영역(bounds)** 을 조회합니다.
@@ -102,6 +104,7 @@ pnpm dev
 # Backend
 cd backend
 python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements-dev.txt
 uvicorn app.main:app --reload
 ```
